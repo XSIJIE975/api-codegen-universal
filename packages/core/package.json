@@ -1,0 +1,43 @@
+{
+  "name": "@api-codegen/core",
+  "version": "0.1.0",
+  "description": "API Codegen Universal 核心解析引擎",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "openapi",
+    "parser",
+    "codegen"
+  ],
+  "author": "XSIJIE975",
+  "license": "MIT",
+  "dependencies": {
+    "openapi-typescript": "^7.10.1",
+    "@redocly/openapi-core": "^2.11.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.2"
+  }
+}
