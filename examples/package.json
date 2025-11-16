@@ -1,10 +1,10 @@
 {
-  "name": "basic-example",
-  "version": "1.0.0",
-  "type": "module",
+  "name": "examples",
+  "version": "0.0.1",
   "private": true,
+  "type": "module",
   "scripts": {
-    "start": "tsx index.ts"
+    "test:openapi": "tsx basic-openapi.ts"
   },
   "dependencies": {
     "@api-codegen/core": "workspace:*"

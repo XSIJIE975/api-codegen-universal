@@ -1,5 +1,7 @@
 /**
- * 类型定义模块导出
+ * 类型定义导出
  */
+
 export * from './standard'
 export * from './config'
+export * from './adapter'

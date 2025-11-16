@@ -1,3 +1,6 @@
-export * from './file-reader'
-export * from './ref-resolver'
-export * from './type-converter'
+/**
+ * 工具函数导出
+ */
+
+export * from './path-classifier'
+export * from './generic-detector'
