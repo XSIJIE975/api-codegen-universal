@@ -9,24 +9,32 @@
     "checkJs": false,
     "outDir": "./dist",
     "rootDir": "./",
-    
+
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    
+
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    
+
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    
-    "types": ["node", "vitest/globals"]
+
+    "types": ["node"]
   },
-  "include": ["packages/*/src/**/*", "packages/*/tests/**/*"],
-  "exclude": ["node_modules", "dist", "**/dist"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/dist", "packages"],
+  "references": [
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/openapi"
+    }
+  ]
 }

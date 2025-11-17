@@ -4,12 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:openapi": "tsx basic-openapi.ts"
+    "test:openapi": "npx --yes tsx basic-openapi.ts"
   },
   "dependencies": {
-    "@api-codegen/core": "workspace:*"
-  },
-  "devDependencies": {
-    "tsx": "^4.19.2"
+    "api-codegen-universal": "workspace:*"
   }
 }

@@ -8,45 +8,45 @@
  */
 export interface GenericDetectionResult {
   /** 是否为泛型 */
-  isGeneric: boolean
+  isGeneric: boolean;
   /** 泛型基类名称(如 'ApiSuccessResponse') */
-  baseType?: string
+  baseType?: string;
   /** 泛型参数(如 'UserDto', 'UserDto[]') */
-  genericParam?: string
+  genericParam?: string;
 }
 
 /**
  * 泛型检测器
- * 
+ *
  * 检测模式: BaseType & { data?: SpecificType }
  * 识别为: BaseType<SpecificType>
  */
 export class GenericDetector {
   /**
    * 检测交叉类型字符串是否为泛型模式
-   * 
+   *
    * @example
    * 输入: 'ApiSuccessResponse & { data?: RegisterResponseVo }'
    * 输出: { isGeneric: true, baseType: 'ApiSuccessResponse', genericParam: 'RegisterResponseVo' }
    */
   detect(typeString: string): GenericDetectionResult {
     // 匹配模式: BaseType & { data?: DataType }
-    const pattern = /^(.+?)\s*&\s*\{\s*data\?:\s*(.+?)\s*;?\s*\}$/
+    const pattern = /^(.+?)\s*&\s*\{\s*data\?:\s*(.+?)\s*;?\s*\}$/;
 
-    const match = typeString.match(pattern)
-    
+    const match = typeString.match(pattern);
+
     if (!match || !match[1] || !match[2]) {
-      return { isGeneric: false }
+      return { isGeneric: false };
     }
 
-    const baseType = this.extractBaseType(match[1].trim())
-    const genericParam = this.extractGenericParam(match[2].trim())
+    const baseType = this.extractBaseType(match[1].trim());
+    const genericParam = this.extractGenericParam(match[2].trim());
 
     return {
       isGeneric: true,
       baseType,
       genericParam,
-    }
+    };
   }
 
   /**
@@ -54,21 +54,21 @@ export class GenericDetector {
    * @example 'UserDto[]' -> true
    */
   isArrayGeneric(typeString: string): boolean {
-    return typeString.endsWith('[]')
+    return typeString.endsWith('[]');
   }
 
   /**
    * 提取基类类型名
-   * 处理 components["schemas"]["ApiSuccessResponse"] 格式
+   * 如处理 components["schemas"]["ApiSuccessResponse"] 格式
    */
   private extractBaseType(baseTypeStr: string): string {
     // 匹配: components["schemas"]["TypeName"]
-    const match = baseTypeStr.match(/\["schemas"\]\["([^"]+)"\]/)
+    const match = baseTypeStr.match(/\["schemas"\]\["([^"]+)"\]/);
     if (match && match[1]) {
-      return match[1]
+      return match[1];
     }
     // 如果不是索引访问，直接返回
-    return baseTypeStr
+    return baseTypeStr;
   }
 
   /**
@@ -79,16 +79,16 @@ export class GenericDetector {
    */
   private extractGenericParam(paramStr: string): string {
     // 处理数组类型
-    const isArray = paramStr.endsWith('[]')
-    const cleanParam = isArray ? paramStr.slice(0, -2).trim() : paramStr
+    const isArray = paramStr.endsWith('[]');
+    const cleanParam = isArray ? paramStr.slice(0, -2).trim() : paramStr;
 
     // 匹配: components["schemas"]["TypeName"]
-    const match = cleanParam.match(/\["schemas"\]\["([^"]+)"\]/)
+    const match = cleanParam.match(/\["schemas"\]\["([^"]+)"\]/);
     if (match && match[1]) {
-      return isArray ? `${match[1]}[]` : match[1]
+      return isArray ? `${match[1]}[]` : match[1];
     }
 
     // 如果不是索引访问，直接返回
-    return isArray ? `${cleanParam}[]` : cleanParam
+    return isArray ? `${cleanParam}[]` : cleanParam;
   }
 }

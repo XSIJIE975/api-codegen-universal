@@ -67,9 +67,7 @@
           }
         },
         "summary": "用户注册",
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/login": {
@@ -138,9 +136,7 @@
           }
         },
         "summary": "用户登录",
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/refresh": {
@@ -195,9 +191,7 @@
           }
         },
         "summary": "刷新 Token",
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/logout": {
@@ -240,9 +234,7 @@
           }
         ],
         "summary": "退出登录",
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/auth/me": {
@@ -292,9 +284,7 @@
           }
         ],
         "summary": "获取当前用户信息",
-        "tags": [
-          "Auth"
-        ]
+        "tags": ["Auth"]
       }
     },
     "/api/v1/users": {
@@ -389,10 +379,7 @@
             "in": "query",
             "description": "排序方向",
             "schema": {
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           }
@@ -415,9 +402,7 @@
           }
         ],
         "summary": "获取用户列表（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/statistics": {
@@ -442,9 +427,7 @@
           }
         ],
         "summary": "获取用户统计数据（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{id}": {
@@ -482,9 +465,7 @@
           }
         ],
         "summary": "获取用户详情（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       },
       "patch": {
         "operationId": "UsersController_update",
@@ -533,9 +514,7 @@
           }
         ],
         "summary": "更新用户信息（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       },
       "delete": {
         "operationId": "UsersController_remove",
@@ -564,9 +543,7 @@
           }
         ],
         "summary": "删除用户（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{id}/status": {
@@ -614,9 +591,7 @@
           }
         ],
         "summary": "更新用户状态（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{id}/verify": {
@@ -657,9 +632,7 @@
           }
         ],
         "summary": "验证用户邮箱（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{id}/reset-password": {
@@ -700,9 +673,7 @@
           }
         ],
         "summary": "重置用户密码（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{id}/roles": {
@@ -750,9 +721,7 @@
           }
         ],
         "summary": "分配角色给用户（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       },
       "get": {
         "operationId": "UsersController_getUserRoles",
@@ -781,9 +750,7 @@
           }
         ],
         "summary": "获取用户的角色列表（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{id}/roles/{roleId}": {
@@ -823,9 +790,7 @@
           }
         ],
         "summary": "移除用户的角色（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/batch-delete": {
@@ -856,9 +821,7 @@
           }
         ],
         "summary": "批量删除用户（管理员）",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/profile/me": {
@@ -883,9 +846,7 @@
           }
         ],
         "summary": "获取当前用户资料",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       },
       "patch": {
         "operationId": "UsersController_updateProfile",
@@ -921,9 +882,7 @@
           }
         ],
         "summary": "更新个人资料",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/profile/change-password": {
@@ -954,9 +913,7 @@
           }
         ],
         "summary": "修改密码",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/profile/sessions": {
@@ -984,9 +941,7 @@
           }
         ],
         "summary": "获取当前用户的会话列表",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/profile/logout-other-sessions": {
@@ -1004,9 +959,7 @@
           }
         ],
         "summary": "注销其他会话",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/roles": {
@@ -1048,9 +1001,7 @@
           }
         ],
         "summary": "创建角色",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       },
       "get": {
         "description": "获取所有角色的基础列表，需要管理员权限和角色读取权限",
@@ -1080,9 +1031,7 @@
           }
         ],
         "summary": "获取角色列表",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/paginated": {
@@ -1138,12 +1087,7 @@
             "in": "query",
             "description": "排序字段",
             "schema": {
-              "enum": [
-                "createdAt",
-                "updatedAt",
-                "name",
-                "code"
-              ],
+              "enum": ["createdAt", "updatedAt", "name", "code"],
               "type": "string"
             }
           },
@@ -1153,10 +1097,7 @@
             "in": "query",
             "description": "排序方向",
             "schema": {
-              "enum": [
-                "asc",
-                "desc"
-              ],
+              "enum": ["asc", "desc"],
               "type": "string"
             }
           }
@@ -1179,9 +1120,7 @@
           }
         ],
         "summary": "分页查询角色",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/{id}": {
@@ -1229,9 +1168,7 @@
           }
         ],
         "summary": "获取角色详情",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       },
       "patch": {
         "description": "更新角色的基本信息（名称、代码、描述）",
@@ -1281,9 +1218,7 @@
           }
         ],
         "summary": "更新角色",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       },
       "delete": {
         "description": "删除指定的角色，如果角色正在被用户使用则无法删除",
@@ -1316,9 +1251,7 @@
           }
         ],
         "summary": "删除角色",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/code/{code}": {
@@ -1357,9 +1290,7 @@
           }
         ],
         "summary": "根据代码获取角色",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/{id}/status": {
@@ -1408,9 +1339,7 @@
           }
         ],
         "summary": "更新角色状态",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/{id}/permissions": {
@@ -1459,9 +1388,7 @@
           }
         ],
         "summary": "为角色分配权限",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       },
       "get": {
         "description": "获取指定角色拥有的所有权限",
@@ -1501,9 +1428,7 @@
           }
         ],
         "summary": "获取角色的权限",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/statistics/overview": {
@@ -1543,9 +1468,7 @@
           }
         ],
         "summary": "获取角色统计信息",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/batch": {
@@ -1593,9 +1516,7 @@
           }
         ],
         "summary": "批量删除角色",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/roles/active/codes": {
@@ -1624,9 +1545,7 @@
           }
         ],
         "summary": "获取所有激活角色的代码",
-        "tags": [
-          "Roles"
-        ]
+        "tags": ["Roles"]
       }
     },
     "/api/v1/permissions": {
@@ -1664,9 +1583,7 @@
           }
         ],
         "summary": "创建权限",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       },
       "get": {
         "operationId": "PermissionsController_findAll",
@@ -1692,9 +1609,7 @@
           }
         ],
         "summary": "获取所有权限",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       }
     },
     "/api/v1/permissions/paginated": {
@@ -1793,10 +1708,7 @@
               "default": "desc",
               "example": "desc",
               "type": "string",
-              "enum": [
-                "asc",
-                "desc"
-              ]
+              "enum": ["asc", "desc"]
             }
           },
           {
@@ -1904,9 +1816,7 @@
           }
         ],
         "summary": "分页查询权限列表",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       }
     },
     "/api/v1/permissions/{id}": {
@@ -1944,9 +1854,7 @@
           }
         ],
         "summary": "获取单个权限",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       },
       "patch": {
         "operationId": "PermissionsController_update",
@@ -1995,9 +1903,7 @@
           }
         ],
         "summary": "更新权限信息",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       },
       "delete": {
         "operationId": "PermissionsController_remove",
@@ -2026,9 +1932,7 @@
           }
         ],
         "summary": "删除权限",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       }
     },
     "/api/v1/permissions/{id}/status": {
@@ -2076,9 +1980,7 @@
           }
         ],
         "summary": "更新权限状态",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       }
     },
     "/api/v1/permissions/stats/overview": {
@@ -2096,9 +1998,7 @@
           }
         ],
         "summary": "获取权限统计数据",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       }
     },
     "/api/v1/permissions/batch": {
@@ -2140,9 +2040,7 @@
           }
         ],
         "summary": "批量删除权限",
-        "tags": [
-          "Permissions"
-        ]
+        "tags": ["Permissions"]
       }
     },
     "/api": {
@@ -2155,9 +2053,7 @@
           }
         },
         "summary": "API信息",
-        "tags": [
-          "Public"
-        ]
+        "tags": ["Public"]
       }
     },
     "/api/v1/health": {
@@ -2188,9 +2084,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -2210,9 +2104,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -2235,9 +2127,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -2253,9 +2143,7 @@
           }
         },
         "summary": "系统健康检查",
-        "tags": [
-          "Health"
-        ]
+        "tags": ["Health"]
       }
     },
     "/api/v1/health/liveness": {
@@ -2268,9 +2156,7 @@
           }
         },
         "summary": "存活性检查",
-        "tags": [
-          "Health"
-        ]
+        "tags": ["Health"]
       }
     },
     "/api/v1/health/readiness": {
@@ -2301,9 +2187,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -2323,9 +2207,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -2348,9 +2230,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -2366,9 +2246,7 @@
           }
         },
         "summary": "就绪性检查",
-        "tags": [
-          "Health"
-        ]
+        "tags": ["Health"]
       }
     },
     "/api/v1/logs/api": {
@@ -2514,9 +2392,7 @@
           }
         ],
         "summary": "查询 API 日志",
-        "tags": [
-          "Logs"
-        ]
+        "tags": ["Logs"]
       }
     },
     "/api/v1/logs/api/{requestId}": {
@@ -2590,9 +2466,7 @@
           }
         ],
         "summary": "根据 requestId 查询 API 日志详情",
-        "tags": [
-          "Logs"
-        ]
+        "tags": ["Logs"]
       }
     },
     "/api/v1/logs/errors": {
@@ -2718,9 +2592,7 @@
           }
         ],
         "summary": "查询错误日志",
-        "tags": [
-          "Logs"
-        ]
+        "tags": ["Logs"]
       }
     },
     "/api/v1/logs/audit": {
@@ -2756,11 +2628,7 @@
             "schema": {
               "example": "UPDATE",
               "type": "string",
-              "enum": [
-                "CREATE",
-                "UPDATE",
-                "DELETE"
-              ]
+              "enum": ["CREATE", "UPDATE", "DELETE"]
             }
           },
           {
@@ -2861,9 +2729,7 @@
           }
         ],
         "summary": "查询审计日志",
-        "tags": [
-          "Logs"
-        ]
+        "tags": ["Logs"]
       }
     },
     "/api/v1/logs/statistics": {
@@ -2945,9 +2811,7 @@
           }
         ],
         "summary": "获取日志统计信息",
-        "tags": [
-          "Logs"
-        ]
+        "tags": ["Logs"]
       }
     }
   },
@@ -3040,15 +2904,7 @@
             "type": "string",
             "description": "请求方法",
             "example": "POST",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "PUT",
-              "DELETE",
-              "HEAD",
-              "OPTIONS"
-            ]
+            "enum": ["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS"]
           },
           "timezone": {
             "type": "string",
@@ -3126,11 +2982,7 @@
             "example": "注册成功，请登录"
           }
         },
-        "required": [
-          "username",
-          "email",
-          "message"
-        ]
+        "required": ["username", "email", "message"]
       },
       "RegisterDto": {
         "type": "object",
@@ -3170,11 +3022,7 @@
             "example": "13800138000"
           }
         },
-        "required": [
-          "email",
-          "username",
-          "password"
-        ]
+        "required": ["email", "username", "password"]
       },
       "AuthResponseVo": {
         "type": "object",
@@ -3226,10 +3074,7 @@
             "example": "admin123456"
           }
         },
-        "required": [
-          "username",
-          "password"
-        ]
+        "required": ["username", "password"]
       },
       "RefreshTokenDto": {
         "type": "object",
@@ -3240,9 +3085,7 @@
             "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
           }
         },
-        "required": [
-          "refreshToken"
-        ]
+        "required": ["refreshToken"]
       },
       "AuthMeResponseVo": {
         "type": "object",
@@ -3260,26 +3103,15 @@
           "roles": {
             "type": "object",
             "description": "用户角色列表",
-            "example": [
-              "admin",
-              "user"
-            ]
+            "example": ["admin", "user"]
           },
           "permissions": {
             "type": "object",
             "description": "用户权限列表",
-            "example": [
-              "read:articles",
-              "write:articles"
-            ]
+            "example": ["read:articles", "write:articles"]
           }
         },
-        "required": [
-          "username",
-          "email",
-          "roles",
-          "permissions"
-        ]
+        "required": ["username", "email", "roles", "permissions"]
       },
       "UserResponseDto": {
         "type": "object",
@@ -3344,10 +3176,7 @@
           },
           "roles": {
             "description": "用户角色列表",
-            "example": [
-              "admin",
-              "user"
-            ],
+            "example": ["admin", "user"],
             "type": "array",
             "items": {
               "type": "string"
@@ -3425,10 +3254,7 @@
             ]
           }
         },
-        "required": [
-          "data",
-          "meta"
-        ]
+        "required": ["data", "meta"]
       },
       "UserStatisticsDto": {
         "type": "object",
@@ -3536,9 +3362,7 @@
             "example": true
           }
         },
-        "required": [
-          "isActive"
-        ]
+        "required": ["isActive"]
       },
       "ResetPasswordDto": {
         "type": "object",
@@ -3550,28 +3374,21 @@
             "minLength": 8
           }
         },
-        "required": [
-          "newPassword"
-        ]
+        "required": ["newPassword"]
       },
       "AssignRolesDto": {
         "type": "object",
         "properties": {
           "roleIds": {
             "description": "角色ID数组（至少包含一个角色ID，不能重复）",
-            "example": [
-              1,
-              2
-            ],
+            "example": [1, 2],
             "type": "array",
             "items": {
               "type": "number"
             }
           }
         },
-        "required": [
-          "roleIds"
-        ]
+        "required": ["roleIds"]
       },
       "BatchOperationDto": {
         "type": "object",
@@ -3588,9 +3405,7 @@
             }
           }
         },
-        "required": [
-          "ids"
-        ]
+        "required": ["ids"]
       },
       "UpdateProfileDto": {
         "type": "object",
@@ -3644,11 +3459,7 @@
             "example": "NewPassword123!"
           }
         },
-        "required": [
-          "oldPassword",
-          "newPassword",
-          "confirmPassword"
-        ]
+        "required": ["oldPassword", "newPassword", "confirmPassword"]
       },
       "UserSessionDto": {
         "type": "object",
@@ -3714,10 +3525,7 @@
             "example": "拥有系统最高权限，可以管理所有功能"
           }
         },
-        "required": [
-          "name",
-          "code"
-        ]
+        "required": ["name", "code"]
       },
       "RoleResponseDto": {
         "type": "object",
@@ -3767,14 +3575,7 @@
             }
           }
         },
-        "required": [
-          "id",
-          "name",
-          "code",
-          "isActive",
-          "createdAt",
-          "updatedAt"
-        ]
+        "required": ["id", "name", "code", "isActive", "createdAt", "updatedAt"]
       },
       "PaginatedRolesDto": {
         "type": "object",
@@ -3823,10 +3624,7 @@
             }
           }
         },
-        "required": [
-          "data",
-          "meta"
-        ]
+        "required": ["data", "meta"]
       },
       "UpdateRoleDto": {
         "type": "object",
@@ -3857,29 +3655,21 @@
             "example": true
           }
         },
-        "required": [
-          "isActive"
-        ]
+        "required": ["isActive"]
       },
       "AssignPermissionsDto": {
         "type": "object",
         "properties": {
           "permissionIds": {
             "description": "权限ID列表",
-            "example": [
-              1,
-              2,
-              3
-            ],
+            "example": [1, 2, 3],
             "type": "array",
             "items": {
               "type": "number"
             }
           }
         },
-        "required": [
-          "permissionIds"
-        ]
+        "required": ["permissionIds"]
       },
       "CreatePermissionDto": {
         "type": "object",
@@ -3910,12 +3700,7 @@
             "example": "允许创建新用户账户"
           }
         },
-        "required": [
-          "name",
-          "code",
-          "resource",
-          "action"
-        ]
+        "required": ["name", "code", "resource", "action"]
       },
       "PermissionResponseDto": {
         "type": "object",
@@ -3998,10 +3783,7 @@
             ]
           }
         },
-        "required": [
-          "data",
-          "meta"
-        ]
+        "required": ["data", "meta"]
       },
       "UpdatePermissionDto": {
         "type": "object",
@@ -4042,9 +3824,7 @@
             "example": true
           }
         },
-        "required": [
-          "isActive"
-        ]
+        "required": ["isActive"]
       },
       "ApiLogUserVo": {
         "type": "object",
@@ -4065,11 +3845,7 @@
             "example": "user@example.com"
           }
         },
-        "required": [
-          "id",
-          "username",
-          "email"
-        ]
+        "required": ["id", "username", "email"]
       },
       "ApiLogVo": {
         "type": "object",
@@ -4199,10 +3975,7 @@
             }
           }
         },
-        "required": [
-          "meta",
-          "data"
-        ]
+        "required": ["meta", "data"]
       },
       "ErrorLogVo": {
         "type": "object",
@@ -4268,12 +4041,7 @@
             "example": "2025-11-15T08:00:00.000Z"
           }
         },
-        "required": [
-          "id",
-          "errorCode",
-          "message",
-          "createdAt"
-        ]
+        "required": ["id", "errorCode", "message", "createdAt"]
       },
       "ErrorLogPageVo": {
         "type": "object",
@@ -4294,10 +4062,7 @@
             }
           }
         },
-        "required": [
-          "meta",
-          "data"
-        ]
+        "required": ["meta", "data"]
       },
       "AuditLogVo": {
         "type": "object",
@@ -4317,11 +4082,7 @@
             "type": "string",
             "description": "操作类型",
             "example": "UPDATE",
-            "enum": [
-              "CREATE",
-              "UPDATE",
-              "DELETE"
-            ]
+            "enum": ["CREATE", "UPDATE", "DELETE"]
           },
           "resource": {
             "type": "string",
@@ -4370,13 +4131,7 @@
             "example": "2025-11-15T08:00:00.000Z"
           }
         },
-        "required": [
-          "id",
-          "action",
-          "resource",
-          "resourceId",
-          "createdAt"
-        ]
+        "required": ["id", "action", "resource", "resourceId", "createdAt"]
       },
       "AuditLogPageVo": {
         "type": "object",
@@ -4397,10 +4152,7 @@
             }
           }
         },
-        "required": [
-          "meta",
-          "data"
-        ]
+        "required": ["meta", "data"]
       },
       "StatusCodeStatVo": {
         "type": "object",
@@ -4416,10 +4168,7 @@
             "example": 1523
           }
         },
-        "required": [
-          "statusCode",
-          "count"
-        ]
+        "required": ["statusCode", "count"]
       },
       "LogStatisticsVo": {
         "type": "object",

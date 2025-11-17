@@ -8,13 +8,13 @@
  */
 export interface StandardOutput {
   /** Schema 定义集合 */
-  schemas: Record<string, SchemaDefinition>
+  schemas: Record<string, SchemaDefinition>;
   /** TypeScript 接口代码字符串集合 */
-  interfaces: Record<string, string>
+  interfaces: Record<string, string>;
   /** API 接口定义列表 */
-  apis: ApiDefinition[]
+  apis: ApiDefinition[];
   /** 元数据信息 */
-  metadata: Metadata
+  metadata: Metadata | null;
 }
 
 /**
@@ -22,87 +22,87 @@ export interface StandardOutput {
  */
 export interface SchemaDefinition {
   /** Schema 名称 */
-  name: string
+  name: string;
   /** 描述信息 */
-  description?: string
+  description?: string;
   /** Schema 类型 */
-  type: SchemaType
+  type: SchemaType;
 
   // ======== object 类型特有 ========
   /** 对象属性定义 */
-  properties?: Record<string, PropertyDefinition>
+  properties?: Record<string, PropertyDefinition>;
   /** 必填字段列表 */
-  required?: string[]
+  required?: string[];
   /** 额外属性定义 */
-  additionalProperties?: SchemaReference
+  additionalProperties?: SchemaReference;
 
   // ======== array 类型特有 ========
   /** 数组元素类型 */
-  items?: SchemaReference
+  items?: SchemaReference;
 
   // ======== enum 类型特有 ========
   /** 枚举值 */
-  enum?: Array<string | number>
+  enum?: Array<string | number>;
 
   // ======== 泛型相关 ========
   /** 是否为泛型类型 */
-  isGeneric?: boolean
+  isGeneric?: boolean;
   /** 泛型基础类型名(如 ApiSuccessResponse) */
-  baseType?: string
+  baseType?: string;
   /** 泛型参数(如 User, User[]) */
-  genericParam?: string
+  genericParam?: string;
 
   // ======== 其他元信息 ========
   /** 示例值 */
-  example?: any
+  example?: any;
   /** 默认值 */
-  default?: any
+  default?: any;
   /** 是否废弃 */
-  deprecated?: boolean
+  deprecated?: boolean;
 }
 
 /**
  * Schema 类型枚举
  */
 export type SchemaType =
-  | 'object'      // 对象类型
-  | 'array'       // 数组类型
-  | 'enum'        // 枚举类型
-  | 'primitive'   // 基础类型(string, number, boolean等)
-  | 'generic'     // 泛型类型
+  | 'object' // 对象类型
+  | 'array' // 数组类型
+  | 'enum' // 枚举类型
+  | 'primitive' // 基础类型(string, number, boolean等)
+  | 'generic'; // 泛型类型
 
 /**
  * 属性定义
  */
 export interface PropertyDefinition {
   /** 属性名 */
-  name: string
+  name: string;
   /** 属性类型(TS 类型字符串) */
-  type: string
+  type: string;
   /** 描述信息 */
-  description?: string
+  description?: string;
   /** 是否必填 */
-  required: boolean
+  required: boolean;
   /** 是否可为 null */
-  nullable?: boolean
+  nullable?: boolean;
   /** 默认值 */
-  default?: any
+  default?: any;
   /** 示例值 */
-  example?: any
+  example?: any;
   /** 格式(date-time, email等) */
-  format?: string
+  format?: string;
   /** 正则模式 */
-  pattern?: string
+  pattern?: string;
   /** 最小长度 */
-  minLength?: number
+  minLength?: number;
   /** 最大长度 */
-  maxLength?: number
+  maxLength?: number;
   /** 最小值 */
-  minimum?: number
+  minimum?: number;
   /** 最大值 */
-  maximum?: number
+  maximum?: number;
   /** 枚举值 */
-  enum?: Array<string | number>
+  enum?: Array<string | number>;
 }
 
 /**
@@ -111,11 +111,11 @@ export interface PropertyDefinition {
  */
 export interface SchemaReference {
   /** 引用类型 */
-  type: 'ref' | 'inline'
+  type: 'ref' | 'inline';
   /** 引用路径(type=ref时) */
-  ref?: string
+  ref?: string;
   /** 内联Schema定义(type=inline时) */
-  schema?: Partial<SchemaDefinition>
+  schema?: Partial<SchemaDefinition>;
 }
 
 /**
@@ -123,33 +123,33 @@ export interface SchemaReference {
  */
 export interface ApiDefinition {
   /** API 路径 */
-  path: string
+  path: string;
   /** HTTP 方法 */
-  method: HttpMethod
+  method: HttpMethod;
   /** 操作 ID(唯一标识) */
-  operationId: string
+  operationId: string;
   /** 摘要 */
-  summary?: string
+  summary?: string;
   /** 详细描述 */
-  description?: string
+  description?: string;
   /** 标签列表 */
-  tags?: string[]
+  tags?: string[];
   /** 是否废弃 */
-  deprecated?: boolean
+  deprecated?: boolean;
 
   // ======== 请求相关 ========
   /** 参数定义(按位置分组，每个位置引用一个生成的接口) */
-  parameters?: ParametersDefinition
+  parameters?: ParametersDefinition;
   /** 请求体定义 */
-  requestBody?: RequestBodyDefinition
+  requestBody?: RequestBodyDefinition;
 
   // ======== 响应相关 ========
   /** 响应定义(按状态码) */
-  responses: Record<string, ResponseDefinition>
+  responses: Record<string, ResponseDefinition>;
 
   // ======== 分类信息 ========
   /** 分类信息(用于生成文件路径) */
-  category: CategoryInfo
+  category: CategoryInfo;
 }
 
 /**
@@ -162,20 +162,20 @@ export type HttpMethod =
   | 'DELETE'
   | 'PATCH'
   | 'HEAD'
-  | 'OPTIONS'
+  | 'OPTIONS';
 
 /**
  * 参数定义(按位置分组)
  */
 export interface ParametersDefinition {
   /** Query 参数接口引用 */
-  query?: SchemaReference
+  query?: SchemaReference;
   /** Path 参数接口引用 */
-  path?: SchemaReference
+  path?: SchemaReference;
   /** Header 参数接口引用 */
-  header?: SchemaReference
+  header?: SchemaReference;
   /** Cookie 参数接口引用 */
-  cookie?: SchemaReference
+  cookie?: SchemaReference;
 }
 
 /**
@@ -183,11 +183,11 @@ export interface ParametersDefinition {
  */
 export interface RequestBodyDefinition {
   /** 描述信息 */
-  description?: string
+  description?: string;
   /** 是否必填 */
-  required?: boolean
+  required?: boolean;
   /** 内容类型定义 */
-  content: Record<string, MediaTypeDefinition>
+  content: Record<string, MediaTypeDefinition>;
 }
 
 /**
@@ -195,11 +195,11 @@ export interface RequestBodyDefinition {
  */
 export interface ResponseDefinition {
   /** 描述信息 */
-  description: string
+  description: string;
   /** 内容类型定义 */
-  content?: Record<string, MediaTypeDefinition>
+  content?: Record<string, MediaTypeDefinition>;
   /** 响应头定义 */
-  headers?: Record<string, HeaderDefinition>
+  headers?: Record<string, HeaderDefinition>;
 }
 
 /**
@@ -207,11 +207,11 @@ export interface ResponseDefinition {
  */
 export interface MediaTypeDefinition {
   /** Schema 引用 */
-  schema: SchemaReference
+  schema: SchemaReference;
   /** 示例值 */
-  example?: any
+  example?: any;
   /** 多个示例 */
-  examples?: Record<string, ExampleDefinition>
+  examples?: Record<string, ExampleDefinition>;
 }
 
 /**
@@ -219,11 +219,11 @@ export interface MediaTypeDefinition {
  */
 export interface HeaderDefinition {
   /** 描述信息 */
-  description?: string
+  description?: string;
   /** Schema 定义 */
-  schema: SchemaReference
+  schema: SchemaReference;
   /** 是否必填 */
-  required?: boolean
+  required?: boolean;
 }
 
 /**
@@ -231,11 +231,11 @@ export interface HeaderDefinition {
  */
 export interface ExampleDefinition {
   /** 摘要 */
-  summary?: string
+  summary?: string;
   /** 描述 */
-  description?: string
+  description?: string;
   /** 示例值 */
-  value: any
+  value: any;
 }
 
 /**
@@ -243,16 +243,14 @@ export interface ExampleDefinition {
  * 用于将API按路径分类到不同文件
  */
 export interface CategoryInfo {
-  /** 主分类(第一级路径,如 'auth') */
-  primary: string
-  /** 次级分类(第二级路径,如 'users') */
-  secondary?: string
+  /** 路径段数组(如 ['auth', 'users']) */
+  segments: string[];
   /** 分类深度 */
-  depth: number
-  /** 是否为未分类(无法按规则分类的API) */
-  isUnclassified: boolean
-  /** 建议的文件路径(如 'api/auth/index.ts') */
-  filePath: string
+  depth: number;
+  /** 是否为未分类(无法按规则分类的 API Path) */
+  isUnclassified: boolean;
+  /** 建议的文件路径(如 'api/auth/users/index.ts') */
+  filePath: string;
 }
 
 /**
@@ -260,15 +258,15 @@ export interface CategoryInfo {
  */
 export interface Metadata {
   /** API 标题 */
-  title?: string
+  title?: string;
   /** API 描述 */
-  description?: string
+  description?: string;
   /** 基础 URL */
-  baseUrl?: string
+  baseUrl?: string;
   /** 公共路径前缀(如 '/api/v1') */
-  commonPrefix?: string
+  commonPrefix?: string;
   /** 生成时间 */
-  generatedAt: string
+  generatedAt: string;
   /** 原始文档来源 */
-  source?: string
+  source?: string;
 }
