@@ -22,14 +22,6 @@ export default defineConfig({
       index: './src/index.ts',
     },
   },
-  // output: {
-  //   externals: [
-  //     'openapi-typescript',
-  //     'typescript',
-  //     '@redocly/openapi-core',
-  //     'js-yaml',
-  //   ],
-  // },
   plugins: [
     pluginSourceBuild({
       sourceField: 'source',
