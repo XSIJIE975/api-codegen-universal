@@ -4,7 +4,7 @@ export default defineConfig({
   lib: [
     {
       format: 'esm',
-      syntax: ['node 18'],
+      syntax: ['node 20'],
       bundle: true,
       dts: {
         bundle: true,
@@ -12,7 +12,7 @@ export default defineConfig({
     },
     {
       format: 'cjs',
-      syntax: ['node 18'],
+      syntax: ['node 20'],
     },
   ],
   source: {
