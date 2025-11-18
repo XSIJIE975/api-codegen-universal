@@ -54,9 +54,9 @@ export interface SchemaDefinition {
 
   // ======== 其他元信息 ========
   /** 示例值 */
-  example?: any;
+  example?: unknown;
   /** 默认值 */
-  default?: any;
+  default?: unknown;
   /** 是否废弃 */
   deprecated?: boolean;
 }
@@ -86,9 +86,9 @@ export interface PropertyDefinition {
   /** 是否可为 null */
   nullable?: boolean;
   /** 默认值 */
-  default?: any;
+  default?: unknown;
   /** 示例值 */
-  example?: any;
+  example?: unknown;
   /** 格式(date-time, email等) */
   format?: string;
   /** 正则模式 */
@@ -209,7 +209,7 @@ export interface MediaTypeDefinition {
   /** Schema 引用 */
   schema: SchemaReference;
   /** 示例值 */
-  example?: any;
+  example?: unknown;
   /** 多个示例 */
   examples?: Record<string, ExampleDefinition>;
 }
@@ -235,7 +235,7 @@ export interface ExampleDefinition {
   /** 描述 */
   description?: string;
   /** 示例值 */
-  value: any;
+  value: unknown;
 }
 
 /**
