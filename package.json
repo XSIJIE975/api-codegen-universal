@@ -43,17 +43,21 @@
     "format": "prettier --write .",
     "lint": "eslint \"{src,packages,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,packages,test}/**/*.ts\" --fix",
-    "test": "rstest"
+    "test": "rstest",
+    "prepare": "husky",
+    "commitlint": "commitlint --edit"
   },
   "dependencies": {
-    "typescript": "^5.9.3",
     "@redocly/openapi-core": "^2.11.1",
     "js-yaml": "^4.1.1",
-    "openapi-typescript": "^7.10.1"
+    "openapi-typescript": "^7.10.1",
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
     "@api-codegen-universal/core": "workspace:*",
     "@api-codegen-universal/openapi": "workspace:*",
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.39.0",
     "@microsoft/api-extractor": "^7.55.0",
     "@rsbuild/plugin-source-build": "^1.0.3",
@@ -63,6 +67,8 @@
     "@types/node": "^24.10.0",
     "eslint": "^9.39.0",
     "globals": "^16.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.46.2"
   }

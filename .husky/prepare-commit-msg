@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# 如果是第一次提交，添加提交格式提示
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+
+if [ -z "$COMMIT_SOURCE" ]; then
+  cat <<EOF > $COMMIT_MSG_FILE
+# <type>(<scope>): <subject>
+# 
+# type: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+# scope: 可选，影响范围
+# subject: 简短描述，不超过 50 字符
+# 
+# 示例:
+# feat(openapi): 添加参数提取器
+# fix(core): 修复类型转换错误
+# docs: 更新 README
+EOF
+fi
