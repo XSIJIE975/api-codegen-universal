@@ -24,13 +24,13 @@
     "dev": "rslib build --watch"
   },
   "dependencies": {
+    "@api-codegen-universal/core": "workspace:*",
     "typescript": "^5.9.3",
     "@redocly/openapi-core": "^2.11.1",
     "js-yaml": "^4.1.1",
     "openapi-typescript": "^7.10.1"
   },
   "devDependencies": {
-    "@api-codegen-universal/core": "workspace:*",
     "@types/js-yaml": "^4.0.9",
     "@rslib/core": "^0.17.2"
   }
