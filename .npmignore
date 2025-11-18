@@ -1,0 +1,47 @@
+# 源码和配置文件
+src/
+packages/
+tests/
+*.config.ts
+*.config.js
+*.config.mjs
+tsconfig.json
+
+# 开发工具
+.husky/
+.vscode/
+.idea/
+.rslib/
+*.tsbuildinfo
+
+# 测试和文档
+tests/
+test-files/
+coverage/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# 依赖和日志
+node_modules/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+*.log
+
+# Git 和环境
+.git/
+.gitignore
+.env
+.env.*
+
+# CI/CD
+.github/
+
+# 其他
+AGENTS.md
+.prettierrc
+.prettierignore
+.lintstagedrc.json
+commitlint.config.js
+eslint.config.mjs

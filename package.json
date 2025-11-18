@@ -14,7 +14,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "codegen",
@@ -32,6 +34,10 @@
     "type": "git",
     "url": "https://github.com/XSIJIE975/api-codegen-universal.git"
   },
+  "bugs": {
+    "url": "https://github.com/XSIJIE975/api-codegen-universal/issues"
+  },
+  "homepage": "https://github.com/XSIJIE975/api-codegen-universal#readme",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=8.0.0"
@@ -45,6 +51,7 @@
     "lint:fix": "eslint \"{src,packages,test}/**/*.ts\" --fix",
     "test": "rstest",
     "prepare": "husky",
+    "prepublishOnly": "pnpm run build && pnpm run test",
     "commitlint": "commitlint --edit"
   },
   "dependencies": {
@@ -54,8 +61,6 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@api-codegen-universal/core": "workspace:*",
-    "@api-codegen-universal/openapi": "workspace:*",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.39.0",
