@@ -181,17 +181,21 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
       schemas,
       interfaces,
       apis,
-      metadata: this.buildMetadata(source),
+      metadata: this.buildMetadata(source, options),
     };
   }
 
   /**
    * 构建元数据
    */
-  private buildMetadata(source: InputSource): Metadata | null {
+  private buildMetadata(
+    source: InputSource,
+    options?: OpenAPIOptions,
+  ): Metadata | null {
     return {
       generatedAt: new Date().toISOString(),
       source: typeof source === 'string' ? source : undefined,
+      commonPrefix: options?.pathClassification?.commonPrefix,
     };
   }
 
