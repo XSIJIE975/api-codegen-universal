@@ -123,3 +123,12 @@ export function primitiveTypeToString(kind: ts.SyntaxKind): string {
       return 'any';
   }
 }
+
+/**
+ * 简化类型引用字符串
+ * 将 components["schemas"]["X"] 简化为 X
+ * @example components["schemas"]["UserRole"] => UserRole
+ */
+export function simplifyTypeReference(text: string): string {
+  return text.replace(/components\["schemas"\]\["([^"]+)"\]/g, '$1');
+}

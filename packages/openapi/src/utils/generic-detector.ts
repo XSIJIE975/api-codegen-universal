@@ -13,6 +13,8 @@ export interface GenericDetectionResult {
   baseType?: string;
   /** 泛型参数(如 'UserDto', 'UserDto[]') */
   genericParam?: string;
+  /** 泛型字段名称(如 'data', 'items') */
+  genericField?: string;
 }
 
 /**
@@ -27,25 +29,28 @@ export class GenericDetector {
    *
    * @example
    * 输入: 'ApiSuccessResponse & { data?: RegisterResponseVo }'
-   * 输出: { isGeneric: true, baseType: 'ApiSuccessResponse', genericParam: 'RegisterResponseVo' }
+   * 输出: { isGeneric: true, baseType: 'ApiSuccessResponse', genericParam: 'RegisterResponseVo', genericField: 'data' }
    */
   detect(typeString: string): GenericDetectionResult {
-    // 匹配模式: BaseType & { data?: DataType }
-    const pattern = /^(.+?)\s*&\s*\{\s*data\?:\s*(.+?)\s*;?\s*\}$/;
+    // 匹配模式: BaseType & { fieldName?: DataType }
+    // 支持 data, items, result, list 等常见字段，或者任意字段
+    const pattern = /^(.+?)\s*&\s*\{\s*([a-zA-Z0-9_]+)\?:\s*(.+?)\s*;?\s*\}$/;
 
     const match = typeString.match(pattern);
 
-    if (!match || !match[1] || !match[2]) {
+    if (!match || !match[1] || !match[2] || !match[3]) {
       return { isGeneric: false };
     }
 
     const baseType = this.extractBaseType(match[1].trim());
-    const genericParam = this.extractGenericParam(match[2].trim());
+    const genericField = match[2].trim();
+    const genericParam = this.extractGenericParam(match[3].trim());
 
     return {
       isGeneric: true,
       baseType,
       genericParam,
+      genericField,
     };
   }
 

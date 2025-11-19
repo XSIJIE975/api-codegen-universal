@@ -13,9 +13,12 @@ import { GenericDetector } from '../utils/generic-detector.js';
 
 export class RequestResponseExtractor {
   private genericDetector: GenericDetector;
-  private genericBaseTypes: Set<string>;
+  private genericBaseTypes: Map<string, string>;
 
-  constructor(genericDetector: GenericDetector, genericBaseTypes: Set<string>) {
+  constructor(
+    genericDetector: GenericDetector,
+    genericBaseTypes: Map<string, string>,
+  ) {
     this.genericDetector = genericDetector;
     this.genericBaseTypes = genericBaseTypes;
   }
@@ -163,10 +166,14 @@ export class RequestResponseExtractor {
                       if (
                         genericResult.isGeneric &&
                         genericResult.baseType &&
-                        genericResult.genericParam
+                        genericResult.genericParam &&
+                        genericResult.genericField
                       ) {
                         // 泛型类型 - 记录基类用于标记
-                        this.genericBaseTypes.add(genericResult.baseType);
+                        this.genericBaseTypes.set(
+                          genericResult.baseType,
+                          genericResult.genericField,
+                        );
 
                         // 直接使用完整类型名作为引用
                         schemaRef = {

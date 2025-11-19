@@ -4,16 +4,16 @@
  */
 
 import ts from 'typescript';
-import { extractStringFromNode, typeNodeToString } from './ast-utils.js';
+import { extractStringFromNode, simplifyTypeReference } from './ast-utils.js';
 
 export class InterfaceGenerator {
-  /** 泛型基类集合 */
-  private genericBaseTypes: Set<string>;
+  /** 泛型基类集合 name -> fieldName */
+  private genericBaseTypes: Map<string, string>;
   /** 接口导出模式 */
   private interfaceExportMode: 'export' | 'declare';
 
   constructor(
-    genericBaseTypes: Set<string>,
+    genericBaseTypes: Map<string, string>,
     interfaceExportMode: 'export' | 'declare' = 'export',
   ) {
     this.genericBaseTypes = genericBaseTypes;
@@ -46,12 +46,13 @@ export class InterfaceGenerator {
             ) {
               const schemaName = extractStringFromNode(schemaMember.name);
 
-              if (schemaName && ts.isTypeLiteralNode(schemaMember.type)) {
+              if (schemaName) {
                 // 生成接口代码
                 const interfaceCode = this.generateInterfaceString(
                   schemaName,
                   schemaMember.type,
                   this.genericBaseTypes.has(schemaName),
+                  this.genericBaseTypes.get(schemaName),
                 );
                 interfaces[schemaName] = interfaceCode;
               }
@@ -67,18 +68,67 @@ export class InterfaceGenerator {
    */
   private generateInterfaceString(
     name: string,
-    typeNode: ts.TypeLiteralNode,
+    typeNode: ts.TypeNode,
     isGeneric: boolean,
+    genericField?: string,
   ): string {
-    const lines: string[] = [];
+    // 如果是对象字面量，生成 interface
+    if (ts.isTypeLiteralNode(typeNode)) {
+      const lines: string[] = [];
 
-    // 接口声明行 - 根据配置选择 export 或 declare
+      // 接口声明行 - 根据配置选择 export 或 declare
+      const exportKeyword =
+        this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
+      const genericPart = isGeneric ? '<T = any>' : '';
+      lines.push(`${exportKeyword}interface ${name}${genericPart} {`);
+
+      // 创建 printer 用于打印注释
+      const printer = ts.createPrinter({ removeComments: false });
+      const sourceFile = ts.createSourceFile(
+        'temp.ts',
+        '',
+        ts.ScriptTarget.Latest,
+        false,
+        ts.ScriptKind.TS,
+      );
+
+      // 遍历所有属性
+      for (const member of typeNode.members) {
+        if (ts.isPropertySignature(member) && member.name && member.type) {
+          // 打印整个成员节点(包括注释)
+          const memberText = printer.printNode(
+            ts.EmitHint.Unspecified,
+            member,
+            sourceFile,
+          );
+
+          const propName = (member.name as ts.Identifier).text;
+
+          if (isGeneric && genericField && propName === genericField) {
+            // 提取注释
+            const commentMatch = memberText.match(/^(\s*\/\*\*[\s\S]*?\*\/)/);
+            const comment = commentMatch ? commentMatch[1] + '\n' : '';
+
+            // 构建新行，替换类型为 T
+            const isOptional = !!member.questionToken;
+            const optionalMark = isOptional ? '?' : '';
+            lines.push(`${comment}  ${propName}${optionalMark}: T;`);
+          } else {
+            lines.push(`  ${simplifyTypeReference(memberText)}`);
+          }
+        }
+      }
+
+      lines.push('}');
+      return lines.join('\n');
+    }
+
+    // 对于其他类型(如 Union, Intersection, Array 等)，生成 type alias
     const exportKeyword =
       this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
     const genericPart = isGeneric ? '<T = any>' : '';
-    lines.push(`${exportKeyword}interface ${name}${genericPart} {`);
 
-    // 创建 printer 用于打印注释
+    // 使用 printer 打印类型定义
     const printer = ts.createPrinter({ removeComments: false });
     const sourceFile = ts.createSourceFile(
       'temp.ts',
@@ -88,46 +138,12 @@ export class InterfaceGenerator {
       ts.ScriptKind.TS,
     );
 
-    // 遍历所有属性
-    for (const member of typeNode.members) {
-      if (ts.isPropertySignature(member) && member.name && member.type) {
-        const propName = (member.name as ts.Identifier).text;
-        const isOptional = !!member.questionToken;
+    const typeText = printer.printNode(
+      ts.EmitHint.Unspecified,
+      typeNode,
+      sourceFile,
+    );
 
-        // 打印整个成员节点(包括注释)
-        const memberText = printer.printNode(
-          ts.EmitHint.Unspecified,
-          member,
-          sourceFile,
-        );
-
-        // 提取注释部分
-        const commentMatch = memberText.match(/(\/\*\*[\s\S]*?\*\/)/);
-        if (commentMatch && commentMatch[1]) {
-          // 有注释,格式化并添加
-          const commentBlock = commentMatch[1];
-          const commentLines = commentBlock.split('\n');
-          commentLines.forEach((line) => {
-            lines.push(`  ${line.trim()}`);
-          });
-        }
-
-        // 生成类型字符串
-        let typeStr: string;
-        if (isGeneric && propName === 'data') {
-          typeStr = 'T';
-        } else {
-          typeStr = typeNodeToString(member.type);
-        }
-
-        // 属性声明行
-        const optionalMark = isOptional ? '?' : '';
-        lines.push(`  ${propName}${optionalMark}: ${typeStr};`);
-      }
-    }
-
-    lines.push('}');
-
-    return lines.join('\n');
+    return `${exportKeyword}type ${name}${genericPart} = ${simplifyTypeReference(typeText)};`;
   }
 }

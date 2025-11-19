@@ -36,8 +36,8 @@ import { ApiExtractor } from './api-extractor.js';
 export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
   private pathClassifier: PathClassifier;
   private genericDetector: GenericDetector;
-  /** 泛型基类集合(从 responses 中检测到的) */
-  private genericBaseTypes = new Set<string>();
+  /** 泛型基类集合(从 responses 中检测到的) name -> fieldName */
+  private genericBaseTypes = new Map<string, string>();
   /** 命名风格配置 */
   private namingStyle: NamingStyle = 'PascalCase';
   /** 接口导出模式 */
@@ -145,17 +145,7 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
 
     // 第二遍处理: 提取数据
 
-    // 提取 schemas
-    if (componentsNode && this.shouldGenerateSchemas) {
-      this.schemaExtractor.extractSchemas(componentsNode, schemas);
-    }
-
-    // 提取 interfaces
-    if (componentsNode && this.shouldGenerateInterfaces) {
-      this.interfaceGenerator.generateInterfaceCode(componentsNode, interfaces);
-    }
-
-    // 提取 APIs
+    // 提取 APIs (优先提取以检测泛型和生成参数 Schema)
     if (pathsNode && operationsNode) {
       if (shouldGenerateApis) {
         this.apiExtractor.extractAPIs(
@@ -174,6 +164,16 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
           interfaces,
         );
       }
+    }
+
+    // 提取 schemas
+    if (componentsNode && this.shouldGenerateSchemas) {
+      this.schemaExtractor.extractSchemas(componentsNode, schemas);
+    }
+
+    // 提取 interfaces
+    if (componentsNode && this.shouldGenerateInterfaces) {
+      this.interfaceGenerator.generateInterfaceCode(componentsNode, interfaces);
     }
 
     // 7. 返回标准格式
