@@ -1,0 +1,32 @@
+{
+  "name": "@api-codegen-universal/apifox",
+  "version": "0.1.0",
+  "description": "Apifox adapter for api-codegen-universal",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "source": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "rslib build",
+    "dev": "rslib build --watch"
+  },
+  "dependencies": {
+    "@api-codegen-universal/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@rslib/core": "^0.17.2"
+  }
+}

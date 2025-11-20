@@ -63,6 +63,7 @@
   "devDependencies": {
     "@api-codegen-universal/core": "workspace:*",
     "@api-codegen-universal/openapi": "workspace:*",
+    "@api-codegen-universal/apifox": "workspace:*",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.39.0",

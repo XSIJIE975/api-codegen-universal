@@ -9,3 +9,6 @@ export * from '@api-codegen-universal/core';
 
 // 导出 OpenAPI 适配器
 export * from '@api-codegen-universal/openapi';
+
+// 导出 Apifox 适配器
+export * from '@api-codegen-universal/apifox';
