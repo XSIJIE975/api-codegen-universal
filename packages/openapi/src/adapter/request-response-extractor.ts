@@ -8,8 +8,8 @@ import type {
   ApiDefinition,
   SchemaReference,
 } from '@api-codegen-universal/core';
-import { extractStringFromNode, extractSchemaReference } from './ast-utils.js';
-import { GenericDetector } from '../utils/generic-detector.js';
+import { extractStringFromNode, extractSchemaReference } from './ast-utils';
+import { GenericDetector } from '../utils/generic-detector';
 
 export class RequestResponseExtractor {
   private genericDetector: GenericDetector;

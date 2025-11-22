@@ -7,14 +7,14 @@ import ts from 'typescript';
 import type {
   SchemaDefinition,
   ParametersDefinition,
+  NamingStyle
 } from '@api-codegen-universal/core';
-import type { NamingStyle } from '../types/index.js';
 import {
   extractOperationIdReference,
   extractStringFromNode,
-} from './ast-utils.js';
-import { SchemaExtractor } from './schema-extractor.js';
-import { InterfaceGenerator } from './interface-generator.js';
+} from './ast-utils';
+import { SchemaExtractor } from './schema-extractor';
+import { InterfaceGenerator } from './interface-generator';
 
 export class ParameterExtractor {
   private namingStyle: NamingStyle;

@@ -1,10 +1,25 @@
-/**
- * Apifox 原始数据类型定义
- */
+// src/adapters/apifox/types.ts
 
-export interface ApifoxSource {
-  apiDetails: ApifoxApiDetail[];
-  dataSchemas: ApifoxDataSchema[];
+/**
+ * 适配器输入源配置
+ * parse(source) 中的 source 类型
+ */
+export interface ApifoxConfig {
+  /** Apifox 项目 ID */
+  projectId: string;
+  /** Apifox 访问令牌 (Bearer Token) */
+  token: string;
+  /** Apifox API 版本 (默认 2024-03-28 或 2025-09-01) */
+  apiVersion?: string;
+}
+
+// ======== Apifox 原始响应数据结构 ========
+
+export interface ApifoxApiResponse<T> {
+  success: boolean;
+  data: T;
+  code?: number;
+  message?: string;
 }
 
 export interface ApifoxDataSchema {
@@ -45,7 +60,7 @@ export interface ApifoxParameter {
   description?: string;
   enable?: boolean;
   example?: string;
-  schema?: ApifoxJsonSchema; // 新版 Apifox 可能包含 schema 字段
+  schema?: ApifoxJsonSchema;
 }
 
 export interface ApifoxResponse {
@@ -65,8 +80,6 @@ export interface ApifoxJsonSchema {
   format?: string;
   $ref?: string;
   allOf?: ApifoxJsonSchema[];
-  oneOf?: ApifoxJsonSchema[];
-  anyOf?: ApifoxJsonSchema[];
   examples?: any[];
   default?: any;
   minLength?: number;

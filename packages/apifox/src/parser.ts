@@ -1,3 +1,5 @@
+// src/adapters/apifox/parser.ts
+
 import type {
   ApiDefinition,
   SchemaDefinition,
@@ -6,27 +8,43 @@ import type {
   HttpMethod,
   ParametersDefinition,
   ResponseDefinition,
-  SchemaType
+  SchemaType,
+  StandardOutput,
+  NamingStyle
 } from '@api-codegen-universal/core';
 import type {
   ApifoxApiDetail,
   ApifoxJsonSchema,
   ApifoxParameter
 } from './types';
-import { PathClassifier, SchemaIdResolver } from './utils';
+import { PathClassifier, SchemaIdResolver, NamingUtils } from './utils';
+
+/**
+ * 解析上下文
+ */
+export interface ParsingContext {
+  schemas: StandardOutput['schemas'];
+  interfaces: StandardOutput['interfaces'];
+  shouldGenerateSchemas: boolean;
+  shouldGenerateInterfaces: boolean;
+  namingStyle: NamingStyle;
+}
 
 export class ApifoxParser {
   constructor(
     private resolver: SchemaIdResolver,
     private classifier: PathClassifier
-  ) { }
+  ) {}
 
   // ================= API 解析部分 =================
 
-  parseApi(detail: ApifoxApiDetail): ApiDefinition {
+  parseApi(detail: ApifoxApiDetail, context: ParsingContext): ApiDefinition {
     const method = detail.method.toUpperCase() as HttpMethod;
-    // 如果没有 operationId，生成一个基于 path 的
-    const operationId = detail.operationId || this.generateOperationId(method, detail.path);
+    // 如果没有 operationId，生成一个默认的
+    const rawOperationId = detail.operationId || this.generateOperationId(method, detail.path);
+    
+    // 保持 OperationId 在 API 定义中的原样 (或者你可以选择这里也格式化，通常 OperationId 是给函数名用的)
+    const operationId = rawOperationId;
 
     const api: ApiDefinition = {
       path: detail.path,
@@ -41,19 +59,35 @@ export class ApifoxParser {
     };
 
     // 1. 处理参数 (Query, Path, Header)
-    // Apifox 参数是数组，标准输出要求转换为 Schema 对象
+    // 提取为独立的 Schema 并引用
     if (detail.parameters) {
       const paramsDef: ParametersDefinition = {};
+      
+      // 使用 NamingUtils 转换名字，使其符合 PascalCase 等规范
+      const baseParamsName = NamingUtils.convert(operationId, 'PascalCase');
+
       if (detail.parameters.query?.length) {
-        paramsDef.query = this.convertParamsArrayToSchema(detail.parameters.query, `${operationId}QueryParams`);
+        paramsDef.query = this.processAndRegisterParams(
+          detail.parameters.query, 
+          `${baseParamsName}QueryParams`, 
+          context
+        );
       }
       if (detail.parameters.path?.length) {
-        paramsDef.path = this.convertParamsArrayToSchema(detail.parameters.path, `${operationId}PathParams`);
+        paramsDef.path = this.processAndRegisterParams(
+          detail.parameters.path, 
+          `${baseParamsName}PathParams`, 
+          context
+        );
       }
       if (detail.parameters.header?.length) {
-        paramsDef.header = this.convertParamsArrayToSchema(detail.parameters.header, `${operationId}HeaderParams`);
+        paramsDef.header = this.processAndRegisterParams(
+          detail.parameters.header, 
+          `${baseParamsName}HeaderParams`, 
+          context
+        );
       }
-      // 只有当有参数时才赋值
+      
       if (Object.keys(paramsDef).length > 0) {
         api.parameters = paramsDef;
       }
@@ -93,16 +127,82 @@ export class ApifoxParser {
     return api;
   }
 
+  /**
+   * 处理参数列表：转换为 SchemaDefinition，注册到 Context，并返回引用
+   */
+  private processAndRegisterParams(
+    params: ApifoxParameter[], 
+    schemaName: string, 
+    context: ParsingContext
+  ): SchemaReference {
+    // 1. 转换为标准 Schema 属性
+    const properties: Record<string, PropertyDefinition> = {};
+    const required: string[] = [];
+
+    params.forEach(p => {
+      if (p.enable === false) return;
+      if (p.required) required.push(p.name);
+
+      let type = 'string';
+      if (p.schema) {
+        type = this.getTsType(p.schema);
+      } else if (p.type) {
+        type = p.type === 'integer' ? 'number' : (p.type || 'string');
+      }
+
+      properties[p.name] = {
+        name: p.name,
+        type,
+        required: !!p.required,
+        description: p.description,
+        example: p.example
+      };
+    });
+
+    const schemaDef: SchemaDefinition = {
+      name: schemaName,
+      type: 'object',
+      properties,
+      required
+    };
+
+    // 2. 注册到全局 schemas
+    if (context.shouldGenerateSchemas) {
+      context.schemas[schemaName] = schemaDef;
+    }
+
+    // 3. 生成并注册 Interface
+    if (context.shouldGenerateInterfaces) {
+      context.interfaces[schemaName] = this.generateInterfaceCode(schemaDef);
+    }
+
+    // 4. 返回引用
+    return {
+      type: 'ref',
+      ref: schemaName
+    };
+  }
+
   // ================= Schema 解析部分 =================
 
   parseSchema(jsonSchema: ApifoxJsonSchema, name: string): SchemaDefinition {
     const def: SchemaDefinition = {
       name,
-      type: 'object',
+      type: 'object', // 默认为 object，后面会修正
       description: jsonSchema.description
     };
 
-    if (jsonSchema.type) {
+    // 处理泛型 (关键修改点)
+    // 简单判别规则：名字是 ApiSuccessResponse 或者名字包含 PageResult 等通用泛型名
+    // 这里可以做成配置，或者写死几个常见的
+    const genericFieldNames = ['data', 'items']; // 常见的泛型字段名
+    const isLikelyGeneric = name === 'ApiSuccessResponse' || name.startsWith('PageResult');
+
+    if (isLikelyGeneric) {
+      def.type = 'generic';
+      def.isGeneric = true;
+      def.baseType = name;
+    } else if (jsonSchema.type) {
       def.type = this.mapSchemaType(jsonSchema.type);
     } else if (jsonSchema.enum) {
       def.type = 'enum';
@@ -113,7 +213,14 @@ export class ApifoxParser {
       def.properties = {};
       for (const [key, propSchema] of Object.entries(jsonSchema.properties)) {
         const isRequired = jsonSchema.required?.includes(key) ?? false;
-        def.properties[key] = this.convertProperty(key, propSchema, isRequired);
+        
+        // 如果是泛型容器，且当前字段是泛型字段（如 data），强制类型为 'any' (对应 TS 的 T)
+        let overrideType: string | undefined;
+        if (def.isGeneric && genericFieldNames.includes(key)) {
+           overrideType = 'any';
+        }
+
+        def.properties[key] = this.convertProperty(key, propSchema, isRequired, overrideType);
       }
       if (jsonSchema.required) {
         def.required = jsonSchema.required;
@@ -132,35 +239,15 @@ export class ApifoxParser {
       def.enum = jsonSchema.enum;
     }
 
-    // 简单检测泛型模式 (Apifox 导出有时会使用 allOf 组合基类)
-    // 如果 allOf [ Ref(ApiSuccessResponse), Object(data: Ref(User)) ]
-    if (jsonSchema.allOf && jsonSchema.allOf.length === 2) {
-      const baseRef = this.convertJsonSchemaToReference(jsonSchema.allOf[0]!);
-      const genericPart = jsonSchema.allOf[1];
-
-      if (baseRef.type === 'ref' && genericPart?.properties && genericPart?.properties['data']) {
-        const genericType = this.convertJsonSchemaToReference(genericPart?.properties['data']);
-        if (genericType.type === 'ref') {
-          // 检测到类似 ApiSuccessResponse & { data: UserDto }
-          // 标记为 Generic 以便后续特殊处理 (可选)
-          // 在标准输出中，我们可以直接通过 type ref 传递泛型语法 string
-          // 但这里为了保持 StandardOutput 结构纯净，我们不做过多 Hacker
-        }
-      }
-    }
-
     return def;
   }
 
   // ================= 代码生成部分 =================
 
-  /**
-   * 生成 TypeScript 接口代码字符串
-   */
   generateInterfaceCode(schema: SchemaDefinition): string {
     const lines: string[] = [];
     const isEnum = schema.type === 'enum';
-
+    
     if (isEnum) {
       lines.push(`export enum ${schema.name} {`);
       schema.enum?.forEach(val => {
@@ -174,12 +261,10 @@ export class ApifoxParser {
       return lines.join('\n');
     }
 
-    // 处理 Generic 泛型定义 (简单 heuristic)
-    // 如果名字里包含 <T> 或者是基类
+    // 处理 Generic 定义
     let declaration = `export interface ${schema.name}`;
-    if (schema.name === 'ApiSuccessResponse') { // 硬编码或通过配置传入基类名
-      declaration += '<T = any>';
-      schema.isGeneric = true;
+    if (schema.isGeneric) { 
+       declaration += '<T = any>';
     }
 
     lines.push(`${declaration} {`);
@@ -187,18 +272,19 @@ export class ApifoxParser {
     if (schema.properties) {
       for (const prop of Object.values(schema.properties)) {
         if (prop.description) {
-          lines.push(`  /**\n * @description ${prop.description.replace(/\n/g, '\n * ')}\n */`);
+          lines.push(`  /**\n   * @description ${prop.description.replace(/\n/g, ' ')}\n   */`);
         }
         if (prop.example) {
-          lines.push(`  /** @example ${JSON.stringify(prop.example)} */`);
+           lines.push(`  /** @example ${JSON.stringify(prop.example)} */`);
         }
-
+        
         const required = prop.required ? '' : '?';
         let typeStr = prop.type;
 
-        // 特殊处理泛型替换
-        if (schema.isGeneric && prop.name === 'data') {
-          typeStr = 'T';
+        // 如果是泛型容器，且字段类型被标记为 any (在 parseSchema 阶段处理过)，
+        // 在生成的 Interface 字符串中我们将其视为 T
+        if (schema.isGeneric && typeStr === 'any' && ['data', 'items'].includes(prop.name)) {
+            typeStr = 'T';
         }
 
         lines.push(`  ${prop.name}${required}: ${typeStr};`);
@@ -226,13 +312,13 @@ export class ApifoxParser {
     }
   }
 
-  private convertProperty(name: string, schema: ApifoxJsonSchema, required: boolean): PropertyDefinition {
+  private convertProperty(name: string, schema: ApifoxJsonSchema, required: boolean, overrideType?: string): PropertyDefinition {
     return {
       name,
       required,
-      type: this.getTsType(schema),
+      type: overrideType || this.getTsType(schema),
       description: schema.description,
-      example: schema.examples?.[0],
+      example: schema.examples?.[0] || schema.default,
       enum: schema.enum,
       format: schema.format,
       minLength: schema.minLength,
@@ -240,9 +326,6 @@ export class ApifoxParser {
     };
   }
 
-  /**
-   * 获取 TS 类型字符串 (string, number, UserDto, UserDto[])
-   */
   private getTsType(schema: ApifoxJsonSchema): string {
     if (schema.$ref) {
       const refName = this.resolver.resolveRef(schema.$ref);
@@ -251,29 +334,23 @@ export class ApifoxParser {
 
     if (schema.type === 'array' && schema.items) {
       const itemType = this.getTsType(schema.items);
-      // 简单的数组处理，如果 itemType 包含泛型或复杂字符，可能需要加括号
       return `${itemType}[]`;
     }
 
-    // 处理 allOf (泛型组合)
-    // 场景：ApiSuccessResponse & { data: UserDto } -> ApiSuccessResponse<UserDto>
+    // 处理 Apifox 导出特有的 allOf 泛型结构 (组合模式)
     if (schema.allOf) {
-      // 这是一个简化的处理逻辑，针对特定的 Apifox 泛型导出模式
-      const refs = schema.allOf.map(s => s.$ref ? this.resolver.resolveRef(s.$ref) : null).filter(Boolean);
-      // 查找 allOf 中定义了 properties.data 的内联对象
-      const inlineData = schema.allOf.find(s => s.properties && s.properties.data);
-
-      if (refs.length > 0 && inlineData) {
-        const baseType = refs[0];
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        const dataType = this.getTsType(inlineData.properties?.data);
-        return `${baseType}<${dataType}>`;
-      }
-      // 兜底：如果是单纯的继承，使用交叉类型
-      if (refs.length > 1) {
-        return refs.join(' & ');
-      }
+        const refs = schema.allOf.map(s => s.$ref ? this.resolver.resolveRef(s.$ref) : null).filter(Boolean);
+        // 查找 inline 对象中含有 data 属性的
+        const inlineData = schema.allOf.find(s => s.properties && s.properties.data);
+        
+        if (refs.length > 0 && inlineData) {
+             const baseType = refs[0];
+             const dataType = this.getTsType(inlineData.properties!.data!);
+             return `${baseType}<${dataType}>`;
+        }
+        if (refs.length > 1) {
+            return refs.join(' & ');
+        }
     }
 
     switch (schema.type) {
@@ -288,76 +365,26 @@ export class ApifoxParser {
         }
         return 'string';
       case 'object':
-        // 如果是内联 Object，通常定义为 Record<string, never> 或者 any
-        // 为了严格一点，如果没有 properties，就是 any 或者 Record<string, any>
-        return 'Record<string, never>'; // 对应 StandardOutput 示例中的空对象
+        return 'Record<string, never>'; 
       default:
         return 'any';
     }
   }
 
-  /**
-   * 将 Apifox 参数数组转换为 SchemaReference (Inline Object)
-   * 用于适配 ParametersDefinition 接口
-   */
-  private convertParamsArrayToSchema(params: ApifoxParameter[], tempName: string): SchemaReference {
-    const properties: Record<string, PropertyDefinition> = {};
-    const required: string[] = [];
-
-    params.forEach(p => {
-      if (p.enable === false) return; // Apifox 特有的开关
-      if (p.required) required.push(p.name);
-
-      let type = 'string';
-      // 兼容旧版 type 字段和新版 schema 字段
-      if (p.schema) {
-        type = this.getTsType(p.schema);
-      } else if (p.type) {
-        type = p.type === 'integer' ? 'number' : p.type;
-      }
-
-      properties[p.name] = {
-        name: p.name,
-        type,
-        required: !!p.required,
-        description: p.description,
-        example: p.example
-      };
-    });
-
-    return {
-      type: 'inline',
-      schema: {
-        name: tempName,
-        type: 'object',
-        properties,
-        required
-      }
-    };
-  }
-
-  /**
-   * 将 JsonSchema 转换为 SchemaReference
-   */
   private convertJsonSchemaToReference(schema: ApifoxJsonSchema): SchemaReference {
     if (schema.$ref) {
       const name = this.resolver.resolveRef(schema.$ref);
       if (name) {
-        // 处理泛型引用情况，虽然是 ref，但标准库 ref 字段是个 string
-        // 这里如果 getTsType 返回的是 "ApiResult<User>"，也作为 ref 字符串传回去
         return { type: 'ref', ref: name };
       }
     }
-
-    // 如果不是纯引用，或者是泛型组合 (allOf)，我们需要获取完整的类型字符串作为引用
-    // 比如 "ApiSuccessResponse<UserDto>"
+    
+    // 检测是否是泛型类型字符串 (e.g. "ApiSuccessResponse<UserDto>")
     const typeStr = this.getTsType(schema);
-    if (typeStr !== 'any' && typeStr !== 'Record<string, never>') {
-      // 如果计算出了复杂的类型字符串（包含 <>），也视为 ref 类型
-      return { type: 'ref', ref: typeStr };
+    if (typeStr.includes('<') && typeStr.endsWith('>')) {
+         return { type: 'ref', ref: typeStr };
     }
 
-    // 兜底：内联 Schema
     return {
       type: 'inline',
       schema: {

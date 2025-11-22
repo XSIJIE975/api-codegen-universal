@@ -1,19 +1,12 @@
 import { Readable } from 'node:stream';
 import type { OpenAPI3, OpenAPITSOptions } from 'openapi-typescript';
+import type { NamingStyle } from '@api-codegen-universal/core'
 
 /**
  * 输入源类型
  */
 export type InputSource = string | URL | OpenAPI3 | Buffer | Readable;
 
-/**
- * 命名风格
- */
-export type NamingStyle =
-  | 'PascalCase'
-  | 'camelCase'
-  | 'snake_case'
-  | 'kebab-case';
 
 /**
  * 接口导出模式

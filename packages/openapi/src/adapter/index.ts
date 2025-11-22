@@ -11,19 +11,18 @@ import type {
   SchemaDefinition,
   ApiDefinition,
   Metadata,
+  NamingStyle
 } from '@api-codegen-universal/core';
 import type {
   InputSource,
-  OpenAPIOptions,
-  NamingStyle,
-} from '../types/index.js';
-import { PathClassifier } from '../utils/path-classifier.js';
-import { GenericDetector } from '../utils/generic-detector.js';
-import { SchemaExtractor } from './schema-extractor.js';
-import { InterfaceGenerator } from './interface-generator.js';
-import { ParameterExtractor } from './parameter-extractor.js';
-import { RequestResponseExtractor } from './request-response-extractor.js';
-import { ApiExtractor } from './api-extractor.js';
+  OpenAPIOptions
+} from '../types';
+import { PathClassifier, GenericDetector } from '../utils';
+import { SchemaExtractor } from './schema-extractor';
+import { InterfaceGenerator } from './interface-generator';
+import { ParameterExtractor } from './parameter-extractor';
+import { RequestResponseExtractor } from './request-response-extractor';
+import { ApiExtractor } from './api-extractor';
 
 /**
  * OpenAPI 适配器

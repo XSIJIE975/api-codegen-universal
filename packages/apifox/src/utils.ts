@@ -1,5 +1,7 @@
-import type { CategoryInfo } from '@api-codegen-universal/core';
-import type { ApifoxDataSchema } from './types'
+// src/adapters/apifox/utils.ts
+
+import type { CategoryInfo, NamingStyle } from '@api-codegen-universal/core';
+import type { ApifoxDataSchema } from './types';
 
 export class PathClassifier {
   private outputPrefix: string;
@@ -61,5 +63,43 @@ export class SchemaIdResolver {
       return this.idToNameMap.get(match[1]);
     }
     return undefined;
+  }
+}
+
+export class NamingUtils {
+  /**
+   * 根据风格转换名称
+   */
+  static convert(name: string, style: NamingStyle = 'PascalCase'): string {
+    // 1. 先分割单词 (支持下划线、横杠、驼峰)
+    const words = name
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // 拆分驼峰
+      .replace(/[^a-zA-Z0-9]+/g, ' ') // 替换非字母数字为通过空格
+      .trim()
+      .split(' ');
+
+    if (words.length === 0) return name;
+
+    // 2. 根据目标风格重组
+    switch (style) {
+      case 'PascalCase':
+        return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+
+      case 'camelCase':
+        return words.map((w, i) =>
+          i === 0
+            ? w.toLowerCase()
+            : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+        ).join('');
+
+      case 'snake_case':
+        return words.map(w => w.toLowerCase()).join('_');
+
+      case 'kebab-case':
+        return words.map(w => w.toLowerCase()).join('-');
+
+      default:
+        return name; // 原样返回
+    }
   }
 }

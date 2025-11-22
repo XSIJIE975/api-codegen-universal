@@ -11,10 +11,10 @@ import type {
 import {
   extractStringFromNode,
   extractOperationIdReference,
-} from './ast-utils.js';
-import { PathClassifier } from '../utils/path-classifier.js';
-import { ParameterExtractor } from './parameter-extractor.js';
-import { RequestResponseExtractor } from './request-response-extractor.js';
+} from './ast-utils';
+import { PathClassifier } from '../utils/path-classifier';
+import { ParameterExtractor } from './parameter-extractor';
+import { RequestResponseExtractor } from './request-response-extractor';
 
 export class ApiExtractor {
   private pathClassifier: PathClassifier;
