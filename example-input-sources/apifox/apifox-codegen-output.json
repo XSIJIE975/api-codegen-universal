@@ -2458,63 +2458,1225 @@
         }
       },
       "required": ["message", "deleted"]
+    },
+    "UsersControllerFindAllQueryParams": {
+      "name": "UsersControllerFindAllQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "keyword": {
+          "name": "keyword",
+          "type": "string",
+          "required": false,
+          "description": "搜索关键词（用户名、邮箱、姓名）"
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "required": false,
+          "description": "是否激活"
+        },
+        "isVerified": {
+          "name": "isVerified",
+          "type": "boolean",
+          "required": false,
+          "description": "是否验证"
+        },
+        "role": {
+          "name": "role",
+          "type": "string",
+          "required": false,
+          "description": "角色代码"
+        },
+        "sortBy": {
+          "name": "sortBy",
+          "type": "\"createdAt\" | \"updatedAt\" | \"lastLoginAt\" | \"email\" | \"username\"",
+          "required": false,
+          "description": "排序字段"
+        },
+        "order": {
+          "name": "order",
+          "type": "\"asc\" | \"desc\"",
+          "required": false,
+          "description": "排序方向"
+        }
+      },
+      "required": []
+    },
+    "LogsControllerFindApiLogsQueryParams": {
+      "name": "LogsControllerFindApiLogsQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "method": {
+          "name": "method",
+          "type": "string",
+          "required": false,
+          "description": "HTTP 方法"
+        },
+        "url": {
+          "name": "url",
+          "type": "string",
+          "required": false,
+          "description": "请求路径"
+        },
+        "statusCode": {
+          "name": "statusCode",
+          "type": "number",
+          "required": false,
+          "description": "状态码"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "string",
+          "required": false,
+          "description": "用户 ID（UUID格式）"
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "string",
+          "required": false,
+          "description": "开始日期"
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "string",
+          "required": false,
+          "description": "结束日期"
+        }
+      },
+      "required": []
+    },
+    "MockProxyControllerHandleMockRequestGetPathParams": {
+      "name": "MockProxyControllerHandleMockRequestGetPathParams",
+      "type": "object",
+      "properties": {
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["path"]
+    },
+    "LogsControllerFindApiLogByRequestIdPathParams": {
+      "name": "LogsControllerFindApiLogByRequestIdPathParams",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "name": "requestId",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["requestId"]
+    },
+    "CsdevControllerListQueryParams": {
+      "name": "CsdevControllerListQueryParams",
+      "type": "object",
+      "properties": {
+        "action": {
+          "name": "action",
+          "type": "string",
+          "required": false,
+          "description": "操作名称，精确匹配"
+        },
+        "module": {
+          "name": "module",
+          "type": "string",
+          "required": false,
+          "description": "模块名称，精确匹配"
+        },
+        "level": {
+          "name": "level",
+          "type": "string",
+          "required": false,
+          "description": "日志级别"
+        },
+        "status": {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "description": "执行状态"
+        },
+        "projectName": {
+          "name": "projectName",
+          "type": "string",
+          "required": false,
+          "description": "关联项目名称"
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "string",
+          "required": false,
+          "description": "开始时间（ISO8601）"
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "string",
+          "required": false,
+          "description": "结束时间（ISO8601）"
+        },
+        "minDuration": {
+          "name": "minDuration",
+          "type": "number",
+          "required": false,
+          "description": "最小执行时长（毫秒）"
+        },
+        "maxDuration": {
+          "name": "maxDuration",
+          "type": "number",
+          "required": false,
+          "description": "最大执行时长（毫秒）"
+        },
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码，默认 1"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页大小，默认 10"
+        },
+        "sortField": {
+          "name": "sortField",
+          "type": "string",
+          "required": false,
+          "description": "排序字段，例如 createdAt 或 duration"
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "string",
+          "required": false,
+          "description": "排序方向 asc|desc"
+        }
+      },
+      "required": []
+    },
+    "CsProjectTemplatesControllerFindAllPaginatedQueryParams": {
+      "name": "CsProjectTemplatesControllerFindAllPaginatedQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码（从1开始）"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "keyword": {
+          "name": "keyword",
+          "type": "string",
+          "required": false,
+          "description": "搜索关键词（匹配项目名称和描述）"
+        },
+        "sortBy": {
+          "name": "sortBy",
+          "type": "\"projectTemplateName\" | \"sortOrder\" | \"createdAt\" | \"updatedAt\"",
+          "required": false,
+          "description": "排序字段"
+        },
+        "order": {
+          "name": "order",
+          "type": "\"asc\" | \"desc\"",
+          "required": false,
+          "description": "排序方向"
+        },
+        "fetchAll": {
+          "name": "fetchAll",
+          "type": "number",
+          "required": false,
+          "description": "是否获取全部数据（不分页），传 1 时忽略 page 和 pageSize 参数"
+        }
+      },
+      "required": []
+    },
+    "MockControllerListQueryParams": {
+      "name": "MockControllerListQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "keyword": {
+          "name": "keyword",
+          "type": "string",
+          "required": false,
+          "description": "关键字搜索 (匹配名称、描述、路径)"
+        },
+        "method": {
+          "name": "method",
+          "type": "\"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\"",
+          "required": false,
+          "description": "请求方法筛选"
+        },
+        "templateEngine": {
+          "name": "templateEngine",
+          "type": "\"MOCKJS\" | \"JSON\"",
+          "required": false,
+          "description": "模板引擎筛选"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "required": false,
+          "description": "启用状态筛选"
+        },
+        "createdBy": {
+          "name": "createdBy",
+          "type": "string",
+          "required": false,
+          "description": "创建人筛选"
+        }
+      },
+      "required": []
+    },
+    "MockProxyControllerHandleMockRequestPostPathParams": {
+      "name": "MockProxyControllerHandleMockRequestPostPathParams",
+      "type": "object",
+      "properties": {
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["path"]
+    },
+    "UsersControllerFindOnePathParams": {
+      "name": "UsersControllerFindOnePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "LogsControllerFindErrorLogsQueryParams": {
+      "name": "LogsControllerFindErrorLogsQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "errorCode": {
+          "name": "errorCode",
+          "type": "string",
+          "required": false,
+          "description": "错误代码"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "string",
+          "required": false,
+          "description": "用户 ID（UUID格式）"
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "string",
+          "required": false,
+          "description": "开始日期"
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "string",
+          "required": false,
+          "description": "结束日期"
+        }
+      },
+      "required": []
+    },
+    "RolesControllerFindAllPaginatedQueryParams": {
+      "name": "RolesControllerFindAllPaginatedQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码（从1开始）"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "keyword": {
+          "name": "keyword",
+          "type": "string",
+          "required": false,
+          "description": "搜索关键词（角色名称、代码或描述）"
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "required": false,
+          "description": "角色状态筛选"
+        },
+        "sortBy": {
+          "name": "sortBy",
+          "type": "\"createdAt\" | \"updatedAt\" | \"name\" | \"code\"",
+          "required": false,
+          "description": "排序字段"
+        },
+        "order": {
+          "name": "order",
+          "type": "\"asc\" | \"desc\"",
+          "required": false,
+          "description": "排序方向"
+        }
+      },
+      "required": []
+    },
+    "PermissionsControllerFindAllPaginatedQueryParams": {
+      "name": "PermissionsControllerFindAllPaginatedQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码（从1开始）"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "keyword": {
+          "name": "keyword",
+          "type": "string",
+          "required": false,
+          "description": "搜索关键词（匹配权限名称、代码、描述）"
+        },
+        "resource": {
+          "name": "resource",
+          "type": "string",
+          "required": false,
+          "description": "资源类型筛选"
+        },
+        "action": {
+          "name": "action",
+          "type": "string",
+          "required": false,
+          "description": "操作动作筛选"
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "required": false,
+          "description": "权限状态筛选"
+        },
+        "sortBy": {
+          "name": "sortBy",
+          "type": "\"createdAt\" | \"updatedAt\" | \"name\" | \"code\" | \"resource\" | \"action\"",
+          "required": false,
+          "description": "排序字段"
+        },
+        "order": {
+          "name": "order",
+          "type": "\"asc\" | \"desc\"",
+          "required": false,
+          "description": "排序方向"
+        }
+      },
+      "required": []
+    },
+    "CsProjectTemplatesControllerFindOnePathParams": {
+      "name": "CsProjectTemplatesControllerFindOnePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockProxyControllerHandleMockRequestPutPathParams": {
+      "name": "MockProxyControllerHandleMockRequestPutPathParams",
+      "type": "object",
+      "properties": {
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["path"]
+    },
+    "UsersControllerUpdatePathParams": {
+      "name": "UsersControllerUpdatePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "LogsControllerFindAuditLogsQueryParams": {
+      "name": "LogsControllerFindAuditLogsQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "action": {
+          "name": "action",
+          "type": "\"CREATE\" | \"UPDATE\" | \"DELETE\"",
+          "required": false,
+          "description": "操作类型"
+        },
+        "resource": {
+          "name": "resource",
+          "type": "string",
+          "required": false,
+          "description": "资源类型"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "string",
+          "required": false,
+          "description": "用户 ID（UUID格式）"
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "string",
+          "required": false,
+          "description": "开始日期"
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "string",
+          "required": false,
+          "description": "结束日期"
+        }
+      },
+      "required": []
+    },
+    "RolesControllerFindOneQueryParams": {
+      "name": "RolesControllerFindOneQueryParams",
+      "type": "object",
+      "properties": {
+        "includePermissions": {
+          "name": "includePermissions",
+          "type": "boolean",
+          "required": false,
+          "description": "是否包含权限信息"
+        }
+      },
+      "required": []
+    },
+    "RolesControllerFindOnePathParams": {
+      "name": "RolesControllerFindOnePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "角色ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "PermissionsControllerFindOnePathParams": {
+      "name": "PermissionsControllerFindOnePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "权限ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "CsdevControllerGetOnePathParams": {
+      "name": "CsdevControllerGetOnePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "CsProjectTemplatesControllerUpdatePathParams": {
+      "name": "CsProjectTemplatesControllerUpdatePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockProxyControllerHandleMockRequestDeletePathParams": {
+      "name": "MockProxyControllerHandleMockRequestDeletePathParams",
+      "type": "object",
+      "properties": {
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["path"]
+    },
+    "UsersControllerRemovePathParams": {
+      "name": "UsersControllerRemovePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "LogsControllerGetStatisticsQueryParams": {
+      "name": "LogsControllerGetStatisticsQueryParams",
+      "type": "object",
+      "properties": {
+        "startDate": {
+          "name": "startDate",
+          "type": "string",
+          "required": true,
+          "description": ""
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "string",
+          "required": true,
+          "description": ""
+        }
+      },
+      "required": ["startDate", "endDate"]
+    },
+    "RolesControllerUpdatePathParams": {
+      "name": "RolesControllerUpdatePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "角色ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "PermissionsControllerUpdatePathParams": {
+      "name": "PermissionsControllerUpdatePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "权限ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "CsProjectTemplatesControllerRemovePathParams": {
+      "name": "CsProjectTemplatesControllerRemovePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockControllerGetLogsQueryParams": {
+      "name": "MockControllerGetLogsQueryParams",
+      "type": "object",
+      "properties": {
+        "page": {
+          "name": "page",
+          "type": "number",
+          "required": false,
+          "description": "页码"
+        },
+        "pageSize": {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "description": "每页数量"
+        },
+        "endpointId": {
+          "name": "endpointId",
+          "type": "string",
+          "required": false,
+          "description": "Mock 端点 ID (精确匹配)"
+        },
+        "method": {
+          "name": "method",
+          "type": "\"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\"",
+          "required": false,
+          "description": "请求方法 (精确匹配)"
+        },
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": false,
+          "description": "请求路径 (模糊匹配)"
+        }
+      },
+      "required": []
+    },
+    "MockProxyControllerHandleMockRequestPatchPathParams": {
+      "name": "MockProxyControllerHandleMockRequestPatchPathParams",
+      "type": "object",
+      "properties": {
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["path"]
+    },
+    "UsersControllerUpdateStatusPathParams": {
+      "name": "UsersControllerUpdateStatusPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "RolesControllerRemovePathParams": {
+      "name": "RolesControllerRemovePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "角色ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "PermissionsControllerRemovePathParams": {
+      "name": "PermissionsControllerRemovePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "权限ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockControllerClearLogsQueryParams": {
+      "name": "MockControllerClearLogsQueryParams",
+      "type": "object",
+      "properties": {
+        "endpointId": {
+          "name": "endpointId",
+          "type": "string",
+          "required": true,
+          "description": ""
+        }
+      },
+      "required": ["endpointId"]
+    },
+    "MockProxyControllerHandleMockRequestOptionsPathParams": {
+      "name": "MockProxyControllerHandleMockRequestOptionsPathParams",
+      "type": "object",
+      "properties": {
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["path"]
+    },
+    "UsersControllerVerifyUserPathParams": {
+      "name": "UsersControllerVerifyUserPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "RolesControllerFindByCodePathParams": {
+      "name": "RolesControllerFindByCodePathParams",
+      "type": "object",
+      "properties": {
+        "code": {
+          "name": "code",
+          "type": "string",
+          "required": true,
+          "description": "角色代码",
+          "example": ""
+        }
+      },
+      "required": ["code"]
+    },
+    "PermissionsControllerUpdateStatusPathParams": {
+      "name": "PermissionsControllerUpdateStatusPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "权限ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockControllerGetPathParams": {
+      "name": "MockControllerGetPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockProxyControllerHandleMockRequestHeadPathParams": {
+      "name": "MockProxyControllerHandleMockRequestHeadPathParams",
+      "type": "object",
+      "properties": {
+        "path": {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["path"]
+    },
+    "UsersControllerResetPasswordPathParams": {
+      "name": "UsersControllerResetPasswordPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "RolesControllerUpdateStatusPathParams": {
+      "name": "RolesControllerUpdateStatusPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "角色ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockControllerUpdatePathParams": {
+      "name": "MockControllerUpdatePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "UsersControllerAssignRolesPathParams": {
+      "name": "UsersControllerAssignRolesPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "RolesControllerAssignPermissionsPathParams": {
+      "name": "RolesControllerAssignPermissionsPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "角色ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "PermissionsControllerBatchDeleteQueryParams": {
+      "name": "PermissionsControllerBatchDeleteQueryParams",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "name": "ids",
+          "type": "string",
+          "required": true,
+          "description": "权限ID数组，多个ID用逗号分隔"
+        }
+      },
+      "required": ["ids"]
+    },
+    "MockControllerRemovePathParams": {
+      "name": "MockControllerRemovePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "UsersControllerGetUserRolesPathParams": {
+      "name": "UsersControllerGetUserRolesPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "RolesControllerGetRolePermissionsPathParams": {
+      "name": "RolesControllerGetRolePermissionsPathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "角色ID",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "MockControllerEnablePathParams": {
+      "name": "MockControllerEnablePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "UsersControllerRemoveRolePathParams": {
+      "name": "UsersControllerRemoveRolePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "用户 ID",
+          "example": ""
+        },
+        "roleId": {
+          "name": "roleId",
+          "type": "number",
+          "required": true,
+          "description": "角色 ID",
+          "example": ""
+        }
+      },
+      "required": ["id", "roleId"]
+    },
+    "MockControllerDisablePathParams": {
+      "name": "MockControllerDisablePathParams",
+      "type": "object",
+      "properties": {
+        "id": {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "",
+          "example": ""
+        }
+      },
+      "required": ["id"]
+    },
+    "RolesControllerBatchDeleteQueryParams": {
+      "name": "RolesControllerBatchDeleteQueryParams",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "name": "ids",
+          "type": "number[]",
+          "required": true,
+          "description": "角色ID列表"
+        }
+      },
+      "required": ["ids"]
     }
   },
   "interfaces": {
-    "RegisterDto": "export interface RegisterDto {\n  /**\n * @description 邮箱地址\n */\n  /** @example \"user@example.com\" */\n  email: string;\n  /**\n * @description 用户名（3-20个字符，只能包含字母、数字、下划线）\n */\n  /** @example \"johndoe\" */\n  username: string;\n  /**\n * @description 密码（8-32个字符，必须包含大小写字母和数字）\n */\n  /** @example \"Password123\" */\n  password: string;\n  /**\n * @description 名\n */\n  /** @example \"John\" */\n  firstName?: string;\n  /**\n * @description 姓\n */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /**\n * @description 手机号码\n */\n  /** @example \"13800138000\" */\n  phone?: string;\n}",
-    "RegisterResponseDto": "export interface RegisterResponseDto {\n  /**\n * @description 用户名\n */\n  /** @example \"johndoe\" */\n  username: string;\n  /**\n * @description 邮箱地址\n */\n  /** @example \"user@example.com\" */\n  email: string;\n  /**\n * @description 提示信息\n */\n  /** @example \"注册成功，请登录\" */\n  message: string;\n}",
-    "LoginDto": "export interface LoginDto {\n  /**\n * @description 用户名或邮箱\n */\n  /** @example \"admin@enterprise.local\" */\n  username: string;\n  /**\n * @description 密码\n */\n  /** @example \"admin123456\" */\n  password: string;\n}",
-    "AuthResponseDto": "export interface AuthResponseDto {\n  /**\n * @description Access Token（访问令牌）\n */\n  /** @example \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\" */\n  accessToken: string;\n  /**\n * @description Refresh Token（刷新令牌）\n */\n  /** @example \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\" */\n  refreshToken: string;\n  /**\n * @description Token 类型\n */\n  /** @example \"Bearer\" */\n  tokenType: string;\n  /**\n * @description Access Token 过期时间（秒）\n */\n  /** @example 900 */\n  expiresIn: number;\n  /**\n * @description 用户信息（不包含敏感ID）\n */\n  user: Record<string, never>;\n}",
-    "RefreshTokenDto": "export interface RefreshTokenDto {\n  /**\n * @description Refresh Token\n */\n  /** @example \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\" */\n  refreshToken: string;\n}",
-    "UserResponseDto": "export interface UserResponseDto {\n  /**\n * @description 邮箱地址\n */\n  /** @example \"user@example.com\" */\n  email: string;\n  /**\n * @description 用户名\n */\n  /** @example \"johndoe\" */\n  username: string;\n  /**\n * @description 名\n */\n  /** @example \"John\" */\n  firstName?: string;\n  /**\n * @description 姓\n */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /**\n * @description 头像 URL\n */\n  /** @example \"https://example.com/avatar.jpg\" */\n  avatar?: string;\n  /**\n * @description 手机号码\n */\n  /** @example \"13800138000\" */\n  phone?: string;\n  /**\n * @description 账户是否激活\n */\n  /** @example true */\n  isActive: boolean;\n  /**\n * @description 账户是否已验证\n */\n  /** @example true */\n  isVerified: boolean;\n  /**\n * @description 最后登录时间\n */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  lastLoginAt?: string;\n  /**\n * @description 创建时间\n */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  createdAt: string;\n  /**\n * @description 更新时间\n */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  updatedAt: string;\n  /**\n * @description 用户角色列表\n */\n  /** @example [\"admin\",\"user\"] */\n  roles?: string[];\n}",
-    "PaginationMetaDto": "export interface PaginationMetaDto {\n  /**\n * @description 当前页码\n */\n  /** @example 1 */\n  page: number;\n  /**\n * @description 每页数量\n */\n  /** @example 10 */\n  pageSize: number;\n  /**\n * @description 总记录数\n */\n  /** @example 100 */\n  total: number;\n  /**\n * @description 总页数\n */\n  /** @example 10 */\n  totalPages: number;\n  /**\n * @description 是否有上一页\n */\n  hasPreviousPage: boolean;\n  /**\n * @description 是否有下一页\n */\n  /** @example true */\n  hasNextPage: boolean;\n}",
-    "PaginatedUsersDto": "export interface PaginatedUsersDto {\n  /**\n * @description 用户列表\n */\n  data: UserResponseDto[];\n  /**\n * @description 分页元数据\n */\n  meta: any;\n}",
-    "UserStatisticsDto": "export interface UserStatisticsDto {\n  /**\n * @description 用户总数\n */\n  /** @example 1000 */\n  total: number;\n  /**\n * @description 活跃用户数\n */\n  /** @example 850 */\n  active: number;\n  /**\n * @description 禁用用户数\n */\n  /** @example 150 */\n  inactive: number;\n  /**\n * @description 已验证邮箱用户数\n */\n  /** @example 900 */\n  verified: number;\n  /**\n * @description 未验证邮箱用户数\n */\n  /** @example 100 */\n  unverified: number;\n  /**\n * @description 今日新增用户数\n */\n  /** @example 15 */\n  newToday: number;\n  /**\n * @description 本周新增用户数\n */\n  /** @example 50 */\n  newThisWeek: number;\n  /**\n * @description 本月新增用户数\n */\n  /** @example 200 */\n  newThisMonth: number;\n}",
-    "UpdateUserDto": "export interface UpdateUserDto {\n  /**\n * @description 邮箱地址\n */\n  /** @example \"user@example.com\" */\n  email?: string;\n  /**\n * @description 用户名（3-20个字符，只能包含字母、数字、下划线）\n */\n  /** @example \"johndoe\" */\n  username?: string;\n  /**\n * @description 名\n */\n  /** @example \"John\" */\n  firstName?: string;\n  /**\n * @description 姓\n */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /**\n * @description 头像 URL\n */\n  /** @example \"https://example.com/avatar.jpg\" */\n  avatar?: string;\n  /**\n * @description 手机号码\n */\n  /** @example \"13800138000\" */\n  phone?: string;\n  /**\n * @description 账户是否激活\n */\n  /** @example true */\n  isActive?: boolean;\n}",
-    "UpdateUserStatusDto": "export interface UpdateUserStatusDto {\n  /**\n * @description 用户是否激活（true:激活, false:禁用）\n */\n  /** @example true */\n  isActive: boolean;\n}",
-    "ResetPasswordDto": "export interface ResetPasswordDto {\n  /**\n * @description 新密码（至少8位，包含大小写字母、数字和特殊字符）\n */\n  /** @example \"NewPassword123!\" */\n  newPassword: string;\n}",
-    "AssignRolesDto": "export interface AssignRolesDto {\n  /**\n * @description 角色ID数组（至少包含一个角色ID，不能重复）\n */\n  /** @example [1,2] */\n  roleIds: number[];\n}",
-    "BatchOperationDto": "export interface BatchOperationDto {\n  /**\n * @description 用户ID数组（UUID格式，至少包含一个ID，不能重复）\n */\n  /** @example [\"550e8400-e29b-41d4-a716-446655440000\",\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\"] */\n  ids: string[];\n}",
-    "UpdateProfileDto": "export interface UpdateProfileDto {\n  /**\n * @description 用户名（3-20个字符，只能包含字母、数字、下划线）\n */\n  /** @example \"johndoe\" */\n  username?: string;\n  /**\n * @description 名\n */\n  /** @example \"John\" */\n  firstName?: string;\n  /**\n * @description 姓\n */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /**\n * @description 手机号（可选，必须是有效的手机号格式）\n */\n  /** @example \"13800138000\" */\n  phone?: string;\n  /**\n * @description 头像URL\n */\n  /** @example \"https://example.com/avatar.jpg\" */\n  avatar?: string;\n}",
-    "ChangePasswordDto": "export interface ChangePasswordDto {\n  /**\n * @description 当前密码\n */\n  /** @example \"OldPassword123!\" */\n  oldPassword: string;\n  /**\n * @description 新密码（至少8位，包含大小写字母、数字和特殊字符）\n */\n  /** @example \"NewPassword123!\" */\n  newPassword: string;\n  /**\n * @description 确认新密码（必须与新密码一致）\n */\n  /** @example \"NewPassword123!\" */\n  confirmPassword: string;\n}",
-    "UserSessionDto": "export interface UserSessionDto {\n  /**\n * @description 会话ID\n */\n  /** @example \"session_123456\" */\n  sessionId: string;\n  /**\n * @description 设备信息（User Agent）\n */\n  /** @example \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\" */\n  device: string;\n  /**\n * @description 登录IP地址\n */\n  /** @example \"192.168.1.100\" */\n  ipAddress: string;\n  /**\n * @description 登录时间\n */\n  /** @example \"2025-10-10T10:30:00.000Z\" */\n  loginAt: string;\n  /**\n * @description 最后活跃时间\n */\n  /** @example \"2025-10-10T12:45:00.000Z\" */\n  lastActivity: string;\n  /**\n * @description 是否为当前会话\n */\n  /** @example true */\n  isCurrent: boolean;\n}",
-    "CreateRoleDto": "export interface CreateRoleDto {\n  /**\n * @description 角色名称（唯一，用于显示）\n */\n  /** @example \"系统管理员\" */\n  name: string;\n  /**\n * @description 角色代码（唯一，用于程序识别，如\"ADMIN\"）\n */\n  /** @example \"ADMIN\" */\n  code: string;\n  /**\n * @description 角色描述（详细说明角色的职责和权限范围）\n */\n  /** @example \"拥有系统最高权限，可以管理所有功能\" */\n  description?: string;\n}",
-    "RoleResponseDto": "export interface RoleResponseDto {\n  /**\n * @description 角色ID\n */\n  /** @example 1 */\n  id: number;\n  /**\n * @description 角色名称\n */\n  /** @example \"系统管理员\" */\n  name: string;\n  /**\n * @description 角色代码\n */\n  /** @example \"ADMIN\" */\n  code: string;\n  /**\n * @description 角色描述\n */\n  /** @example \"拥有系统最高权限，可以管理所有功能\" */\n  description?: string;\n  /**\n * @description 角色状态\n */\n  /** @example true */\n  isActive: boolean;\n  /**\n * @description 创建时间\n */\n  /** @example \"2025-01-01T00:00:00.000Z\" */\n  createdAt: string;\n  /**\n * @description 更新时间\n */\n  /** @example \"2025-01-01T00:00:00.000Z\" */\n  updatedAt: string;\n  /**\n * @description 关联的权限列表\n */\n  permissions?: Record<string, never>[];\n}",
-    "PaginatedRolesDto": "export interface PaginatedRolesDto {\n  /**\n * @description 角色数据列表\n */\n  data: RoleResponseDto[];\n  /**\n * @description 分页信息\n */\n  meta: Record<string, never>;\n}",
-    "UpdateRoleDto": "export interface UpdateRoleDto {\n  /**\n * @description 角色名称（唯一，用于显示）\n */\n  /** @example \"超级管理员\" */\n  name?: string;\n  /**\n * @description 角色代码（唯一，用于程序识别，如\"SUPER_ADMIN\"）\n */\n  /** @example \"SUPER_ADMIN\" */\n  code?: string;\n  /**\n * @description 角色描述（详细说明角色的职责和权限范围）\n */\n  /** @example \"拥有系统最高权限，可以管理所有功能和用户\" */\n  description?: string;\n}",
-    "UpdateRoleStatusDto": "export interface UpdateRoleStatusDto {\n  /**\n * @description 角色状态（true表示启用，false表示禁用）\n */\n  /** @example true */\n  isActive: boolean;\n}",
-    "AssignPermissionsDto": "export interface AssignPermissionsDto {\n  /**\n * @description 权限ID列表\n */\n  /** @example [1,2,3] */\n  permissionIds: number[];\n}",
-    "CreatePermissionDto": "export interface CreatePermissionDto {\n  /**\n * @description 权限名称（唯一，用于显示）\n */\n  /** @example \"创建用户\" */\n  name: string;\n  /**\n * @description 权限代码（唯一，用于程序识别，如\"user:create\"）\n */\n  /** @example \"user:create\" */\n  code: string;\n  /**\n * @description 资源类型（权限所属的资源，如\"user\"、\"role\"）\n */\n  /** @example \"user\" */\n  resource: string;\n  /**\n * @description 操作动作（对资源的操作类型，如\"create\"、\"read\"、\"update\"、\"delete\"）\n */\n  /** @example \"create\" */\n  action: string;\n  /**\n * @description 权限描述（详细说明权限的作用范围）\n */\n  /** @example \"允许创建新用户账户\" */\n  description?: string;\n}",
-    "PermissionResponseDto": "export interface PermissionResponseDto {\n  /**\n * @description 权限ID\n */\n  /** @example 1 */\n  id: number;\n  /**\n * @description 权限名称\n */\n  /** @example \"创建用户\" */\n  name: string;\n  /**\n * @description 权限代码\n */\n  /** @example \"user:create\" */\n  code: string;\n  /**\n * @description 资源类型\n */\n  /** @example \"user\" */\n  resource: string;\n  /**\n * @description 操作动作\n */\n  /** @example \"create\" */\n  action: string;\n  /**\n * @description 权限描述\n */\n  /** @example \"允许创建新用户账户\" */\n  description?: string;\n  /**\n * @description 权限状态\n */\n  /** @example true */\n  isActive: boolean;\n  /**\n * @description 创建时间\n */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  createdAt: string;\n  /**\n * @description 更新时间\n */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  updatedAt: string;\n}",
-    "PaginatedPermissionsDto": "export interface PaginatedPermissionsDto {\n  /**\n * @description 权限列表\n */\n  data: PermissionResponseDto[];\n  /**\n * @description 分页元数据\n */\n  meta: any;\n}",
-    "UpdatePermissionDto": "export interface UpdatePermissionDto {\n  /**\n * @description 权限名称（唯一，用于显示）\n */\n  /** @example \"创建用户\" */\n  name?: string;\n  /**\n * @description 权限代码（唯一，用于程序识别，如\"user:create\"）\n */\n  /** @example \"user:create\" */\n  code?: string;\n  /**\n * @description 资源类型（权限所属的资源，如\"user\"、\"role\"）\n */\n  /** @example \"user\" */\n  resource?: string;\n  /**\n * @description 操作动作（对资源的操作类型，如\"create\"、\"read\"、\"update\"、\"delete\"）\n */\n  /** @example \"create\" */\n  action?: string;\n  /**\n * @description 权限描述（详细说明权限的作用范围）\n */\n  /** @example \"允许创建新用户账户\" */\n  description?: string;\n}",
-    "UpdatePermissionStatusDto": "export interface UpdatePermissionStatusDto {\n  /**\n * @description 权限状态（true表示启用，false表示禁用）\n */\n  /** @example true */\n  isActive: boolean;\n}",
-    "UploadCsDevLoggerDto": "export interface UploadCsDevLoggerDto {\n  /**\n * @description 操作名称\n */\n  /** @example \"build:website\" */\n  action?: string;\n  /**\n * @description 模块名称\n */\n  /** @example \"website\" */\n  module?: string;\n  /**\n * @description 日志级别\n */\n  /** @example \"info\" */\n  level?: \"info\" | \"warn\" | \"error\" | \"debug\";\n  /**\n * @description 执行时长\n */\n  /** @example 100 */\n  duration?: number;\n  /**\n * @description 执行状态\n */\n  /** @example \"success\" */\n  status?: \"success\" | \"error\";\n  /**\n * @description 日志参数\n */\n  /** @example \"{\\\"key\\\": \\\"value\\\"}\" */\n  params?: string;\n  /**\n * @description 执行结果\n */\n  /** @example \"{\\\"key\\\": \\\"value\\\"}\" */\n  result?: string;\n  /**\n * @description 错误信息\n */\n  /** @example \"{\\\"key\\\": \\\"value\\\"}\" */\n  error?: string;\n  /**\n * @description 项目名称\n */\n  /** @example \"awesome-project\" */\n  projectName?: string;\n  /**\n * @description 项目版本\n */\n  /** @example \"1.0.0\" */\n  projectVersion?: string;\n  /**\n * @description csui 组件库版本\n */\n  /** @example \"1.0.0\" */\n  csuiVersion?: string;\n  /**\n * @description csuim 组件库版本\n */\n  /** @example \"1.0.0\" */\n  csuimVersion?: string;\n  /**\n * @description ehome 版本\n */\n  /** @example \"1.0.0\" */\n  ehomeVersion?: string;\n  /**\n * @description csui 微应用版本\n */\n  /** @example \"1.0.0\" */\n  csuiMicroAppVersion?: string;\n  /**\n * @description csui eslint 配置版本\n */\n  /** @example \"1.0.0\" */\n  csuiEslintConfigVersion?: string;\n  /**\n * @description csdev 版本\n */\n  /** @example \"1.0.0\" */\n  csdevVersion?: string;\n  /**\n * @description 用户信息\n */\n  /** @example \"{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\"}\" */\n  userInfo?: string;\n  /**\n * @description 客户端时间戳（毫秒），用于记录客户端操作时间\n */\n  /** @example 1699999999999 */\n  timestamp?: number;\n}",
-    "CsDevLogVo": "export interface CsDevLogVo {\n  /**\n * @description 日志 ID\n */\n  id: string;\n  /**\n * @description 操作名称\n */\n  action: string;\n  /**\n * @description 模块名称\n */\n  module: string;\n  /**\n * @description 日志级别\n */\n  level: string;\n  /**\n * @description 执行时长（毫秒）\n */\n  duration: number;\n  /**\n * @description 执行状态\n */\n  status: string;\n  /**\n * @description 日志参数\n */\n  params?: string;\n  /**\n * @description 执行结果\n */\n  result?: string;\n  /**\n * @description 错误信息\n */\n  error?: string;\n  /**\n * @description 项目名称\n */\n  projectName?: string;\n  /**\n * @description 项目版本\n */\n  projectVersion?: string;\n  /**\n * @description csui 版本\n */\n  csuiVersion?: string;\n  /**\n * @description csuim 版本\n */\n  csuimVersion?: string;\n  /**\n * @description ehome 版本\n */\n  ehomeVersion?: string;\n  /**\n * @description csui 微应用版本\n */\n  csuiMicroAppVersion?: string;\n  /**\n * @description csui eslint 配置版本\n */\n  csuiEslintConfigVersion?: string;\n  /**\n * @description csdev 版本\n */\n  csdevVersion?: string;\n  /**\n * @description 用户信息\n */\n  userInfo?: string;\n  /**\n * @description 客户端时间戳（毫秒），用于记录客户端操作时间\n */\n  timestamp?: number;\n  /**\n * @description 创建时间\n */\n  createdAt: string;\n}",
-    "PaginatedCsDevVo": "export interface PaginatedCsDevVo {\n  /**\n * @description 数据列表\n */\n  data: CsDevLogVo[];\n  /**\n * @description 分页元数据\n */\n  meta: any;\n}",
-    "StatsCsDevDto": "export interface StatsCsDevDto {\n  /**\n * @description 按哪些字段分组\n */\n  /** @example [\"action\"] */\n  groupBy?: string[];\n  /**\n * @description 开始时间（ISO8601）\n */\n  startDate?: string;\n  /**\n * @description 结束时间（ISO8601）\n */\n  endDate?: string;\n  /**\n * @description 结果限制条数\n */\n  /** @example 50 */\n  limit?: number;\n  /**\n * @description 是否包含平均时长/总时长等聚合数据\n */\n  /** @example true */\n  includeDurationAggregates?: boolean;\n}",
-    "CsDevStatsVo": "export interface CsDevStatsVo {\n  /**\n * @description 分组键值对\n */\n  /** @example \"{ action: 'build', module: 'website' }\" */\n  group: Record<string, never>;\n  /**\n * @description 计数\n */\n  /** @example 10 */\n  count: number;\n  /**\n * @description 平均执行时长（毫秒）\n */\n  /** @example 100 */\n  avgDuration: number;\n  /**\n * @description 总执行时长（毫秒）\n */\n  /** @example 1000 */\n  sumDuration: number;\n}",
-    "CreateCsProjectTemplateDto": "export interface CreateCsProjectTemplateDto {\n  /**\n * @description 项目模板名称\n */\n  /** @example \"Vue3 CSUIAdmin\" */\n  projectTemplateName: string;\n  /**\n * @description 项目模板描述\n */\n  /** @example \"这是一个 Vue3 的后台管理模板\" */\n  description?: string;\n  /**\n * @description 项目模板 Git 仓库地址\n */\n  /** @example \"https://github.com/example/template.git\" */\n  gitUrl: string;\n  /**\n * @description 项目模板 Git 分支\n */\n  /** @example \"main\" */\n  gitBranch: string;\n  /**\n * @description 排序优先级（数字越小优先级越高）\n */\n  sortOrder?: number;\n}",
-    "ApiErrorResponse": "export interface ApiErrorResponse {\n  /**\n * @description 错误码\n */\n  /** @example \"S10000\" */\n  code: string;\n  /**\n * @description 错误消息\n */\n  /** @example \"系统内部错误\" */\n  message: string;\n  /**\n * @description 错误数据（如验证错误详情等）\n */\n  data?: Record<string, never>;\n  /**\n * @description 请求 ID，用于日志追踪\n */\n  /** @example \"uuid-string\" */\n  requestId: string;\n  /**\n * @description 错误发生的时间戳\n */\n  /** @example \"2025-11-04T10:00:00+08:00\" */\n  timestamp: string;\n  /**\n * @description 请求路径\n */\n  /** @example \"/api/v1/users\" */\n  path: string;\n  /**\n * @description 请求方法\n */\n  /** @example \"POST\" */\n  method: \"GET\" | \"POST\" | \"PATCH\" | \"PUT\" | \"DELETE\" | \"HEAD\" | \"OPTIONS\";\n  /**\n * @description 时区\n */\n  /** @example \"Asia/Shanghai\" */\n  timezone?: string;\n}",
-    "ApiSuccessResponse": "export interface ApiSuccessResponse<T = any> {\n  /**\n * @description 响应码，成功时为 200\n */\n  /** @example \"200\" */\n  code: string;\n  /**\n * @description 响应消息\n */\n  /** @example \"success\" */\n  message: string;\n  /**\n * @description 响应数据\n */\n  data: T;\n  /**\n * @description 请求 ID，用于日志追踪\n */\n  /** @example \"uuid-string\" */\n  requestId: string;\n  /**\n * @description 响应时间戳（使用指定的时区）\n */\n  /** @example \"2025-11-04T10:00:00+08:00\" */\n  timestamp: string;\n  /**\n * @description 时区（告诉客户端响应中日期字段使用的时区）\n */\n  /** @example \"Asia/Shanghai\" */\n  timezone: string;\n}",
-    "ProjectTemplateResponseVO": "export interface ProjectTemplateResponseVO {\n  /**\n * @description 模板ID\n */\n  /** @example \"uuid-string\" */\n  id: string;\n  /**\n * @description 项目模板名称\n */\n  /** @example \"Vue3 CSUIAdmin\" */\n  projectTemplateName: string;\n  /**\n * @description 项目模板描述\n */\n  /** @example \"这是一个 Vue3 的后台管理模板\" */\n  description: any;\n  /**\n * @description 项目模板 Git 仓库地址\n */\n  /** @example \"https://github.com/example/template.git\" */\n  gitUrl: string;\n  /**\n * @description 项目模板 Git 分支\n */\n  /** @example \"main\" */\n  gitBranch: string;\n  /**\n * @description 排序优先级\n */\n  sortOrder: number;\n  /**\n * @description 创建时间\n */\n  /** @example \"2025-11-03T00:00:00Z\" */\n  createdAt: string;\n  /**\n * @description 更新时间\n */\n  /** @example \"2025-11-03T00:00:00Z\" */\n  updatedAt: string;\n}",
-    "UpdateCsProjectTemplateDto": "export interface UpdateCsProjectTemplateDto {\n  /**\n * @description 项目模板名称\n */\n  /** @example \"Vue3 CSUIAdmin\" */\n  projectTemplateName?: string;\n  /**\n * @description 项目模板描述\n */\n  /** @example \"这是一个 Vue3 的后台管理模板\" */\n  description?: string;\n  /**\n * @description 项目模板 Git 仓库地址\n */\n  /** @example \"https://github.com/example/template.git\" */\n  gitUrl?: string;\n  /**\n * @description 项目模板 Git 分支\n */\n  /** @example \"main\" */\n  gitBranch?: string;\n  /**\n * @description 排序优先级（数字越小优先级越高）\n */\n  sortOrder?: number;\n}",
-    "PaginatedProjectTemplatesVO": "export interface PaginatedProjectTemplatesVO {\n  /**\n * @description 项目模板列表\n */\n  data: ProjectTemplateResponseVO[];\n  /**\n * @description 分页元数据\n */\n  meta: any;\n}",
-    "MockEndpointVo": "export interface MockEndpointVo {\n  /**\n * @description Mock 端点 ID\n */\n  /** @example \"cm001\" */\n  id: string;\n  /**\n * @description Mock 端点名称\n */\n  /** @example \"获取用户列表\" */\n  name: string;\n  /**\n * @description Mock 端点描述\n */\n  /** @example \"返回用户列表的 Mock 数据\" */\n  description?: string;\n  /**\n * @description Mock 端点路径\n */\n  /** @example \"/users\" */\n  path: string;\n  /**\n * @description HTTP 请求方法\n */\n  /** @example \"GET\" */\n  method: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /**\n * @description 是否启用\n */\n  /** @example true */\n  enabled: boolean;\n  /**\n * @description HTTP 响应状态码\n */\n  /** @example 200 */\n  statusCode: number;\n  /**\n * @description 响应延迟时间(毫秒)\n */\n  delay: number;\n  /**\n * @description 响应模板\n */\n  /** @example \"{\\\"code\\\": 200, \\\"data\\\": []}\" */\n  responseTemplate?: string;\n  /**\n * @description 模板引擎类型\n */\n  /** @example \"MOCKJS\" */\n  templateEngine: \"MOCKJS\" | \"JSON\";\n  /**\n * @description 自定义响应头\n */\n  /** @example {\"X-Custom-Header\":\"value\"} */\n  headers?: Record<string, never>;\n  /**\n * @description 请求参数校验规则\n */\n  /** @example {\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}}} */\n  validation?: Record<string, never>;\n  /**\n * @description 创建人\n */\n  /** @example \"admin\" */\n  createdBy?: string;\n  /**\n * @description 创建时间\n */\n  /** @example \"2025-11-10T10:00:00.000Z\" */\n  createdAt: string;\n  /**\n * @description 更新时间\n */\n  /** @example \"2025-11-10T10:05:00.000Z\" */\n  updatedAt: string;\n  /**\n * @description 版本号\n */\n  /** @example 1 */\n  version: number;\n}",
-    "CreateMockEndpointDto": "export interface CreateMockEndpointDto {\n  /**\n * @description Mock 端点名称\n */\n  /** @example \"获取用户列表\" */\n  name: string;\n  /**\n * @description Mock 端点描述\n */\n  /** @example \"返回用户列表的 Mock 数据\" */\n  description?: string;\n  /**\n * @description Mock 端点路径 (支持动态参数, 如 /users/:id)\n */\n  /** @example \"/users\" */\n  path: string;\n  /**\n * @description HTTP 请求方法\n */\n  /** @example \"GET\" */\n  method: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /**\n * @description 是否启用\n */\n  /** @example true */\n  enabled?: boolean;\n  /**\n * @description HTTP 响应状态码\n */\n  /** @example 200 */\n  statusCode: number;\n  /**\n * @description 响应延迟时间(毫秒)\n */\n  delay: number;\n  /**\n * @description 响应模板 (支持 JSON 对象或 JSON 字符串, 支持 MockJS 语法)\n */\n  /** @example {\"code\":200,\"data|10\":[{\"id|+1\":1,\"name\":\"@cname\"}]} */\n  responseTemplate: Record<string, never>;\n  /**\n * @description 模板引擎类型\n */\n  /** @example \"MOCKJS\" */\n  templateEngine?: \"MOCKJS\" | \"JSON\";\n  /**\n * @description 自定义响应头\n */\n  /** @example {\"X-Custom-Header\":\"value\"} */\n  headers?: Record<string, never>;\n  /**\n * @description 请求参数校验规则 (JSON Schema)\n */\n  /** @example {\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}}} */\n  validation?: Record<string, never>;\n  /**\n * @description 创建人\n */\n  /** @example \"admin\" */\n  createdBy?: string;\n}",
-    "UpdateMockEndpointDto": "export interface UpdateMockEndpointDto {\n  /**\n * @description Mock 端点名称\n */\n  /** @example \"获取用户列表\" */\n  name?: string;\n  /**\n * @description Mock 端点描述\n */\n  /** @example \"返回用户列表的 Mock 数据\" */\n  description?: string;\n  /**\n * @description HTTP 请求方法\n */\n  /** @example \"GET\" */\n  method?: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /**\n * @description 是否启用\n */\n  /** @example true */\n  enabled?: boolean;\n  /**\n * @description HTTP 响应状态码\n */\n  /** @example 200 */\n  statusCode?: number;\n  /**\n * @description 响应延迟时间(毫秒)\n */\n  delay?: number;\n  /**\n * @description 响应模板 (支持 JSON 对象或 JSON 字符串)\n */\n  /** @example {\"code\":200,\"data\":[]} */\n  responseTemplate?: Record<string, never>;\n  /**\n * @description 模板引擎类型\n */\n  /** @example \"MOCKJS\" */\n  templateEngine?: \"MOCKJS\" | \"JSON\";\n  /**\n * @description 自定义响应头\n */\n  /** @example {\"X-Custom-Header\":\"value\"} */\n  headers?: Record<string, never>;\n  /**\n * @description 请求参数校验规则\n */\n  validation?: Record<string, never>;\n}",
-    "MockEndpointListVo": "export interface MockEndpointListVo {\n  /**\n * @description 数据列表\n */\n  items: MockEndpointVo[];\n  /**\n * @description 总数\n */\n  /** @example 100 */\n  total: number;\n  /**\n * @description 当前页码\n */\n  /** @example 1 */\n  page: number;\n  /**\n * @description 每页数量\n */\n  /** @example 20 */\n  pageSize: number;\n  /**\n * @description 总页数\n */\n  /** @example 5 */\n  totalPages: number;\n}",
-    "DeleteResultVo": "export interface DeleteResultVo {\n  /**\n * @description 消息\n */\n  /** @example \"已删除\" */\n  message: string;\n}",
-    "ClearCacheResultVo": "export interface ClearCacheResultVo {\n  /**\n * @description 消息\n */\n  /** @example \"缓存已清除\" */\n  message: string;\n}",
-    "BatchOperationResultVo": "export interface BatchOperationResultVo {\n  /**\n * @description 成功数量\n */\n  /** @example 5 */\n  success: number;\n  /**\n * @description 失败数量\n */\n  failed: number;\n  /**\n * @description 失败的 ID 列表\n */\n  /** @example [\"uuid-1\",\"uuid-2\"] */\n  failedIds?: string[];\n}",
-    "BatchOperationMockEndpointsDto": "export interface BatchOperationMockEndpointsDto {\n  /**\n * @description Mock 端点 ID 列表\n */\n  /** @example [\"cm001\",\"cm002\",\"cm003\"] */\n  ids: string[];\n}",
-    "ImportConfigResultVo": "export interface ImportConfigResultVo {\n  /**\n * @description 成功数量\n */\n  /** @example 10 */\n  success: number;\n  /**\n * @description 失败数量\n */\n  failed: number;\n  /**\n * @description 跳过数量\n */\n  /** @example 2 */\n  skipped: number;\n  /**\n * @description 成功导入的端点 (path + method 组合)\n */\n  /** @example [\"GET /users\",\"POST /users\",\"GET /articles\"] */\n  successEndpoints: string[];\n  /**\n * @description 跳过的端点 (path + method 组合)\n */\n  /** @example [\"GET /users/123\"] */\n  skippedEndpoints?: string[];\n  /**\n * @description 失败的端点 (path + method 组合)\n */\n  /** @example [\"GET /invalid\"] */\n  failedEndpoints?: string[];\n}",
-    "ImportConfigDto": "export interface ImportConfigDto {\n  /**\n * @description Mock 端点配置列表\n */\n  endpoints: CreateMockEndpointDto[];\n  /**\n * @description 是否覆盖已存在的配置 (相同 path + method)\n */\n  overwrite?: boolean;\n}",
-    "MockStatsVo": "export interface MockStatsVo {\n  /**\n * @description Mock 端点总数\n */\n  /** @example 15 */\n  totalEndpoints: number;\n  /**\n * @description 已启用的端点数\n */\n  /** @example 12 */\n  enabledEndpoints: number;\n  /**\n * @description 已禁用的端点数\n */\n  /** @example 3 */\n  disabledEndpoints: number;\n  /**\n * @description 总调用次数\n */\n  /** @example 2456 */\n  totalCalls: number;\n  /**\n * @description 最近调用次数\n */\n  /** @example 100 */\n  recentCalls: number;\n  /**\n * @description 平均响应时间(ms)\n */\n  /** @example 14 */\n  avgResponseTime: number;\n  /**\n * @description 缓存命中率(%)\n */\n  /** @example 92.5 */\n  cacheHitRate: number;\n}",
-    "MockLogVo": "export interface MockLogVo {\n  /**\n * @description 日志 ID\n */\n  /** @example \"log001\" */\n  id: string;\n  /**\n * @description Mock 端点 ID\n */\n  /** @example \"cm001\" */\n  endpointId?: string;\n  /**\n * @description 请求方法\n */\n  /** @example \"GET\" */\n  method: string;\n  /**\n * @description 请求路径\n */\n  /** @example \"/api/mock/users\" */\n  path: string;\n  /**\n * @description Query 参数\n */\n  /** @example {\"page\":1,\"pageSize\":10} */\n  query?: Record<string, never>;\n  /**\n * @description Body 参数\n */\n  body?: Record<string, never>;\n  /**\n * @description 请求头\n */\n  headers?: Record<string, never>;\n  /**\n * @description 客户端 IP\n */\n  /** @example \"127.0.0.1\" */\n  ip?: string;\n  /**\n * @description 响应数据\n */\n  response?: Record<string, never>;\n  /**\n * @description 响应状态码\n */\n  /** @example 200 */\n  statusCode: number;\n  /**\n * @description 执行时长(ms)\n */\n  /** @example 15 */\n  duration: number;\n  /**\n * @description 是否缓存命中\n */\n  /** @example true */\n  cacheHit: boolean;\n  /**\n * @description 创建时间\n */\n  /** @example \"2025-11-10T10:00:00.000Z\" */\n  createdAt: string;\n}",
-    "PaginationVo": "export interface PaginationVo {\n  /**\n * @description 当前页码\n */\n  /** @example 1 */\n  page: number;\n  /**\n * @description 每页数量\n */\n  /** @example 20 */\n  pageSize: number;\n  /**\n * @description 总记录数\n */\n  /** @example 156 */\n  total: number;\n  /**\n * @description 总页数\n */\n  /** @example 8 */\n  totalPages: number;\n}",
-    "MockLogListVo": "export interface MockLogListVo {\n  /**\n * @description 日志列表\n */\n  list: MockLogVo[];\n  /**\n * @description 分页信息\n */\n  pagination: any;\n}",
-    "ClearLogsResultVo": "export interface ClearLogsResultVo {\n  /**\n * @description 消息\n */\n  /** @example \"Logs cleared\" */\n  message: string;\n  /**\n * @description 删除数量\n */\n  /** @example 100 */\n  deleted: number;\n}"
+    "RegisterDto": "export interface RegisterDto {\n  /** 邮箱地址 */\n  /** @example \"user@example.com\" */\n  email: string;\n  /** 用户名（3-20个字符，只能包含字母、数字、下划线） */\n  /** @example \"johndoe\" */\n  username: string;\n  /** 密码（8-32个字符，必须包含大小写字母和数字） */\n  /** @example \"Password123\" */\n  password: string;\n  /** 名 */\n  /** @example \"John\" */\n  firstName?: string;\n  /** 姓 */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /** 手机号码 */\n  /** @example \"13800138000\" */\n  phone?: string;\n}",
+    "RegisterResponseDto": "export interface RegisterResponseDto {\n  /** 用户名 */\n  /** @example \"johndoe\" */\n  username: string;\n  /** 邮箱地址 */\n  /** @example \"user@example.com\" */\n  email: string;\n  /** 提示信息 */\n  /** @example \"注册成功，请登录\" */\n  message: string;\n}",
+    "LoginDto": "export interface LoginDto {\n  /** 用户名或邮箱 */\n  /** @example \"admin@enterprise.local\" */\n  username: string;\n  /** 密码 */\n  /** @example \"admin123456\" */\n  password: string;\n}",
+    "AuthResponseDto": "export interface AuthResponseDto {\n  /** Access Token（访问令牌） */\n  /** @example \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\" */\n  accessToken: string;\n  /** Refresh Token（刷新令牌） */\n  /** @example \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\" */\n  refreshToken: string;\n  /** Token 类型 */\n  /** @example \"Bearer\" */\n  tokenType: string;\n  /** Access Token 过期时间（秒） */\n  /** @example 900 */\n  expiresIn: number;\n  /** 用户信息（不包含敏感ID） */\n  user: Record<string, never>;\n}",
+    "RefreshTokenDto": "export interface RefreshTokenDto {\n  /** Refresh Token */\n  /** @example \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\" */\n  refreshToken: string;\n}",
+    "UserResponseDto": "export interface UserResponseDto {\n  /** 邮箱地址 */\n  /** @example \"user@example.com\" */\n  email: string;\n  /** 用户名 */\n  /** @example \"johndoe\" */\n  username: string;\n  /** 名 */\n  /** @example \"John\" */\n  firstName?: string;\n  /** 姓 */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /** 头像 URL */\n  /** @example \"https://example.com/avatar.jpg\" */\n  avatar?: string;\n  /** 手机号码 */\n  /** @example \"13800138000\" */\n  phone?: string;\n  /** 账户是否激活 */\n  /** @example true */\n  isActive: boolean;\n  /** 账户是否已验证 */\n  /** @example true */\n  isVerified: boolean;\n  /** 最后登录时间 */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  lastLoginAt?: string;\n  /** 创建时间 */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  createdAt: string;\n  /** 更新时间 */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  updatedAt: string;\n  /** 用户角色列表 */\n  /** @example [\"admin\",\"user\"] */\n  roles?: string[];\n}",
+    "PaginationMetaDto": "export interface PaginationMetaDto {\n  /** 当前页码 */\n  /** @example 1 */\n  page: number;\n  /** 每页数量 */\n  /** @example 10 */\n  pageSize: number;\n  /** 总记录数 */\n  /** @example 100 */\n  total: number;\n  /** 总页数 */\n  /** @example 10 */\n  totalPages: number;\n  /** 是否有上一页 */\n  hasPreviousPage: boolean;\n  /** 是否有下一页 */\n  /** @example true */\n  hasNextPage: boolean;\n}",
+    "PaginatedUsersDto": "export interface PaginatedUsersDto {\n  /** 用户列表 */\n  data: UserResponseDto[];\n  /** 分页元数据 */\n  meta: any;\n}",
+    "UserStatisticsDto": "export interface UserStatisticsDto {\n  /** 用户总数 */\n  /** @example 1000 */\n  total: number;\n  /** 活跃用户数 */\n  /** @example 850 */\n  active: number;\n  /** 禁用用户数 */\n  /** @example 150 */\n  inactive: number;\n  /** 已验证邮箱用户数 */\n  /** @example 900 */\n  verified: number;\n  /** 未验证邮箱用户数 */\n  /** @example 100 */\n  unverified: number;\n  /** 今日新增用户数 */\n  /** @example 15 */\n  newToday: number;\n  /** 本周新增用户数 */\n  /** @example 50 */\n  newThisWeek: number;\n  /** 本月新增用户数 */\n  /** @example 200 */\n  newThisMonth: number;\n}",
+    "UpdateUserDto": "export interface UpdateUserDto {\n  /** 邮箱地址 */\n  /** @example \"user@example.com\" */\n  email?: string;\n  /** 用户名（3-20个字符，只能包含字母、数字、下划线） */\n  /** @example \"johndoe\" */\n  username?: string;\n  /** 名 */\n  /** @example \"John\" */\n  firstName?: string;\n  /** 姓 */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /** 头像 URL */\n  /** @example \"https://example.com/avatar.jpg\" */\n  avatar?: string;\n  /** 手机号码 */\n  /** @example \"13800138000\" */\n  phone?: string;\n  /** 账户是否激活 */\n  /** @example true */\n  isActive?: boolean;\n}",
+    "UpdateUserStatusDto": "export interface UpdateUserStatusDto {\n  /** 用户是否激活（true:激活, false:禁用） */\n  /** @example true */\n  isActive: boolean;\n}",
+    "ResetPasswordDto": "export interface ResetPasswordDto {\n  /** 新密码（至少8位，包含大小写字母、数字和特殊字符） */\n  /** @example \"NewPassword123!\" */\n  newPassword: string;\n}",
+    "AssignRolesDto": "export interface AssignRolesDto {\n  /** 角色ID数组（至少包含一个角色ID，不能重复） */\n  /** @example [1,2] */\n  roleIds: number[];\n}",
+    "BatchOperationDto": "export interface BatchOperationDto {\n  /** 用户ID数组（UUID格式，至少包含一个ID，不能重复） */\n  /** @example [\"550e8400-e29b-41d4-a716-446655440000\",\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\"] */\n  ids: string[];\n}",
+    "UpdateProfileDto": "export interface UpdateProfileDto {\n  /** 用户名（3-20个字符，只能包含字母、数字、下划线） */\n  /** @example \"johndoe\" */\n  username?: string;\n  /** 名 */\n  /** @example \"John\" */\n  firstName?: string;\n  /** 姓 */\n  /** @example \"Doe\" */\n  lastName?: string;\n  /** 手机号（可选，必须是有效的手机号格式） */\n  /** @example \"13800138000\" */\n  phone?: string;\n  /** 头像URL */\n  /** @example \"https://example.com/avatar.jpg\" */\n  avatar?: string;\n}",
+    "ChangePasswordDto": "export interface ChangePasswordDto {\n  /** 当前密码 */\n  /** @example \"OldPassword123!\" */\n  oldPassword: string;\n  /** 新密码（至少8位，包含大小写字母、数字和特殊字符） */\n  /** @example \"NewPassword123!\" */\n  newPassword: string;\n  /** 确认新密码（必须与新密码一致） */\n  /** @example \"NewPassword123!\" */\n  confirmPassword: string;\n}",
+    "UserSessionDto": "export interface UserSessionDto {\n  /** 会话ID */\n  /** @example \"session_123456\" */\n  sessionId: string;\n  /** 设备信息（User Agent） */\n  /** @example \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\" */\n  device: string;\n  /** 登录IP地址 */\n  /** @example \"192.168.1.100\" */\n  ipAddress: string;\n  /** 登录时间 */\n  /** @example \"2025-10-10T10:30:00.000Z\" */\n  loginAt: string;\n  /** 最后活跃时间 */\n  /** @example \"2025-10-10T12:45:00.000Z\" */\n  lastActivity: string;\n  /** 是否为当前会话 */\n  /** @example true */\n  isCurrent: boolean;\n}",
+    "CreateRoleDto": "export interface CreateRoleDto {\n  /** 角色名称（唯一，用于显示） */\n  /** @example \"系统管理员\" */\n  name: string;\n  /** 角色代码（唯一，用于程序识别，如\"ADMIN\"） */\n  /** @example \"ADMIN\" */\n  code: string;\n  /** 角色描述（详细说明角色的职责和权限范围） */\n  /** @example \"拥有系统最高权限，可以管理所有功能\" */\n  description?: string;\n}",
+    "RoleResponseDto": "export interface RoleResponseDto {\n  /** 角色ID */\n  /** @example 1 */\n  id: number;\n  /** 角色名称 */\n  /** @example \"系统管理员\" */\n  name: string;\n  /** 角色代码 */\n  /** @example \"ADMIN\" */\n  code: string;\n  /** 角色描述 */\n  /** @example \"拥有系统最高权限，可以管理所有功能\" */\n  description?: string;\n  /** 角色状态 */\n  /** @example true */\n  isActive: boolean;\n  /** 创建时间 */\n  /** @example \"2025-01-01T00:00:00.000Z\" */\n  createdAt: string;\n  /** 更新时间 */\n  /** @example \"2025-01-01T00:00:00.000Z\" */\n  updatedAt: string;\n  /** 关联的权限列表 */\n  permissions?: Record<string, never>[];\n}",
+    "PaginatedRolesDto": "export interface PaginatedRolesDto {\n  /** 角色数据列表 */\n  data: RoleResponseDto[];\n  /** 分页信息 */\n  meta: Record<string, never>;\n}",
+    "UpdateRoleDto": "export interface UpdateRoleDto {\n  /** 角色名称（唯一，用于显示） */\n  /** @example \"超级管理员\" */\n  name?: string;\n  /** 角色代码（唯一，用于程序识别，如\"SUPER_ADMIN\"） */\n  /** @example \"SUPER_ADMIN\" */\n  code?: string;\n  /** 角色描述（详细说明角色的职责和权限范围） */\n  /** @example \"拥有系统最高权限，可以管理所有功能和用户\" */\n  description?: string;\n}",
+    "UpdateRoleStatusDto": "export interface UpdateRoleStatusDto {\n  /** 角色状态（true表示启用，false表示禁用） */\n  /** @example true */\n  isActive: boolean;\n}",
+    "AssignPermissionsDto": "export interface AssignPermissionsDto {\n  /** 权限ID列表 */\n  /** @example [1,2,3] */\n  permissionIds: number[];\n}",
+    "CreatePermissionDto": "export interface CreatePermissionDto {\n  /** 权限名称（唯一，用于显示） */\n  /** @example \"创建用户\" */\n  name: string;\n  /** 权限代码（唯一，用于程序识别，如\"user:create\"） */\n  /** @example \"user:create\" */\n  code: string;\n  /** 资源类型（权限所属的资源，如\"user\"、\"role\"） */\n  /** @example \"user\" */\n  resource: string;\n  /** 操作动作（对资源的操作类型，如\"create\"、\"read\"、\"update\"、\"delete\"） */\n  /** @example \"create\" */\n  action: string;\n  /** 权限描述（详细说明权限的作用范围） */\n  /** @example \"允许创建新用户账户\" */\n  description?: string;\n}",
+    "PermissionResponseDto": "export interface PermissionResponseDto {\n  /** 权限ID */\n  /** @example 1 */\n  id: number;\n  /** 权限名称 */\n  /** @example \"创建用户\" */\n  name: string;\n  /** 权限代码 */\n  /** @example \"user:create\" */\n  code: string;\n  /** 资源类型 */\n  /** @example \"user\" */\n  resource: string;\n  /** 操作动作 */\n  /** @example \"create\" */\n  action: string;\n  /** 权限描述 */\n  /** @example \"允许创建新用户账户\" */\n  description?: string;\n  /** 权限状态 */\n  /** @example true */\n  isActive: boolean;\n  /** 创建时间 */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  createdAt: string;\n  /** 更新时间 */\n  /** @example \"2025-10-09T10:00:00.000Z\" */\n  updatedAt: string;\n}",
+    "PaginatedPermissionsDto": "export interface PaginatedPermissionsDto {\n  /** 权限列表 */\n  data: PermissionResponseDto[];\n  /** 分页元数据 */\n  meta: any;\n}",
+    "UpdatePermissionDto": "export interface UpdatePermissionDto {\n  /** 权限名称（唯一，用于显示） */\n  /** @example \"创建用户\" */\n  name?: string;\n  /** 权限代码（唯一，用于程序识别，如\"user:create\"） */\n  /** @example \"user:create\" */\n  code?: string;\n  /** 资源类型（权限所属的资源，如\"user\"、\"role\"） */\n  /** @example \"user\" */\n  resource?: string;\n  /** 操作动作（对资源的操作类型，如\"create\"、\"read\"、\"update\"、\"delete\"） */\n  /** @example \"create\" */\n  action?: string;\n  /** 权限描述（详细说明权限的作用范围） */\n  /** @example \"允许创建新用户账户\" */\n  description?: string;\n}",
+    "UpdatePermissionStatusDto": "export interface UpdatePermissionStatusDto {\n  /** 权限状态（true表示启用，false表示禁用） */\n  /** @example true */\n  isActive: boolean;\n}",
+    "UploadCsDevLoggerDto": "export interface UploadCsDevLoggerDto {\n  /** 操作名称 */\n  /** @example \"build:website\" */\n  action?: string;\n  /** 模块名称 */\n  /** @example \"website\" */\n  module?: string;\n  /** 日志级别 */\n  /** @example \"info\" */\n  level?: \"info\" | \"warn\" | \"error\" | \"debug\";\n  /** 执行时长 */\n  /** @example 100 */\n  duration?: number;\n  /** 执行状态 */\n  /** @example \"success\" */\n  status?: \"success\" | \"error\";\n  /** 日志参数 */\n  /** @example \"{\\\"key\\\": \\\"value\\\"}\" */\n  params?: string;\n  /** 执行结果 */\n  /** @example \"{\\\"key\\\": \\\"value\\\"}\" */\n  result?: string;\n  /** 错误信息 */\n  /** @example \"{\\\"key\\\": \\\"value\\\"}\" */\n  error?: string;\n  /** 项目名称 */\n  /** @example \"awesome-project\" */\n  projectName?: string;\n  /** 项目版本 */\n  /** @example \"1.0.0\" */\n  projectVersion?: string;\n  /** csui 组件库版本 */\n  /** @example \"1.0.0\" */\n  csuiVersion?: string;\n  /** csuim 组件库版本 */\n  /** @example \"1.0.0\" */\n  csuimVersion?: string;\n  /** ehome 版本 */\n  /** @example \"1.0.0\" */\n  ehomeVersion?: string;\n  /** csui 微应用版本 */\n  /** @example \"1.0.0\" */\n  csuiMicroAppVersion?: string;\n  /** csui eslint 配置版本 */\n  /** @example \"1.0.0\" */\n  csuiEslintConfigVersion?: string;\n  /** csdev 版本 */\n  /** @example \"1.0.0\" */\n  csdevVersion?: string;\n  /** 用户信息 */\n  /** @example \"{\\\"id\\\": 1, \\\"name\\\": \\\"John Doe\\\"}\" */\n  userInfo?: string;\n  /** 客户端时间戳（毫秒），用于记录客户端操作时间 */\n  /** @example 1699999999999 */\n  timestamp?: number;\n}",
+    "CsDevLogVo": "export interface CsDevLogVo {\n  /** 日志 ID */\n  id: string;\n  /** 操作名称 */\n  action: string;\n  /** 模块名称 */\n  module: string;\n  /** 日志级别 */\n  level: string;\n  /** 执行时长（毫秒） */\n  duration: number;\n  /** 执行状态 */\n  status: string;\n  /** 日志参数 */\n  params?: string;\n  /** 执行结果 */\n  result?: string;\n  /** 错误信息 */\n  error?: string;\n  /** 项目名称 */\n  projectName?: string;\n  /** 项目版本 */\n  projectVersion?: string;\n  /** csui 版本 */\n  csuiVersion?: string;\n  /** csuim 版本 */\n  csuimVersion?: string;\n  /** ehome 版本 */\n  ehomeVersion?: string;\n  /** csui 微应用版本 */\n  csuiMicroAppVersion?: string;\n  /** csui eslint 配置版本 */\n  csuiEslintConfigVersion?: string;\n  /** csdev 版本 */\n  csdevVersion?: string;\n  /** 用户信息 */\n  userInfo?: string;\n  /** 客户端时间戳（毫秒），用于记录客户端操作时间 */\n  timestamp?: number;\n  /** 创建时间 */\n  createdAt: string;\n}",
+    "PaginatedCsDevVo": "export interface PaginatedCsDevVo {\n  /** 数据列表 */\n  data: CsDevLogVo[];\n  /** 分页元数据 */\n  meta: any;\n}",
+    "StatsCsDevDto": "export interface StatsCsDevDto {\n  /** 按哪些字段分组 */\n  /** @example [\"action\"] */\n  groupBy?: string[];\n  /** 开始时间（ISO8601） */\n  startDate?: string;\n  /** 结束时间（ISO8601） */\n  endDate?: string;\n  /** 结果限制条数 */\n  /** @example 50 */\n  limit?: number;\n  /** 是否包含平均时长/总时长等聚合数据 */\n  /** @example true */\n  includeDurationAggregates?: boolean;\n}",
+    "CsDevStatsVo": "export interface CsDevStatsVo {\n  /** 分组键值对 */\n  /** @example \"{ action: 'build', module: 'website' }\" */\n  group: Record<string, never>;\n  /** 计数 */\n  /** @example 10 */\n  count: number;\n  /** 平均执行时长（毫秒） */\n  /** @example 100 */\n  avgDuration: number;\n  /** 总执行时长（毫秒） */\n  /** @example 1000 */\n  sumDuration: number;\n}",
+    "CreateCsProjectTemplateDto": "export interface CreateCsProjectTemplateDto {\n  /** 项目模板名称 */\n  /** @example \"Vue3 CSUIAdmin\" */\n  projectTemplateName: string;\n  /** 项目模板描述 */\n  /** @example \"这是一个 Vue3 的后台管理模板\" */\n  description?: string;\n  /** 项目模板 Git 仓库地址 */\n  /** @example \"https://github.com/example/template.git\" */\n  gitUrl: string;\n  /** 项目模板 Git 分支 */\n  /** @example \"main\" */\n  gitBranch: string;\n  /** 排序优先级（数字越小优先级越高） */\n  sortOrder?: number;\n}",
+    "ApiErrorResponse": "export interface ApiErrorResponse {\n  /** 错误码 */\n  /** @example \"S10000\" */\n  code: string;\n  /** 错误消息 */\n  /** @example \"系统内部错误\" */\n  message: string;\n  /** 错误数据（如验证错误详情等） */\n  data?: Record<string, never>;\n  /** 请求 ID，用于日志追踪 */\n  /** @example \"uuid-string\" */\n  requestId: string;\n  /** 错误发生的时间戳 */\n  /** @example \"2025-11-04T10:00:00+08:00\" */\n  timestamp: string;\n  /** 请求路径 */\n  /** @example \"/api/v1/users\" */\n  path: string;\n  /** 请求方法 */\n  /** @example \"POST\" */\n  method: \"GET\" | \"POST\" | \"PATCH\" | \"PUT\" | \"DELETE\" | \"HEAD\" | \"OPTIONS\";\n  /** 时区 */\n  /** @example \"Asia/Shanghai\" */\n  timezone?: string;\n}",
+    "ApiSuccessResponse": "export interface ApiSuccessResponse<T = any> {\n  /** 响应码，成功时为 200 */\n  /** @example \"200\" */\n  code: string;\n  /** 响应消息 */\n  /** @example \"success\" */\n  message: string;\n  /** 响应数据 */\n  data: T;\n  /** 请求 ID，用于日志追踪 */\n  /** @example \"uuid-string\" */\n  requestId: string;\n  /** 响应时间戳（使用指定的时区） */\n  /** @example \"2025-11-04T10:00:00+08:00\" */\n  timestamp: string;\n  /** 时区（告诉客户端响应中日期字段使用的时区） */\n  /** @example \"Asia/Shanghai\" */\n  timezone: string;\n}",
+    "ProjectTemplateResponseVO": "export interface ProjectTemplateResponseVO {\n  /** 模板ID */\n  /** @example \"uuid-string\" */\n  id: string;\n  /** 项目模板名称 */\n  /** @example \"Vue3 CSUIAdmin\" */\n  projectTemplateName: string;\n  /** 项目模板描述 */\n  /** @example \"这是一个 Vue3 的后台管理模板\" */\n  description: any;\n  /** 项目模板 Git 仓库地址 */\n  /** @example \"https://github.com/example/template.git\" */\n  gitUrl: string;\n  /** 项目模板 Git 分支 */\n  /** @example \"main\" */\n  gitBranch: string;\n  /** 排序优先级 */\n  sortOrder: number;\n  /** 创建时间 */\n  /** @example \"2025-11-03T00:00:00Z\" */\n  createdAt: string;\n  /** 更新时间 */\n  /** @example \"2025-11-03T00:00:00Z\" */\n  updatedAt: string;\n}",
+    "UpdateCsProjectTemplateDto": "export interface UpdateCsProjectTemplateDto {\n  /** 项目模板名称 */\n  /** @example \"Vue3 CSUIAdmin\" */\n  projectTemplateName?: string;\n  /** 项目模板描述 */\n  /** @example \"这是一个 Vue3 的后台管理模板\" */\n  description?: string;\n  /** 项目模板 Git 仓库地址 */\n  /** @example \"https://github.com/example/template.git\" */\n  gitUrl?: string;\n  /** 项目模板 Git 分支 */\n  /** @example \"main\" */\n  gitBranch?: string;\n  /** 排序优先级（数字越小优先级越高） */\n  sortOrder?: number;\n}",
+    "PaginatedProjectTemplatesVO": "export interface PaginatedProjectTemplatesVO {\n  /** 项目模板列表 */\n  data: ProjectTemplateResponseVO[];\n  /** 分页元数据 */\n  meta: any;\n}",
+    "MockEndpointVo": "export interface MockEndpointVo {\n  /** Mock 端点 ID */\n  /** @example \"cm001\" */\n  id: string;\n  /** Mock 端点名称 */\n  /** @example \"获取用户列表\" */\n  name: string;\n  /** Mock 端点描述 */\n  /** @example \"返回用户列表的 Mock 数据\" */\n  description?: string;\n  /** Mock 端点路径 */\n  /** @example \"/users\" */\n  path: string;\n  /** HTTP 请求方法 */\n  /** @example \"GET\" */\n  method: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /** 是否启用 */\n  /** @example true */\n  enabled: boolean;\n  /** HTTP 响应状态码 */\n  /** @example 200 */\n  statusCode: number;\n  /** 响应延迟时间(毫秒) */\n  delay: number;\n  /** 响应模板 */\n  /** @example \"{\\\"code\\\": 200, \\\"data\\\": []}\" */\n  responseTemplate?: string;\n  /** 模板引擎类型 */\n  /** @example \"MOCKJS\" */\n  templateEngine: \"MOCKJS\" | \"JSON\";\n  /** 自定义响应头 */\n  /** @example {\"X-Custom-Header\":\"value\"} */\n  headers?: Record<string, never>;\n  /** 请求参数校验规则 */\n  /** @example {\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}}} */\n  validation?: Record<string, never>;\n  /** 创建人 */\n  /** @example \"admin\" */\n  createdBy?: string;\n  /** 创建时间 */\n  /** @example \"2025-11-10T10:00:00.000Z\" */\n  createdAt: string;\n  /** 更新时间 */\n  /** @example \"2025-11-10T10:05:00.000Z\" */\n  updatedAt: string;\n  /** 版本号 */\n  /** @example 1 */\n  version: number;\n}",
+    "CreateMockEndpointDto": "export interface CreateMockEndpointDto {\n  /** Mock 端点名称 */\n  /** @example \"获取用户列表\" */\n  name: string;\n  /** Mock 端点描述 */\n  /** @example \"返回用户列表的 Mock 数据\" */\n  description?: string;\n  /** Mock 端点路径 (支持动态参数, 如 /users/:id) */\n  /** @example \"/users\" */\n  path: string;\n  /** HTTP 请求方法 */\n  /** @example \"GET\" */\n  method: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /** 是否启用 */\n  /** @example true */\n  enabled?: boolean;\n  /** HTTP 响应状态码 */\n  /** @example 200 */\n  statusCode: number;\n  /** 响应延迟时间(毫秒) */\n  delay: number;\n  /** 响应模板 (支持 JSON 对象或 JSON 字符串, 支持 MockJS 语法) */\n  /** @example {\"code\":200,\"data|10\":[{\"id|+1\":1,\"name\":\"@cname\"}]} */\n  responseTemplate: Record<string, never>;\n  /** 模板引擎类型 */\n  /** @example \"MOCKJS\" */\n  templateEngine?: \"MOCKJS\" | \"JSON\";\n  /** 自定义响应头 */\n  /** @example {\"X-Custom-Header\":\"value\"} */\n  headers?: Record<string, never>;\n  /** 请求参数校验规则 (JSON Schema) */\n  /** @example {\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}}} */\n  validation?: Record<string, never>;\n  /** 创建人 */\n  /** @example \"admin\" */\n  createdBy?: string;\n}",
+    "UpdateMockEndpointDto": "export interface UpdateMockEndpointDto {\n  /** Mock 端点名称 */\n  /** @example \"获取用户列表\" */\n  name?: string;\n  /** Mock 端点描述 */\n  /** @example \"返回用户列表的 Mock 数据\" */\n  description?: string;\n  /** HTTP 请求方法 */\n  /** @example \"GET\" */\n  method?: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /** 是否启用 */\n  /** @example true */\n  enabled?: boolean;\n  /** HTTP 响应状态码 */\n  /** @example 200 */\n  statusCode?: number;\n  /** 响应延迟时间(毫秒) */\n  delay?: number;\n  /** 响应模板 (支持 JSON 对象或 JSON 字符串) */\n  /** @example {\"code\":200,\"data\":[]} */\n  responseTemplate?: Record<string, never>;\n  /** 模板引擎类型 */\n  /** @example \"MOCKJS\" */\n  templateEngine?: \"MOCKJS\" | \"JSON\";\n  /** 自定义响应头 */\n  /** @example {\"X-Custom-Header\":\"value\"} */\n  headers?: Record<string, never>;\n  /** 请求参数校验规则 */\n  validation?: Record<string, never>;\n}",
+    "MockEndpointListVo": "export interface MockEndpointListVo {\n  /** 数据列表 */\n  items: MockEndpointVo[];\n  /** 总数 */\n  /** @example 100 */\n  total: number;\n  /** 当前页码 */\n  /** @example 1 */\n  page: number;\n  /** 每页数量 */\n  /** @example 20 */\n  pageSize: number;\n  /** 总页数 */\n  /** @example 5 */\n  totalPages: number;\n}",
+    "DeleteResultVo": "export interface DeleteResultVo {\n  /** 消息 */\n  /** @example \"已删除\" */\n  message: string;\n}",
+    "ClearCacheResultVo": "export interface ClearCacheResultVo {\n  /** 消息 */\n  /** @example \"缓存已清除\" */\n  message: string;\n}",
+    "BatchOperationResultVo": "export interface BatchOperationResultVo {\n  /** 成功数量 */\n  /** @example 5 */\n  success: number;\n  /** 失败数量 */\n  failed: number;\n  /** 失败的 ID 列表 */\n  /** @example [\"uuid-1\",\"uuid-2\"] */\n  failedIds?: string[];\n}",
+    "BatchOperationMockEndpointsDto": "export interface BatchOperationMockEndpointsDto {\n  /** Mock 端点 ID 列表 */\n  /** @example [\"cm001\",\"cm002\",\"cm003\"] */\n  ids: string[];\n}",
+    "ImportConfigResultVo": "export interface ImportConfigResultVo {\n  /** 成功数量 */\n  /** @example 10 */\n  success: number;\n  /** 失败数量 */\n  failed: number;\n  /** 跳过数量 */\n  /** @example 2 */\n  skipped: number;\n  /** 成功导入的端点 (path + method 组合) */\n  /** @example [\"GET /users\",\"POST /users\",\"GET /articles\"] */\n  successEndpoints: string[];\n  /** 跳过的端点 (path + method 组合) */\n  /** @example [\"GET /users/123\"] */\n  skippedEndpoints?: string[];\n  /** 失败的端点 (path + method 组合) */\n  /** @example [\"GET /invalid\"] */\n  failedEndpoints?: string[];\n}",
+    "ImportConfigDto": "export interface ImportConfigDto {\n  /** Mock 端点配置列表 */\n  endpoints: CreateMockEndpointDto[];\n  /** 是否覆盖已存在的配置 (相同 path + method) */\n  overwrite?: boolean;\n}",
+    "MockStatsVo": "export interface MockStatsVo {\n  /** Mock 端点总数 */\n  /** @example 15 */\n  totalEndpoints: number;\n  /** 已启用的端点数 */\n  /** @example 12 */\n  enabledEndpoints: number;\n  /** 已禁用的端点数 */\n  /** @example 3 */\n  disabledEndpoints: number;\n  /** 总调用次数 */\n  /** @example 2456 */\n  totalCalls: number;\n  /** 最近调用次数 */\n  /** @example 100 */\n  recentCalls: number;\n  /** 平均响应时间(ms) */\n  /** @example 14 */\n  avgResponseTime: number;\n  /** 缓存命中率(%) */\n  /** @example 92.5 */\n  cacheHitRate: number;\n}",
+    "MockLogVo": "export interface MockLogVo {\n  /** 日志 ID */\n  /** @example \"log001\" */\n  id: string;\n  /** Mock 端点 ID */\n  /** @example \"cm001\" */\n  endpointId?: string;\n  /** 请求方法 */\n  /** @example \"GET\" */\n  method: string;\n  /** 请求路径 */\n  /** @example \"/api/mock/users\" */\n  path: string;\n  /** Query 参数 */\n  /** @example {\"page\":1,\"pageSize\":10} */\n  query?: Record<string, never>;\n  /** Body 参数 */\n  body?: Record<string, never>;\n  /** 请求头 */\n  headers?: Record<string, never>;\n  /** 客户端 IP */\n  /** @example \"127.0.0.1\" */\n  ip?: string;\n  /** 响应数据 */\n  response?: Record<string, never>;\n  /** 响应状态码 */\n  /** @example 200 */\n  statusCode: number;\n  /** 执行时长(ms) */\n  /** @example 15 */\n  duration: number;\n  /** 是否缓存命中 */\n  /** @example true */\n  cacheHit: boolean;\n  /** 创建时间 */\n  /** @example \"2025-11-10T10:00:00.000Z\" */\n  createdAt: string;\n}",
+    "PaginationVo": "export interface PaginationVo {\n  /** 当前页码 */\n  /** @example 1 */\n  page: number;\n  /** 每页数量 */\n  /** @example 20 */\n  pageSize: number;\n  /** 总记录数 */\n  /** @example 156 */\n  total: number;\n  /** 总页数 */\n  /** @example 8 */\n  totalPages: number;\n}",
+    "MockLogListVo": "export interface MockLogListVo {\n  /** 日志列表 */\n  list: MockLogVo[];\n  /** 分页信息 */\n  pagination: any;\n}",
+    "ClearLogsResultVo": "export interface ClearLogsResultVo {\n  /** 消息 */\n  /** @example \"Logs cleared\" */\n  message: string;\n  /** 删除数量 */\n  /** @example 100 */\n  deleted: number;\n}",
+    "UsersControllerFindAllQueryParams": "export interface UsersControllerFindAllQueryParams {\n  /** 页码 */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** 搜索关键词（用户名、邮箱、姓名） */\n  keyword?: string;\n  /** 是否激活 */\n  isActive?: boolean;\n  /** 是否验证 */\n  isVerified?: boolean;\n  /** 角色代码 */\n  role?: string;\n  /** 排序字段 */\n  sortBy?: \"createdAt\" | \"updatedAt\" | \"lastLoginAt\" | \"email\" | \"username\";\n  /** 排序方向 */\n  order?: \"asc\" | \"desc\";\n}",
+    "LogsControllerFindApiLogsQueryParams": "export interface LogsControllerFindApiLogsQueryParams {\n  /** 页码 */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** HTTP 方法 */\n  method?: string;\n  /** 请求路径 */\n  url?: string;\n  /** 状态码 */\n  statusCode?: number;\n  /** 用户 ID（UUID格式） */\n  userId?: string;\n  /** 开始日期 */\n  startDate?: string;\n  /** 结束日期 */\n  endDate?: string;\n}",
+    "MockProxyControllerHandleMockRequestGetPathParams": "export interface MockProxyControllerHandleMockRequestGetPathParams {\n  path: string;\n}",
+    "LogsControllerFindApiLogByRequestIdPathParams": "export interface LogsControllerFindApiLogByRequestIdPathParams {\n  requestId: string;\n}",
+    "CsdevControllerListQueryParams": "export interface CsdevControllerListQueryParams {\n  /** 操作名称，精确匹配 */\n  action?: string;\n  /** 模块名称，精确匹配 */\n  module?: string;\n  /** 日志级别 */\n  level?: string;\n  /** 执行状态 */\n  status?: string;\n  /** 关联项目名称 */\n  projectName?: string;\n  /** 开始时间（ISO8601） */\n  startDate?: string;\n  /** 结束时间（ISO8601） */\n  endDate?: string;\n  /** 最小执行时长（毫秒） */\n  minDuration?: number;\n  /** 最大执行时长（毫秒） */\n  maxDuration?: number;\n  /** 页码，默认 1 */\n  page?: number;\n  /** 每页大小，默认 10 */\n  pageSize?: number;\n  /** 排序字段，例如 createdAt 或 duration */\n  sortField?: string;\n  /** 排序方向 asc|desc */\n  sortOrder?: string;\n}",
+    "CsProjectTemplatesControllerFindAllPaginatedQueryParams": "export interface CsProjectTemplatesControllerFindAllPaginatedQueryParams {\n  /** 页码（从1开始） */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** 搜索关键词（匹配项目名称和描述） */\n  keyword?: string;\n  /** 排序字段 */\n  sortBy?: \"projectTemplateName\" | \"sortOrder\" | \"createdAt\" | \"updatedAt\";\n  /** 排序方向 */\n  order?: \"asc\" | \"desc\";\n  /** 是否获取全部数据（不分页），传 1 时忽略 page 和 pageSize 参数 */\n  fetchAll?: number;\n}",
+    "MockControllerListQueryParams": "export interface MockControllerListQueryParams {\n  /** 页码 */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** 关键字搜索 (匹配名称、描述、路径) */\n  keyword?: string;\n  /** 请求方法筛选 */\n  method?: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /** 模板引擎筛选 */\n  templateEngine?: \"MOCKJS\" | \"JSON\";\n  /** 启用状态筛选 */\n  enabled?: boolean;\n  /** 创建人筛选 */\n  createdBy?: string;\n}",
+    "MockProxyControllerHandleMockRequestPostPathParams": "export interface MockProxyControllerHandleMockRequestPostPathParams {\n  path: string;\n}",
+    "UsersControllerFindOnePathParams": "export interface UsersControllerFindOnePathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "LogsControllerFindErrorLogsQueryParams": "export interface LogsControllerFindErrorLogsQueryParams {\n  /** 页码 */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** 错误代码 */\n  errorCode?: string;\n  /** 用户 ID（UUID格式） */\n  userId?: string;\n  /** 开始日期 */\n  startDate?: string;\n  /** 结束日期 */\n  endDate?: string;\n}",
+    "RolesControllerFindAllPaginatedQueryParams": "export interface RolesControllerFindAllPaginatedQueryParams {\n  /** 页码（从1开始） */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** 搜索关键词（角色名称、代码或描述） */\n  keyword?: string;\n  /** 角色状态筛选 */\n  isActive?: boolean;\n  /** 排序字段 */\n  sortBy?: \"createdAt\" | \"updatedAt\" | \"name\" | \"code\";\n  /** 排序方向 */\n  order?: \"asc\" | \"desc\";\n}",
+    "PermissionsControllerFindAllPaginatedQueryParams": "export interface PermissionsControllerFindAllPaginatedQueryParams {\n  /** 页码（从1开始） */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** 搜索关键词（匹配权限名称、代码、描述） */\n  keyword?: string;\n  /** 资源类型筛选 */\n  resource?: string;\n  /** 操作动作筛选 */\n  action?: string;\n  /** 权限状态筛选 */\n  isActive?: boolean;\n  /** 排序字段 */\n  sortBy?: \"createdAt\" | \"updatedAt\" | \"name\" | \"code\" | \"resource\" | \"action\";\n  /** 排序方向 */\n  order?: \"asc\" | \"desc\";\n}",
+    "CsProjectTemplatesControllerFindOnePathParams": "export interface CsProjectTemplatesControllerFindOnePathParams {\n  id: string;\n}",
+    "MockProxyControllerHandleMockRequestPutPathParams": "export interface MockProxyControllerHandleMockRequestPutPathParams {\n  path: string;\n}",
+    "UsersControllerUpdatePathParams": "export interface UsersControllerUpdatePathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "LogsControllerFindAuditLogsQueryParams": "export interface LogsControllerFindAuditLogsQueryParams {\n  /** 页码 */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** 操作类型 */\n  action?: \"CREATE\" | \"UPDATE\" | \"DELETE\";\n  /** 资源类型 */\n  resource?: string;\n  /** 用户 ID（UUID格式） */\n  userId?: string;\n  /** 开始日期 */\n  startDate?: string;\n  /** 结束日期 */\n  endDate?: string;\n}",
+    "RolesControllerFindOneQueryParams": "export interface RolesControllerFindOneQueryParams {\n  /** 是否包含权限信息 */\n  includePermissions?: boolean;\n}",
+    "RolesControllerFindOnePathParams": "export interface RolesControllerFindOnePathParams {\n  /** 角色ID */\n  id: number;\n}",
+    "PermissionsControllerFindOnePathParams": "export interface PermissionsControllerFindOnePathParams {\n  /** 权限ID */\n  id: number;\n}",
+    "CsdevControllerGetOnePathParams": "export interface CsdevControllerGetOnePathParams {\n  id: string;\n}",
+    "CsProjectTemplatesControllerUpdatePathParams": "export interface CsProjectTemplatesControllerUpdatePathParams {\n  id: string;\n}",
+    "MockProxyControllerHandleMockRequestDeletePathParams": "export interface MockProxyControllerHandleMockRequestDeletePathParams {\n  path: string;\n}",
+    "UsersControllerRemovePathParams": "export interface UsersControllerRemovePathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "LogsControllerGetStatisticsQueryParams": "export interface LogsControllerGetStatisticsQueryParams {\n  startDate: string;\n  endDate: string;\n}",
+    "RolesControllerUpdatePathParams": "export interface RolesControllerUpdatePathParams {\n  /** 角色ID */\n  id: number;\n}",
+    "PermissionsControllerUpdatePathParams": "export interface PermissionsControllerUpdatePathParams {\n  /** 权限ID */\n  id: number;\n}",
+    "CsProjectTemplatesControllerRemovePathParams": "export interface CsProjectTemplatesControllerRemovePathParams {\n  id: string;\n}",
+    "MockControllerGetLogsQueryParams": "export interface MockControllerGetLogsQueryParams {\n  /** 页码 */\n  page?: number;\n  /** 每页数量 */\n  pageSize?: number;\n  /** Mock 端点 ID (精确匹配) */\n  endpointId?: string;\n  /** 请求方法 (精确匹配) */\n  method?: \"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\";\n  /** 请求路径 (模糊匹配) */\n  path?: string;\n}",
+    "MockProxyControllerHandleMockRequestPatchPathParams": "export interface MockProxyControllerHandleMockRequestPatchPathParams {\n  path: string;\n}",
+    "UsersControllerUpdateStatusPathParams": "export interface UsersControllerUpdateStatusPathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "RolesControllerRemovePathParams": "export interface RolesControllerRemovePathParams {\n  /** 角色ID */\n  id: number;\n}",
+    "PermissionsControllerRemovePathParams": "export interface PermissionsControllerRemovePathParams {\n  /** 权限ID */\n  id: number;\n}",
+    "MockControllerClearLogsQueryParams": "export interface MockControllerClearLogsQueryParams {\n  endpointId: string;\n}",
+    "MockProxyControllerHandleMockRequestOptionsPathParams": "export interface MockProxyControllerHandleMockRequestOptionsPathParams {\n  path: string;\n}",
+    "UsersControllerVerifyUserPathParams": "export interface UsersControllerVerifyUserPathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "RolesControllerFindByCodePathParams": "export interface RolesControllerFindByCodePathParams {\n  /** 角色代码 */\n  code: string;\n}",
+    "PermissionsControllerUpdateStatusPathParams": "export interface PermissionsControllerUpdateStatusPathParams {\n  /** 权限ID */\n  id: number;\n}",
+    "MockControllerGetPathParams": "export interface MockControllerGetPathParams {\n  id: string;\n}",
+    "MockProxyControllerHandleMockRequestHeadPathParams": "export interface MockProxyControllerHandleMockRequestHeadPathParams {\n  path: string;\n}",
+    "UsersControllerResetPasswordPathParams": "export interface UsersControllerResetPasswordPathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "RolesControllerUpdateStatusPathParams": "export interface RolesControllerUpdateStatusPathParams {\n  /** 角色ID */\n  id: number;\n}",
+    "MockControllerUpdatePathParams": "export interface MockControllerUpdatePathParams {\n  id: string;\n}",
+    "UsersControllerAssignRolesPathParams": "export interface UsersControllerAssignRolesPathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "RolesControllerAssignPermissionsPathParams": "export interface RolesControllerAssignPermissionsPathParams {\n  /** 角色ID */\n  id: number;\n}",
+    "PermissionsControllerBatchDeleteQueryParams": "export interface PermissionsControllerBatchDeleteQueryParams {\n  /** 权限ID数组，多个ID用逗号分隔 */\n  ids: string;\n}",
+    "MockControllerRemovePathParams": "export interface MockControllerRemovePathParams {\n  id: string;\n}",
+    "UsersControllerGetUserRolesPathParams": "export interface UsersControllerGetUserRolesPathParams {\n  /** 用户 ID */\n  id: string;\n}",
+    "RolesControllerGetRolePermissionsPathParams": "export interface RolesControllerGetRolePermissionsPathParams {\n  /** 角色ID */\n  id: number;\n}",
+    "MockControllerEnablePathParams": "export interface MockControllerEnablePathParams {\n  id: string;\n}",
+    "UsersControllerRemoveRolePathParams": "export interface UsersControllerRemoveRolePathParams {\n  /** 用户 ID */\n  id: string;\n  /** 角色 ID */\n  roleId: number;\n}",
+    "MockControllerDisablePathParams": "export interface MockControllerDisablePathParams {\n  id: string;\n}",
+    "RolesControllerBatchDeleteQueryParams": "export interface RolesControllerBatchDeleteQueryParams {\n  /** 角色ID列表 */\n  ids: number[];\n}"
   },
   "apis": [
     {
@@ -2577,62 +3739,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_findAllQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "keyword": {
-                "name": "keyword",
-                "type": "string",
-                "required": false,
-                "description": "搜索关键词（用户名、邮箱、姓名）"
-              },
-              "isActive": {
-                "name": "isActive",
-                "type": "boolean",
-                "required": false,
-                "description": "是否激活"
-              },
-              "isVerified": {
-                "name": "isVerified",
-                "type": "boolean",
-                "required": false,
-                "description": "是否验证"
-              },
-              "role": {
-                "name": "role",
-                "type": "string",
-                "required": false,
-                "description": "角色代码"
-              },
-              "sortBy": {
-                "name": "sortBy",
-                "type": "\"createdAt\" | \"updatedAt\" | \"lastLoginAt\" | \"email\" | \"username\"",
-                "required": false,
-                "description": "排序字段"
-              },
-              "order": {
-                "name": "order",
-                "type": "\"asc\" | \"desc\"",
-                "required": false,
-                "description": "排序方向"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "UsersControllerFindAllQueryParams"
         }
       },
       "responses": {
@@ -2717,62 +3825,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "LogsController_findApiLogsQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "method": {
-                "name": "method",
-                "type": "string",
-                "required": false,
-                "description": "HTTP 方法"
-              },
-              "url": {
-                "name": "url",
-                "type": "string",
-                "required": false,
-                "description": "请求路径"
-              },
-              "statusCode": {
-                "name": "statusCode",
-                "type": "number",
-                "required": false,
-                "description": "状态码"
-              },
-              "userId": {
-                "name": "userId",
-                "type": "string",
-                "required": false,
-                "description": "用户 ID（UUID格式）"
-              },
-              "startDate": {
-                "name": "startDate",
-                "type": "string",
-                "required": false,
-                "description": "开始日期"
-              },
-              "endDate": {
-                "name": "endDate",
-                "type": "string",
-                "required": false,
-                "description": "结束日期"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "LogsControllerFindApiLogsQueryParams"
         }
       },
       "responses": {
@@ -3030,21 +4084,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockProxyController_handleMockRequest_getPathParams",
-            "type": "object",
-            "properties": {
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["path"]
-          }
+          "type": "ref",
+          "ref": "MockProxyControllerHandleMockRequestGetPathParams"
         }
       },
       "responses": {
@@ -3161,21 +4202,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "LogsController_findApiLogByRequestIdPathParams",
-            "type": "object",
-            "properties": {
-              "requestId": {
-                "name": "requestId",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["requestId"]
-          }
+          "type": "ref",
+          "ref": "LogsControllerFindApiLogByRequestIdPathParams"
         }
       },
       "responses": {
@@ -3258,92 +4286,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "CsdevController_listQueryParams",
-            "type": "object",
-            "properties": {
-              "action": {
-                "name": "action",
-                "type": "string",
-                "required": false,
-                "description": "操作名称，精确匹配"
-              },
-              "module": {
-                "name": "module",
-                "type": "string",
-                "required": false,
-                "description": "模块名称，精确匹配"
-              },
-              "level": {
-                "name": "level",
-                "type": "string",
-                "required": false,
-                "description": "日志级别"
-              },
-              "status": {
-                "name": "status",
-                "type": "string",
-                "required": false,
-                "description": "执行状态"
-              },
-              "projectName": {
-                "name": "projectName",
-                "type": "string",
-                "required": false,
-                "description": "关联项目名称"
-              },
-              "startDate": {
-                "name": "startDate",
-                "type": "string",
-                "required": false,
-                "description": "开始时间（ISO8601）"
-              },
-              "endDate": {
-                "name": "endDate",
-                "type": "string",
-                "required": false,
-                "description": "结束时间（ISO8601）"
-              },
-              "minDuration": {
-                "name": "minDuration",
-                "type": "number",
-                "required": false,
-                "description": "最小执行时长（毫秒）"
-              },
-              "maxDuration": {
-                "name": "maxDuration",
-                "type": "number",
-                "required": false,
-                "description": "最大执行时长（毫秒）"
-              },
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码，默认 1"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页大小，默认 10"
-              },
-              "sortField": {
-                "name": "sortField",
-                "type": "string",
-                "required": false,
-                "description": "排序字段，例如 createdAt 或 duration"
-              },
-              "sortOrder": {
-                "name": "sortOrder",
-                "type": "string",
-                "required": false,
-                "description": "排序方向 asc|desc"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "CsdevControllerListQueryParams"
         }
       },
       "responses": {
@@ -3375,50 +4319,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "CsProjectTemplatesController_findAllPaginatedQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码（从1开始）"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "keyword": {
-                "name": "keyword",
-                "type": "string",
-                "required": false,
-                "description": "搜索关键词（匹配项目名称和描述）"
-              },
-              "sortBy": {
-                "name": "sortBy",
-                "type": "\"projectTemplateName\" | \"sortOrder\" | \"createdAt\" | \"updatedAt\"",
-                "required": false,
-                "description": "排序字段"
-              },
-              "order": {
-                "name": "order",
-                "type": "\"asc\" | \"desc\"",
-                "required": false,
-                "description": "排序方向"
-              },
-              "fetchAll": {
-                "name": "fetchAll",
-                "type": "number",
-                "required": false,
-                "description": "是否获取全部数据（不分页），传 1 时忽略 page 和 pageSize 参数"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "CsProjectTemplatesControllerFindAllPaginatedQueryParams"
         }
       },
       "responses": {
@@ -3450,56 +4352,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_listQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "keyword": {
-                "name": "keyword",
-                "type": "string",
-                "required": false,
-                "description": "关键字搜索 (匹配名称、描述、路径)"
-              },
-              "method": {
-                "name": "method",
-                "type": "\"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\"",
-                "required": false,
-                "description": "请求方法筛选"
-              },
-              "templateEngine": {
-                "name": "templateEngine",
-                "type": "\"MOCKJS\" | \"JSON\"",
-                "required": false,
-                "description": "模板引擎筛选"
-              },
-              "enabled": {
-                "name": "enabled",
-                "type": "boolean",
-                "required": false,
-                "description": "启用状态筛选"
-              },
-              "createdBy": {
-                "name": "createdBy",
-                "type": "string",
-                "required": false,
-                "description": "创建人筛选"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "MockControllerListQueryParams"
         }
       },
       "responses": {
@@ -3531,21 +4385,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockProxyController_handleMockRequest_postPathParams",
-            "type": "object",
-            "properties": {
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["path"]
-          }
+          "type": "ref",
+          "ref": "MockProxyControllerHandleMockRequestPostPathParams"
         }
       },
       "responses": {
@@ -3611,21 +4452,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_findOnePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerFindOnePathParams"
         }
       },
       "responses": {
@@ -3693,50 +4521,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "LogsController_findErrorLogsQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "errorCode": {
-                "name": "errorCode",
-                "type": "string",
-                "required": false,
-                "description": "错误代码"
-              },
-              "userId": {
-                "name": "userId",
-                "type": "string",
-                "required": false,
-                "description": "用户 ID（UUID格式）"
-              },
-              "startDate": {
-                "name": "startDate",
-                "type": "string",
-                "required": false,
-                "description": "开始日期"
-              },
-              "endDate": {
-                "name": "endDate",
-                "type": "string",
-                "required": false,
-                "description": "结束日期"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "LogsControllerFindErrorLogsQueryParams"
         }
       },
       "responses": {
@@ -3760,50 +4546,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_findAllPaginatedQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码（从1开始）"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "keyword": {
-                "name": "keyword",
-                "type": "string",
-                "required": false,
-                "description": "搜索关键词（角色名称、代码或描述）"
-              },
-              "isActive": {
-                "name": "isActive",
-                "type": "boolean",
-                "required": false,
-                "description": "角色状态筛选"
-              },
-              "sortBy": {
-                "name": "sortBy",
-                "type": "\"createdAt\" | \"updatedAt\" | \"name\" | \"code\"",
-                "required": false,
-                "description": "排序字段"
-              },
-              "order": {
-                "name": "order",
-                "type": "\"asc\" | \"desc\"",
-                "required": false,
-                "description": "排序方向"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "RolesControllerFindAllPaginatedQueryParams"
         }
       },
       "responses": {
@@ -3835,62 +4579,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "PermissionsController_findAllPaginatedQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码（从1开始）"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "keyword": {
-                "name": "keyword",
-                "type": "string",
-                "required": false,
-                "description": "搜索关键词（匹配权限名称、代码、描述）"
-              },
-              "resource": {
-                "name": "resource",
-                "type": "string",
-                "required": false,
-                "description": "资源类型筛选"
-              },
-              "action": {
-                "name": "action",
-                "type": "string",
-                "required": false,
-                "description": "操作动作筛选"
-              },
-              "isActive": {
-                "name": "isActive",
-                "type": "boolean",
-                "required": false,
-                "description": "权限状态筛选"
-              },
-              "sortBy": {
-                "name": "sortBy",
-                "type": "\"createdAt\" | \"updatedAt\" | \"name\" | \"code\" | \"resource\" | \"action\"",
-                "required": false,
-                "description": "排序字段"
-              },
-              "order": {
-                "name": "order",
-                "type": "\"asc\" | \"desc\"",
-                "required": false,
-                "description": "排序方向"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "PermissionsControllerFindAllPaginatedQueryParams"
         }
       },
       "responses": {
@@ -3961,21 +4651,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "CsProjectTemplatesController_findOnePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "CsProjectTemplatesControllerFindOnePathParams"
         }
       },
       "responses": {
@@ -4048,21 +4725,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockProxyController_handleMockRequest_putPathParams",
-            "type": "object",
-            "properties": {
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["path"]
-          }
+          "type": "ref",
+          "ref": "MockProxyControllerHandleMockRequestPutPathParams"
         }
       },
       "responses": {
@@ -4109,21 +4773,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_updatePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerUpdatePathParams"
         }
       },
       "responses": {
@@ -4172,56 +4823,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "LogsController_findAuditLogsQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "action": {
-                "name": "action",
-                "type": "\"CREATE\" | \"UPDATE\" | \"DELETE\"",
-                "required": false,
-                "description": "操作类型"
-              },
-              "resource": {
-                "name": "resource",
-                "type": "string",
-                "required": false,
-                "description": "资源类型"
-              },
-              "userId": {
-                "name": "userId",
-                "type": "string",
-                "required": false,
-                "description": "用户 ID（UUID格式）"
-              },
-              "startDate": {
-                "name": "startDate",
-                "type": "string",
-                "required": false,
-                "description": "开始日期"
-              },
-              "endDate": {
-                "name": "endDate",
-                "type": "string",
-                "required": false,
-                "description": "结束日期"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "LogsControllerFindAuditLogsQueryParams"
         }
       },
       "responses": {
@@ -4245,37 +4848,12 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_findOneQueryParams",
-            "type": "object",
-            "properties": {
-              "includePermissions": {
-                "name": "includePermissions",
-                "type": "boolean",
-                "required": false,
-                "description": "是否包含权限信息"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "RolesControllerFindOneQueryParams"
         },
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_findOnePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "角色ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerFindOnePathParams"
         }
       },
       "responses": {
@@ -4310,21 +4888,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "PermissionsController_findOnePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "权限ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "PermissionsControllerFindOnePathParams"
         }
       },
       "responses": {
@@ -4359,21 +4924,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "CsdevController_getOnePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "CsdevControllerGetOnePathParams"
         }
       },
       "responses": {
@@ -4405,21 +4957,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "CsProjectTemplatesController_updatePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "CsProjectTemplatesControllerUpdatePathParams"
         }
       },
       "responses": {
@@ -4516,21 +5055,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockProxyController_handleMockRequest_deletePathParams",
-            "type": "object",
-            "properties": {
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["path"]
-          }
+          "type": "ref",
+          "ref": "MockProxyControllerHandleMockRequestDeletePathParams"
         }
       },
       "responses": {
@@ -4577,21 +5103,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_removePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerRemovePathParams"
         }
       },
       "responses": {
@@ -4618,26 +5131,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "LogsController_getStatisticsQueryParams",
-            "type": "object",
-            "properties": {
-              "startDate": {
-                "name": "startDate",
-                "type": "string",
-                "required": true,
-                "description": ""
-              },
-              "endDate": {
-                "name": "endDate",
-                "type": "string",
-                "required": true,
-                "description": ""
-              }
-            },
-            "required": ["startDate", "endDate"]
-          }
+          "type": "ref",
+          "ref": "LogsControllerGetStatisticsQueryParams"
         }
       },
       "responses": {
@@ -4661,21 +5156,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_updatePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "角色ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerUpdatePathParams"
         }
       },
       "responses": {
@@ -4724,21 +5206,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "PermissionsController_updatePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "权限ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "PermissionsControllerUpdatePathParams"
         }
       },
       "responses": {
@@ -4787,21 +5256,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "CsProjectTemplatesController_removePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "CsProjectTemplatesControllerRemovePathParams"
         }
       },
       "responses": {
@@ -4846,44 +5302,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_getLogsQueryParams",
-            "type": "object",
-            "properties": {
-              "page": {
-                "name": "page",
-                "type": "number",
-                "required": false,
-                "description": "页码"
-              },
-              "pageSize": {
-                "name": "pageSize",
-                "type": "number",
-                "required": false,
-                "description": "每页数量"
-              },
-              "endpointId": {
-                "name": "endpointId",
-                "type": "string",
-                "required": false,
-                "description": "Mock 端点 ID (精确匹配)"
-              },
-              "method": {
-                "name": "method",
-                "type": "\"GET\" | \"POST\" | \"PUT\" | \"DELETE\" | \"PATCH\" | \"ALL\"",
-                "required": false,
-                "description": "请求方法 (精确匹配)"
-              },
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": false,
-                "description": "请求路径 (模糊匹配)"
-              }
-            },
-            "required": []
-          }
+          "type": "ref",
+          "ref": "MockControllerGetLogsQueryParams"
         }
       },
       "responses": {
@@ -4915,21 +5335,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockProxyController_handleMockRequest_patchPathParams",
-            "type": "object",
-            "properties": {
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["path"]
-          }
+          "type": "ref",
+          "ref": "MockProxyControllerHandleMockRequestPatchPathParams"
         }
       },
       "responses": {
@@ -4953,21 +5360,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_updateStatusPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerUpdateStatusPathParams"
         }
       },
       "responses": {
@@ -5013,21 +5407,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_removePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "角色ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerRemovePathParams"
         }
       },
       "responses": {
@@ -5057,21 +5438,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "PermissionsController_removePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "权限ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "PermissionsControllerRemovePathParams"
         }
       },
       "responses": {
@@ -5098,20 +5466,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_clearLogsQueryParams",
-            "type": "object",
-            "properties": {
-              "endpointId": {
-                "name": "endpointId",
-                "type": "string",
-                "required": true,
-                "description": ""
-              }
-            },
-            "required": ["endpointId"]
-          }
+          "type": "ref",
+          "ref": "MockControllerClearLogsQueryParams"
         }
       },
       "responses": {
@@ -5143,21 +5499,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockProxyController_handleMockRequest_optionsPathParams",
-            "type": "object",
-            "properties": {
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["path"]
-          }
+          "type": "ref",
+          "ref": "MockProxyControllerHandleMockRequestOptionsPathParams"
         }
       },
       "responses": {
@@ -5181,21 +5524,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_verifyUserPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerVerifyUserPathParams"
         }
       },
       "responses": {
@@ -5233,21 +5563,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_findByCodePathParams",
-            "type": "object",
-            "properties": {
-              "code": {
-                "name": "code",
-                "type": "string",
-                "required": true,
-                "description": "角色代码",
-                "example": ""
-              }
-            },
-            "required": ["code"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerFindByCodePathParams"
         }
       },
       "responses": {
@@ -5282,21 +5599,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "PermissionsController_updateStatusPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "权限ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "PermissionsControllerUpdateStatusPathParams"
         }
       },
       "responses": {
@@ -5342,21 +5646,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_getPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "MockControllerGetPathParams"
         }
       },
       "responses": {
@@ -5388,21 +5679,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockProxyController_handleMockRequest_headPathParams",
-            "type": "object",
-            "properties": {
-              "path": {
-                "name": "path",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["path"]
-          }
+          "type": "ref",
+          "ref": "MockProxyControllerHandleMockRequestHeadPathParams"
         }
       },
       "responses": {
@@ -5426,21 +5704,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_resetPasswordPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerResetPasswordPathParams"
         }
       },
       "responses": {
@@ -5478,21 +5743,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_updateStatusPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "角色ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerUpdateStatusPathParams"
         }
       },
       "responses": {
@@ -5558,21 +5810,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_updatePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "MockControllerUpdatePathParams"
         }
       },
       "responses": {
@@ -5615,21 +5854,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_assignRolesPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerAssignRolesPathParams"
         }
       },
       "responses": {
@@ -5675,21 +5901,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_assignPermissionsPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "角色ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerAssignPermissionsPathParams"
         }
       },
       "responses": {
@@ -5735,20 +5948,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "PermissionsController_batchDeleteQueryParams",
-            "type": "object",
-            "properties": {
-              "ids": {
-                "name": "ids",
-                "type": "string",
-                "required": true,
-                "description": "权限ID数组，多个ID用逗号分隔"
-              }
-            },
-            "required": ["ids"]
-          }
+          "type": "ref",
+          "ref": "PermissionsControllerBatchDeleteQueryParams"
         }
       },
       "responses": {
@@ -5782,21 +5983,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_removePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "MockControllerRemovePathParams"
         }
       },
       "responses": {
@@ -5828,21 +6016,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_getUserRolesPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerGetUserRolesPathParams"
         }
       },
       "responses": {
@@ -5869,21 +6044,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_getRolePermissionsPathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "number",
-                "required": true,
-                "description": "角色ID",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerGetRolePermissionsPathParams"
         }
       },
       "responses": {
@@ -5892,8 +6054,10 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "ref",
-                "ref": "Record<string, never>[]"
+                "type": "inline",
+                "schema": {
+                  "type": "array"
+                }
               }
             }
           }
@@ -5918,21 +6082,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_enablePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "MockControllerEnablePathParams"
         }
       },
       "responses": {
@@ -5964,28 +6115,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "UsersController_removeRolePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "用户 ID",
-                "example": ""
-              },
-              "roleId": {
-                "name": "roleId",
-                "type": "number",
-                "required": true,
-                "description": "角色 ID",
-                "example": ""
-              }
-            },
-            "required": ["id", "roleId"]
-          }
+          "type": "ref",
+          "ref": "UsersControllerRemoveRolePathParams"
         }
       },
       "responses": {
@@ -6042,21 +6173,8 @@
       },
       "parameters": {
         "path": {
-          "type": "inline",
-          "schema": {
-            "name": "MockController_disablePathParams",
-            "type": "object",
-            "properties": {
-              "id": {
-                "name": "id",
-                "type": "string",
-                "required": true,
-                "description": "",
-                "example": ""
-              }
-            },
-            "required": ["id"]
-          }
+          "type": "ref",
+          "ref": "MockControllerDisablePathParams"
         }
       },
       "responses": {
@@ -6122,20 +6240,8 @@
       },
       "parameters": {
         "query": {
-          "type": "inline",
-          "schema": {
-            "name": "RolesController_batchDeleteQueryParams",
-            "type": "object",
-            "properties": {
-              "ids": {
-                "name": "ids",
-                "type": "number[]",
-                "required": true,
-                "description": "角色ID列表"
-              }
-            },
-            "required": ["ids"]
-          }
+          "type": "ref",
+          "ref": "RolesControllerBatchDeleteQueryParams"
         }
       },
       "responses": {
@@ -6523,7 +6629,7 @@
     }
   ],
   "metadata": {
-    "generatedAt": "2025-11-20T09:47:01.855Z",
+    "generatedAt": "2025-11-21T01:28:26.340Z",
     "source": "Apifox",
     "title": "Apifox Generated API"
   }
