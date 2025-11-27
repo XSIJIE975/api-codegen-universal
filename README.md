@@ -6,16 +6,19 @@
 
 > 通用的 API 代码生成器，基于 [openapi-typescript](https://github.com/openapi-ts/openapi-typescript) 强大的 AST 生成能力，提供更高级的 TypeScript 类型定义和接口代码生成。
 
-## ✨ 特性
+## 🔌 支持的 API 规范与平台
 
-- 🚀 **多种输入方式** - 支持本地文件、远程 URL、JSON 对象、Buffer 及 Readable Stream
-- 🏗️ **基于 AST** - 利用 `openapi-typescript` 生成 AST，确保类型转换的准确性和可靠性
-- 📝 **TypeScript 接口生成** - 自动生成可直接使用的 TS 接口定义（支持 `export` 或 `declare`）
-- 🎯 **OpenAPI 3.x 支持** - 完整支持 OpenAPI 3.0/3.1 规范
-- 🔄 **泛型自动识别** - 智能检测并转换泛型类型（如 `PageResult<T>`）
-- 📁 **智能路径分类** - 自动分析 API 路径结构，生成合理的文件目录层级
-- ⚙️ **灵活配置** - 支持自定义命名风格、输出内容控制、路径前缀处理等
-- 🛠️ **高级扩展** - 直接暴露 `openapi-typescript` 的 `transform` 钩子，支持深度定制类型转换
+- ✅ **OpenAPI (Swagger) 3.0 / 3.1** - 完整支持标准规范，无论是 JSON 还是 YAML
+- ✅ **Apifox** - 直接对接 Apifox 云端项目，支持自动同步最新 API 定义
+
+## ✨ 核心亮点
+
+- 💎 **类型精准** - 基于 AST 生成，完美还原 OpenAPI 类型系统，支持复杂嵌套与泛型
+- 🔄 **智能泛型** - 自动识别 `Page<T>`, `Result<T>` 等泛型结构，告别 `any`，还原真实的泛型调用
+- 📂 **结构清晰** - 智能分析 URL 路径，自动生成符合项目结构的目录层级，拒绝扁平化的大杂烩
+- 🦊 **Apifox 深度集成** - 专为 Apifox 用户优化，支持直接拉取项目数据，无需手动导出文件
+- 🛠️ **高度定制** - 从命名风格到输出内容，一切皆可配置，满足不同团队的规范要求
+- ⚡ **开箱即用** - 自动生成 TypeScript 接口与 API 请求代码，无缝集成到前端项目
 
 ## 📦 安装
 
@@ -66,6 +69,46 @@ const openapiSpec = {
 };
 
 const result = await adapter.parse(openapiSpec);
+```
+
+### Apifox 项目支持
+
+直接从 Apifox 项目同步 API 定义，无需手动导出文件。
+具体参数参照[官方API文档](https://apifox-openapi.apifox.cn/api-173411997)
+
+```typescript
+import { ApifoxAdapter, ApifoxConfig } from 'api-codegen-universal';
+
+const adapter = new ApifoxAdapter();
+
+const config: ApifoxConfig = {
+  projectId: 'YOUR_PROJECT_ID', // Apifox 项目 ID
+  token: 'YOUR_ACCESS_TOKEN', // Apifox 访问令牌
+  // 可选：导出配置
+  exportOptions: {
+    scope: {
+      type: 'ALL', // 导出全部接口
+      // 或者指定接口:
+      // type: 'SELECTED_ENDPOINTS',
+      // selectedEndpointIds: [123, 456]
+    },
+  },
+};
+
+const result = await adapter.parse(config, {
+  // 支持所有 OpenAPIAdapter 的配置项
+  pathClassification: {
+    outputPrefix: 'api',
+    commonPrefix: '/api/v1',
+  },
+  codeGeneration: {
+    output: {
+      schemas: true,
+      interfaces: true,
+      apis: true,
+    },
+  },
+});
 ```
 
 ## ⚙️ 配置选项
