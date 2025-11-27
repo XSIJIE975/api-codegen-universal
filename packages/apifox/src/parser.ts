@@ -1,401 +1,171 @@
-// src/adapters/apifox/parser.ts
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import SwaggerParser from '@apidevtools/swagger-parser';
+import type { IAdapter, StandardOutput } from '@api-codegen-universal/core';
+import {
+  InputSource,
+  OpenAPIAdapter,
+  type OpenAPIOptions,
+} from '@api-codegen-universal/openapi';
 import type {
-  ApiDefinition,
-  SchemaDefinition,
-  PropertyDefinition,
-  SchemaReference,
-  HttpMethod,
-  ParametersDefinition,
-  ResponseDefinition,
-  SchemaType,
-  StandardOutput,
-  NamingStyle
-} from '@api-codegen-universal/core';
-import type {
-  ApifoxApiDetail,
-  ApifoxJsonSchema,
-  ApifoxParameter
+  ApifoxAdapterOptions,
+  ApifoxConfig,
+  ApifoxExportToOpenAPIOptions,
 } from './types';
-import { PathClassifier, SchemaIdResolver, NamingUtils } from './utils';
 
-/**
- * 解析上下文
- */
-export interface ParsingContext {
-  schemas: StandardOutput['schemas'];
-  interfaces: StandardOutput['interfaces'];
-  shouldGenerateSchemas: boolean;
-  shouldGenerateInterfaces: boolean;
-  namingStyle: NamingStyle;
-}
-
-export class ApifoxParser {
-  constructor(
-    private resolver: SchemaIdResolver,
-    private classifier: PathClassifier
-  ) {}
-
-  // ================= API 解析部分 =================
-
-  parseApi(detail: ApifoxApiDetail, context: ParsingContext): ApiDefinition {
-    const method = detail.method.toUpperCase() as HttpMethod;
-    // 如果没有 operationId，生成一个默认的
-    const rawOperationId = detail.operationId || this.generateOperationId(method, detail.path);
-    
-    // 保持 OperationId 在 API 定义中的原样 (或者你可以选择这里也格式化，通常 OperationId 是给函数名用的)
-    const operationId = rawOperationId;
-
-    const api: ApiDefinition = {
-      path: detail.path,
-      method,
-      operationId,
-      summary: detail.name,
-      description: detail.description,
-      tags: detail.tags || [],
-      category: this.classifier.classify(detail.path),
-      parameters: {},
-      responses: {}
-    };
-
-    // 1. 处理参数 (Query, Path, Header)
-    // 提取为独立的 Schema 并引用
-    if (detail.parameters) {
-      const paramsDef: ParametersDefinition = {};
-      
-      // 使用 NamingUtils 转换名字，使其符合 PascalCase 等规范
-      const baseParamsName = NamingUtils.convert(operationId, 'PascalCase');
-
-      if (detail.parameters.query?.length) {
-        paramsDef.query = this.processAndRegisterParams(
-          detail.parameters.query, 
-          `${baseParamsName}QueryParams`, 
-          context
-        );
-      }
-      if (detail.parameters.path?.length) {
-        paramsDef.path = this.processAndRegisterParams(
-          detail.parameters.path, 
-          `${baseParamsName}PathParams`, 
-          context
-        );
-      }
-      if (detail.parameters.header?.length) {
-        paramsDef.header = this.processAndRegisterParams(
-          detail.parameters.header, 
-          `${baseParamsName}HeaderParams`, 
-          context
-        );
-      }
-      
-      if (Object.keys(paramsDef).length > 0) {
-        api.parameters = paramsDef;
-      }
-    }
-
-    // 2. 处理 Request Body
-    if (detail.requestBody && detail.requestBody.type === 'application/json' && detail.requestBody.jsonSchema) {
-      api.requestBody = {
-        required: true,
-        content: {
-          'application/json': {
-            schema: this.convertJsonSchemaToReference(detail.requestBody.jsonSchema)
-          }
-        }
-      };
-    }
-
-    // 3. 处理 Responses
-    if (detail.responses) {
-      detail.responses.forEach(resp => {
-        const statusCode = String(resp.code);
-        const responseDef: ResponseDefinition = {
-          description: resp.name || 'Response'
-        };
-
-        if (resp.contentType === 'json' && resp.jsonSchema) {
-          responseDef.content = {
-            'application/json': {
-              schema: this.convertJsonSchemaToReference(resp.jsonSchema)
-            }
-          };
-        }
-        api.responses[statusCode] = responseDef;
-      });
-    }
-
-    return api;
+export class ApifoxAdapter
+  implements IAdapter<ApifoxAdapterOptions, ApifoxConfig>
+{
+  /**
+   * 验证配置有效性
+   */
+  async validate(source: ApifoxConfig): Promise<boolean> {
+    return !!(source && source.projectId && source.token);
   }
 
   /**
-   * 处理参数列表：转换为 SchemaDefinition，注册到 Context，并返回引用
+   * 解析主入口
    */
-  private processAndRegisterParams(
-    params: ApifoxParameter[], 
-    schemaName: string, 
-    context: ParsingContext
-  ): SchemaReference {
-    // 1. 转换为标准 Schema 属性
-    const properties: Record<string, PropertyDefinition> = {};
-    const required: string[] = [];
-
-    params.forEach(p => {
-      if (p.enable === false) return;
-      if (p.required) required.push(p.name);
-
-      let type = 'string';
-      if (p.schema) {
-        type = this.getTsType(p.schema);
-      } else if (p.type) {
-        type = p.type === 'integer' ? 'number' : (p.type || 'string');
+  async parse(
+    source: ApifoxConfig,
+    options: ApifoxAdapterOptions = {},
+  ): Promise<StandardOutput> {
+    console.log(
+      `[ApifoxAdapter] Starting export for project: ${source.projectId}`,
+    );
+    let openApiData = await this.fetchOpenApiData(source);
+    openApiData = this.fixOpenApiCompatibility(openApiData);
+    // 校验数据格式是否符合 OpenAPI 标准
+    try {
+      console.log(`[ApifoxAdapter] Validating OpenAPI format...`);
+      await SwaggerParser.validate(JSON.parse(JSON.stringify(openApiData)));
+      console.log(`[ApifoxAdapter] OpenAPI Validation Passed.`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error(`[ApifoxAdapter] Validation Failed: ${err.message}`);
+        throw new Error(
+          `Invalid OpenAPI data received from Apifox: ${err.message}`,
+        );
       }
+    }
+    console.log(`[ApifoxAdapter] Converting using OpenAPIAdapter...`);
 
-      properties[p.name] = {
-        name: p.name,
-        type,
-        required: !!p.required,
-        description: p.description,
-        example: p.example
-      };
-    });
+    const openApiAdapter = new OpenAPIAdapter();
 
-    const schemaDef: SchemaDefinition = {
-      name: schemaName,
-      type: 'object',
-      properties,
-      required
-    };
+    const result = await openApiAdapter.parse(
+      openApiData as InputSource,
+      options as OpenAPIOptions,
+    );
 
-    // 2. 注册到全局 schemas
-    if (context.shouldGenerateSchemas) {
-      context.schemas[schemaName] = schemaDef;
+    if (result.metadata) {
+      result.metadata.source = `Apifox Project ${source.projectId}`;
+      result.metadata.generatedAt = new Date().toISOString();
     }
 
-    // 3. 生成并注册 Interface
-    if (context.shouldGenerateInterfaces) {
-      context.interfaces[schemaName] = this.generateInterfaceCode(schemaDef);
-    }
-
-    // 4. 返回引用
-    return {
-      type: 'ref',
-      ref: schemaName
-    };
+    return result;
   }
 
-  // ================= Schema 解析部分 =================
+  /**
+   * 修复 Apifox 导出数据中不符合 OpenAPI 3.0/3.1 标准的地方
+   */
+  private fixOpenApiCompatibility(data: any): any {
+    if (!data) return data;
 
-  parseSchema(jsonSchema: ApifoxJsonSchema, name: string): SchemaDefinition {
-    const def: SchemaDefinition = {
-      name,
-      type: 'object', // 默认为 object，后面会修正
-      description: jsonSchema.description
-    };
-
-    // 处理泛型 (关键修改点)
-    // 简单判别规则：名字是 ApiSuccessResponse 或者名字包含 PageResult 等通用泛型名
-    // 这里可以做成配置，或者写死几个常见的
-    const genericFieldNames = ['data', 'items']; // 常见的泛型字段名
-    const isLikelyGeneric = name === 'ApiSuccessResponse' || name.startsWith('PageResult');
-
-    if (isLikelyGeneric) {
-      def.type = 'generic';
-      def.isGeneric = true;
-      def.baseType = name;
-    } else if (jsonSchema.type) {
-      def.type = this.mapSchemaType(jsonSchema.type);
-    } else if (jsonSchema.enum) {
-      def.type = 'enum';
-    }
-
-    // 处理 Object 属性
-    if (jsonSchema.properties) {
-      def.properties = {};
-      for (const [key, propSchema] of Object.entries(jsonSchema.properties)) {
-        const isRequired = jsonSchema.required?.includes(key) ?? false;
-        
-        // 如果是泛型容器，且当前字段是泛型字段（如 data），强制类型为 'any' (对应 TS 的 T)
-        let overrideType: string | undefined;
-        if (def.isGeneric && genericFieldNames.includes(key)) {
-           overrideType = 'any';
-        }
-
-        def.properties[key] = this.convertProperty(key, propSchema, isRequired, overrideType);
-      }
-      if (jsonSchema.required) {
-        def.required = jsonSchema.required;
-      }
-    }
-
-    // 处理 Array Items
-    if (jsonSchema.items) {
-      def.items = this.convertJsonSchemaToReference(jsonSchema.items);
-      def.type = 'array';
-    }
-
-    // 处理 Enum
-    if (jsonSchema.enum) {
-      def.type = 'enum';
-      def.enum = jsonSchema.enum;
-    }
-
-    return def;
-  }
-
-  // ================= 代码生成部分 =================
-
-  generateInterfaceCode(schema: SchemaDefinition): string {
-    const lines: string[] = [];
-    const isEnum = schema.type === 'enum';
-    
-    if (isEnum) {
-      lines.push(`export enum ${schema.name} {`);
-      schema.enum?.forEach(val => {
-        if (typeof val === 'string') {
-          lines.push(`  ${val} = "${val}",`);
-        } else {
-          lines.push(`  Value${val} = ${val},`);
+    // 1. 修复 Security Schemes 定义问题
+    // type: http 的 scheme 不允许包含 'name' 和 'in' 字段
+    if (data.components?.securitySchemes) {
+      Object.values(data.components.securitySchemes).forEach((scheme: any) => {
+        if (scheme.type === 'http') {
+          delete scheme.name; // 删除非标字段
+          delete scheme.in; // 删除非标字段
         }
       });
-      lines.push('}');
-      return lines.join('\n');
     }
 
-    // 处理 Generic 定义
-    let declaration = `export interface ${schema.name}`;
-    if (schema.isGeneric) { 
-       declaration += '<T = any>';
+    // 2. 修复 Paths 中的 Security 定义问题
+    // security 数组中的对象 key 只能是 Scheme Name，不能包含 x-apifox 等扩展字段
+    if (data.paths) {
+      Object.values(data.paths).forEach((pathItem: any) => {
+        // 遍历所有 HTTP 方法 (get, post, put, etc.)
+        [
+          'get',
+          'post',
+          'put',
+          'delete',
+          'patch',
+          'options',
+          'head',
+          'trace',
+        ].forEach((method) => {
+          if (pathItem[method] && pathItem[method].security) {
+            const security = pathItem[method].security;
+            if (Array.isArray(security)) {
+              security.forEach((secItem: any) => {
+                // 删除 secItem 中所有以 'x-' 开头的 key
+                Object.keys(secItem).forEach((key) => {
+                  if (key.toLowerCase().startsWith('x-')) {
+                    delete secItem[key];
+                  }
+                });
+              });
+            }
+          }
+        });
+      });
     }
 
-    lines.push(`${declaration} {`);
-
-    if (schema.properties) {
-      for (const prop of Object.values(schema.properties)) {
-        if (prop.description) {
-          lines.push(`  /**\n   * @description ${prop.description.replace(/\n/g, ' ')}\n   */`);
-        }
-        if (prop.example) {
-           lines.push(`  /** @example ${JSON.stringify(prop.example)} */`);
-        }
-        
-        const required = prop.required ? '' : '?';
-        let typeStr = prop.type;
-
-        // 如果是泛型容器，且字段类型被标记为 any (在 parseSchema 阶段处理过)，
-        // 在生成的 Interface 字符串中我们将其视为 T
-        if (schema.isGeneric && typeStr === 'any' && ['data', 'items'].includes(prop.name)) {
-            typeStr = 'T';
-        }
-
-        lines.push(`  ${prop.name}${required}: ${typeStr};`);
-      }
-    }
-    lines.push('}');
-
-    return lines.join('\n');
+    return data;
   }
 
-  // ================= 内部 Helper 方法 =================
+  /**
+   * 请求 Apifox 开放 API
+   */
+  private async fetchOpenApiData(config: ApifoxConfig): Promise<unknown> {
+    const baseUrl = 'https://api.apifox.com/v1';
+    const url = `${baseUrl}/projects/${config.projectId}/export-openapi`;
 
-  private mapSchemaType(type: string): SchemaType {
-    switch (type) {
-      case 'integer':
-      case 'number':
-      case 'boolean':
-      case 'string':
-        return 'primitive';
-      case 'array':
-        return 'array';
-      case 'object':
-      default:
-        return 'object';
-    }
-  }
-
-  private convertProperty(name: string, schema: ApifoxJsonSchema, required: boolean, overrideType?: string): PropertyDefinition {
-    return {
-      name,
-      required,
-      type: overrideType || this.getTsType(schema),
-      description: schema.description,
-      example: schema.examples?.[0] || schema.default,
-      enum: schema.enum,
-      format: schema.format,
-      minLength: schema.minLength,
-      maxLength: schema.maxLength
+    const requestBody: ApifoxExportToOpenAPIOptions = {
+      exportFormat: 'JSON',
+      oasVersion: '3.0',
+      scope: {
+        type: 'ALL',
+      },
+      options: {
+        addFoldersToTags: false,
+        includeApifoxExtensionProperties: false,
+      },
+      ...config.exportOptions,
     };
-  }
 
-  private getTsType(schema: ApifoxJsonSchema): string {
-    if (schema.$ref) {
-      const refName = this.resolver.resolveRef(schema.$ref);
-      return refName || 'any';
+    if (config.exportOptions?.scope) {
+      requestBody.scope = config.exportOptions.scope;
     }
-
-    if (schema.type === 'array' && schema.items) {
-      const itemType = this.getTsType(schema.items);
-      return `${itemType}[]`;
+    if (config.exportOptions?.options) {
+      requestBody.options = {
+        ...requestBody.options,
+        ...config.exportOptions.options,
+      };
     }
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.token}`,
+          'X-Apifox-Api-Version': config.apiVersion || '2024-03-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-    // 处理 Apifox 导出特有的 allOf 泛型结构 (组合模式)
-    if (schema.allOf) {
-        const refs = schema.allOf.map(s => s.$ref ? this.resolver.resolveRef(s.$ref) : null).filter(Boolean);
-        // 查找 inline 对象中含有 data 属性的
-        const inlineData = schema.allOf.find(s => s.properties && s.properties.data);
-        
-        if (refs.length > 0 && inlineData) {
-             const baseType = refs[0];
-             const dataType = this.getTsType(inlineData.properties!.data!);
-             return `${baseType}<${dataType}>`;
-        }
-        if (refs.length > 1) {
-            return refs.join(' & ');
-        }
-    }
-
-    switch (schema.type) {
-      case 'integer':
-      case 'number':
-        return 'number';
-      case 'boolean':
-        return 'boolean';
-      case 'string':
-        if (schema.enum) {
-          return schema.enum.map(e => `"${e}"`).join(' | ');
-        }
-        return 'string';
-      case 'object':
-        return 'Record<string, never>'; 
-      default:
-        return 'any';
-    }
-  }
-
-  private convertJsonSchemaToReference(schema: ApifoxJsonSchema): SchemaReference {
-    if (schema.$ref) {
-      const name = this.resolver.resolveRef(schema.$ref);
-      if (name) {
-        return { type: 'ref', ref: name };
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Apifox Export API Failed: [${response.status}] ${errorText}`,
+        );
       }
+      return await response.json();
+    } catch (error) {
+      console.error('[ApifoxAdapter] Network Request Error:', error);
+      throw error;
     }
-    
-    // 检测是否是泛型类型字符串 (e.g. "ApiSuccessResponse<UserDto>")
-    const typeStr = this.getTsType(schema);
-    if (typeStr.includes('<') && typeStr.endsWith('>')) {
-         return { type: 'ref', ref: typeStr };
-    }
-
-    return {
-      type: 'inline',
-      schema: {
-        type: this.mapSchemaType(schema.type || 'object')
-      }
-    };
-  }
-
-  private generateOperationId(method: string, path: string): string {
-    const segments = path.split('/').filter(s => s && !s.includes('{'));
-    const name = segments.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
-    return `${method.toLowerCase()}${name}`;
   }
 }

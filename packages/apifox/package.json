@@ -24,7 +24,8 @@
     "dev": "rslib build --watch"
   },
   "dependencies": {
-    "@api-codegen-universal/core": "workspace:*"
+    "@api-codegen-universal/core": "workspace:*",
+    "@api-codegen-universal/openapi": "workspace:*"
   },
   "devDependencies": {
     "@rslib/core": "^0.17.2"
