@@ -132,7 +132,7 @@ const result = await adapter.parse('./swagger.json', {
 ```typescript
 const result = await adapter.parse('./swagger.json', {
   codeGeneration: {
-    parameterNamingStyle: 'PascalCase', // 参数接口命名风格: 'PascalCase' | 'camelCase' | 'snake_case' | 'kebab-case'
+    parameterNamingStyle: 'PascalCase', // 参数接口命名风格: 'PascalCase' | 'camelCase' | 'snake_case'
     interfaceExportMode: 'export', // 接口导出模式: 'export' (默认) | 'declare'
 
     output: {
