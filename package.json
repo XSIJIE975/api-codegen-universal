@@ -55,15 +55,16 @@
     "commitlint": "commitlint --edit"
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "@redocly/openapi-core": "^2.11.1",
     "js-yaml": "^4.1.1",
     "openapi-typescript": "^7.10.1",
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@api-codegen-universal/apifox": "workspace:*",
     "@api-codegen-universal/core": "workspace:*",
     "@api-codegen-universal/openapi": "workspace:*",
-    "@api-codegen-universal/apifox": "workspace:*",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.39.0",
