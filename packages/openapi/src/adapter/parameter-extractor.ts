@@ -7,7 +7,7 @@ import ts from 'typescript';
 import type {
   SchemaDefinition,
   ParametersDefinition,
-  NamingStyle
+  NamingStyle,
 } from '@api-codegen-universal/core';
 import {
   extractOperationIdReference,
@@ -228,15 +228,6 @@ export class ParameterExtractor {
           .replace(/[A-Z]/g, (letter, index) =>
             index === 0 ? letter.toLowerCase() : '_' + letter.toLowerCase(),
           );
-
-      case 'kebab-case':
-        // AuthController_register_Query_Params -> auth-controller-register-query-params
-        return name
-          .toLowerCase()
-          .replace(/[A-Z]/g, (letter, index) =>
-            index === 0 ? letter.toLowerCase() : '-' + letter.toLowerCase(),
-          )
-          .replace(/_/g, '-');
 
       default:
         return name;

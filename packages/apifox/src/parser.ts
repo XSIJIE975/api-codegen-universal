@@ -36,9 +36,7 @@ export class ApifoxAdapter
     openApiData = this.fixOpenApiCompatibility(openApiData);
     // 校验数据格式是否符合 OpenAPI 标准
     try {
-      console.log(`[ApifoxAdapter] Validating OpenAPI format...`);
       await SwaggerParser.validate(JSON.parse(JSON.stringify(openApiData)));
-      console.log(`[ApifoxAdapter] OpenAPI Validation Passed.`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error(`[ApifoxAdapter] Validation Failed: ${err.message}`);
