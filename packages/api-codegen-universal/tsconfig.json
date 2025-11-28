@@ -1,18 +1,15 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "composite": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "moduleResolution": "bundler" 
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
   "references": [
-    {
-      "path": "../core"
-    },
-    {
-      "path": "../openapi"
-    }
+    { "path": "../core" },
+    { "path": "../openapi" },
+    { "path": "../apifox" }
   ]
 }

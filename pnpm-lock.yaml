@@ -7,6 +7,51 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      '@changesets/changelog-github':
+        specifier: ^0.5.1
+        version: 0.5.1
+      '@changesets/cli':
+        specifier: ^2.29.7
+        version: 2.29.7(@types/node@24.10.1)
+      '@commitlint/cli':
+        specifier: ^20.1.0
+        version: 20.1.0(@types/node@24.10.1)(typescript@5.9.3)
+      '@commitlint/config-conventional':
+        specifier: ^20.0.0
+        version: 20.0.0
+      '@eslint/js':
+        specifier: ^9.39.0
+        version: 9.39.1
+      '@rstest/core':
+        specifier: ^0.6.3
+        version: 0.6.5
+      '@types/node':
+        specifier: ^24.10.0
+        version: 24.10.1
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.1(jiti@2.6.1)
+      globals:
+        specifier: ^16.4.0
+        version: 16.5.0
+      husky:
+        specifier: ^9.1.7
+        version: 9.1.7
+      lint-staged:
+        specifier: ^16.2.6
+        version: 16.2.6
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.46.2
+        version: 8.46.4(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
+
+  packages/api-codegen-universal:
     dependencies:
       '@apidevtools/swagger-parser':
         specifier: ^12.1.0
@@ -26,28 +71,13 @@ importers:
     devDependencies:
       '@api-codegen-universal/apifox':
         specifier: workspace:*
-        version: link:packages/apifox
+        version: link:../apifox
       '@api-codegen-universal/core':
         specifier: workspace:*
-        version: link:packages/core
+        version: link:../core
       '@api-codegen-universal/openapi':
         specifier: workspace:*
-        version: link:packages/openapi
-      '@changesets/changelog-github':
-        specifier: ^0.5.1
-        version: 0.5.1
-      '@changesets/cli':
-        specifier: ^2.29.7
-        version: 2.29.7(@types/node@24.10.1)
-      '@commitlint/cli':
-        specifier: ^20.1.0
-        version: 20.1.0(@types/node@24.10.1)(typescript@5.9.3)
-      '@commitlint/config-conventional':
-        specifier: ^20.0.0
-        version: 20.0.0
-      '@eslint/js':
-        specifier: ^9.39.0
-        version: 9.39.1
+        version: link:../openapi
       '@microsoft/api-extractor':
         specifier: ^7.55.0
         version: 7.55.0(@types/node@24.10.1)
@@ -57,33 +87,12 @@ importers:
       '@rslib/core':
         specifier: ^0.17.2
         version: 0.17.2(@microsoft/api-extractor@7.55.0(@types/node@24.10.1))(typescript@5.9.3)
-      '@rstest/core':
-        specifier: ^0.6.3
-        version: 0.6.5
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
       '@types/node':
         specifier: ^24.10.0
         version: 24.10.1
-      eslint:
-        specifier: ^9.39.0
-        version: 9.39.1(jiti@2.6.1)
-      globals:
-        specifier: ^16.4.0
-        version: 16.5.0
-      husky:
-        specifier: ^9.1.7
-        version: 9.1.7
-      lint-staged:
-        specifier: ^16.2.6
-        version: 16.2.6
-      prettier:
-        specifier: ^3.6.2
-        version: 3.6.2
-      typescript-eslint:
-        specifier: ^8.46.2
-        version: 8.46.4(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
 
   packages/apifox:
     dependencies:
