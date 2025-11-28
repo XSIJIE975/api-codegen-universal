@@ -55,7 +55,7 @@
     "commitlint": "commitlint --edit",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release": "changeset publish"
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
