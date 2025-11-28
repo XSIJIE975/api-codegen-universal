@@ -7,34 +7,29 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "checkJs": false,
-    "outDir": "./dist",
-    "rootDir": "./",
-
+    "baseUrl": ".",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-
+    "composite": true,
     "types": ["node"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/dist", "packages"],
+  "include": [], 
+  "exclude": ["node_modules", "dist", "**/dist"],
+  // 聚合所有子包
   "references": [
-    {
-      "path": "./packages/core"
-    },
-    {
-      "path": "./packages/openapi"
-    }
+    { "path": "./packages/core" },
+    { "path": "./packages/openapi" },
+    { "path": "./packages/apifox" },
+    { "path": "./packages/api-codegen-universal" } 
   ]
 }

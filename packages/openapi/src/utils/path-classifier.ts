@@ -4,7 +4,7 @@
  */
 
 import type { CategoryInfo } from '@api-codegen-universal/core';
-import type { PathClassificationOptions } from '../types/index.js';
+import type { PathClassificationOptions } from '../types';
 
 /**
  * 路径分类器

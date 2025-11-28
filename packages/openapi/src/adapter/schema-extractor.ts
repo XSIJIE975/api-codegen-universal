@@ -5,7 +5,7 @@
 
 import ts from 'typescript';
 import type { SchemaDefinition } from '@api-codegen-universal/core';
-import { extractStringFromNode, simplifyTypeReference } from './ast-utils.js';
+import { extractStringFromNode, simplifyTypeReference } from './ast-utils';
 
 export class SchemaExtractor {
   /** 泛型基类集合(从 responses 中检测到的) name -> fieldName */

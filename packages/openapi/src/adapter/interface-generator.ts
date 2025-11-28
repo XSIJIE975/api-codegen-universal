@@ -4,7 +4,7 @@
  */
 
 import ts from 'typescript';
-import { extractStringFromNode, simplifyTypeReference } from './ast-utils.js';
+import { extractStringFromNode, simplifyTypeReference } from './ast-utils';
 
 export class InterfaceGenerator {
   /** 泛型基类集合 name -> fieldName */

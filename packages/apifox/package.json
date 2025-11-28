@@ -1,8 +1,8 @@
 {
-  "name": "@api-codegen-universal/openapi",
+  "name": "@api-codegen-universal/apifox",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenAPI adapter for api-codegen-universal",
+  "description": "Apifox adapter for api-codegen-universal",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -26,13 +26,9 @@
   },
   "dependencies": {
     "@api-codegen-universal/core": "workspace:*",
-    "typescript": "^5.9.3",
-    "@redocly/openapi-core": "^2.11.1",
-    "js-yaml": "^4.1.1",
-    "openapi-typescript": "^7.10.1"
+    "@api-codegen-universal/openapi": "workspace:*"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
     "@rslib/core": "^0.17.2"
   }
 }

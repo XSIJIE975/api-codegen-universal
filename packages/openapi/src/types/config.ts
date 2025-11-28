@@ -1,19 +1,11 @@
 import { Readable } from 'node:stream';
 import type { OpenAPI3, OpenAPITSOptions } from 'openapi-typescript';
+import type { AdapterOptions, NamingStyle } from '@api-codegen-universal/core';
 
 /**
  * 输入源类型
  */
 export type InputSource = string | URL | OpenAPI3 | Buffer | Readable;
-
-/**
- * 命名风格
- */
-export type NamingStyle =
-  | 'PascalCase'
-  | 'camelCase'
-  | 'snake_case'
-  | 'kebab-case';
 
 /**
  * 接口导出模式
@@ -65,7 +57,7 @@ export interface CodeGenerationOptions {
 /**
  * OpenAPI 解析选项
  */
-export interface OpenAPIOptions {
+export interface OpenAPIOptions extends AdapterOptions {
   /** API 路径分类配置 */
   pathClassification?: PathClassificationOptions;
 
