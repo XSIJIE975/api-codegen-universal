@@ -26,7 +26,8 @@
   },
   "dependencies": {
     "@api-codegen-universal/core": "workspace:*",
-    "@api-codegen-universal/openapi": "workspace:*"
+    "@api-codegen-universal/openapi": "workspace:*",
+    "@apidevtools/swagger-parser": "^12.1.0"
   },
   "devDependencies": {
     "@rslib/core": "^0.17.2"
