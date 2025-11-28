@@ -1,6 +1,7 @@
 {
   "name": "@api-codegen-universal/core",
   "version": "0.1.0",
+  "private": true,
   "description": "Core types and utilities for api-codegen-universal",
   "type": "module",
   "main": "./dist/index.cjs",

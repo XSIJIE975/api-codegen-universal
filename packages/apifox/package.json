@@ -1,6 +1,7 @@
 {
   "name": "@api-codegen-universal/apifox",
   "version": "0.1.0",
+  "private": true,
   "description": "Apifox adapter for api-codegen-universal",
   "type": "module",
   "main": "./dist/index.cjs",
