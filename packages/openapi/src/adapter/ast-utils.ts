@@ -132,3 +132,97 @@ export function primitiveTypeToString(kind: ts.SyntaxKind): string {
 export function simplifyTypeReference(text: string): string {
   return text.replace(/components\["schemas"\]\["([^"]+)"\]/g, '$1');
 }
+
+/**
+ * 提取 JSDoc 注释内容
+ */
+export function extractJSDocComment(node: ts.Node): string | undefined {
+  // 1. 尝试获取 jsDoc 属性 (解析源码时产生)
+  const jsDoc = (node as ts.Node & { jsDoc?: ts.JSDoc[] }).jsDoc;
+  if (jsDoc && jsDoc.length > 0 && jsDoc[0]) {
+    const comment = jsDoc[0].comment;
+    if (typeof comment === 'string') {
+      return comment;
+    }
+    // 处理 TypeScript 5.x 中的 JSDocComment 节点数组
+    if (Array.isArray(comment)) {
+      return comment.map((c: ts.JSDocComment) => c.text).join('');
+    }
+  }
+
+  // 2. 尝试获取合成的前导注释 (构造 AST 时产生，如 openapi-typescript)
+  const syntheticComments = ts.getSyntheticLeadingComments(node);
+  if (syntheticComments && syntheticComments.length > 0) {
+    return syntheticComments
+      .map((c) => {
+        // 去掉注释标记 /** */ 和 *
+        return c.text
+          .replace(/^\s*\/\*\*/, '')
+          .replace(/\*\/\s*$/, '')
+          .replace(/^\s*\*\s?/gm, '')
+          .trim();
+      })
+      .join('\n');
+  }
+
+  return undefined;
+}
+
+export interface JSDocInfo {
+  summary?: string;
+  description?: string;
+  deprecated?: boolean;
+  tags?: string[];
+}
+
+/**
+ * 解析 JSDoc 注释内容
+ */
+export function parseJSDoc(comment: string): JSDocInfo {
+  const info: JSDocInfo = {};
+  const lines = comment.split('\n').map((line) => line.trim());
+
+  let currentSection = 'summary';
+  const summaryParts: string[] = [];
+  const descriptionParts: string[] = [];
+
+  for (const line of lines) {
+    if (!line) continue;
+
+    if (line.startsWith('@deprecated')) {
+      info.deprecated = true;
+      continue;
+    }
+    if (line.startsWith('@description')) {
+      currentSection = 'description';
+      const descContent = line.replace('@description', '').trim();
+      if (descContent) {
+        descriptionParts.push(descContent);
+      }
+      continue;
+    }
+    // TODO: openapi-typescript 生成数据并无 tags 标签，后面尝试从原始文档中获取
+    if (line.startsWith('@tags')) {
+      const tagsContent = line.replace('@tags', '').trim();
+      if (tagsContent) {
+        info.tags = tagsContent.split(',').map((t) => t.trim());
+      }
+      continue;
+    }
+
+    if (currentSection === 'summary') {
+      summaryParts.push(line);
+    } else if (currentSection === 'description') {
+      descriptionParts.push(line);
+    }
+  }
+
+  if (summaryParts.length > 0) {
+    info.summary = summaryParts.join('\n');
+  }
+  if (descriptionParts.length > 0) {
+    info.description = descriptionParts.join('\n');
+  }
+
+  return info;
+}

@@ -5,18 +5,16 @@
 
 import openapiTS from 'openapi-typescript';
 import ts from 'typescript';
+import { load as loadYaml } from 'js-yaml';
 import type {
   IAdapter,
   StandardOutput,
   SchemaDefinition,
   ApiDefinition,
   Metadata,
-  NamingStyle
+  NamingStyle,
 } from '@api-codegen-universal/core';
-import type {
-  InputSource,
-  OpenAPIOptions
-} from '../types';
+import type { InputSource, OpenAPIOptions, OpenAPIDocument } from '../types';
 import { PathClassifier, GenericDetector } from '../utils';
 import { SchemaExtractor } from './schema-extractor';
 import { InterfaceGenerator } from './interface-generator';
@@ -69,6 +67,9 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     const ast = await openapiTS(source, {
       transform: options?.transform,
     });
+
+    // 加载原始文档以获取元数据
+    const rawDocument = await this.loadOpenAPIDocument(source);
 
     // 2. 提取配置选项
     const pathClassificationOpts = options?.pathClassification || {};
@@ -180,8 +181,56 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
       schemas,
       interfaces,
       apis,
-      metadata: this.buildMetadata(source, options),
+      metadata: this.buildMetadata(source, options, rawDocument),
     };
+  }
+
+  /**
+   * 加载原始 OpenAPI 文档
+   */
+  private async loadOpenAPIDocument(
+    source: InputSource,
+  ): Promise<OpenAPIDocument | null> {
+    try {
+      if (typeof source === 'string') {
+        if (source.startsWith('http')) {
+          const response = await fetch(source);
+          const text = await response.text();
+          try {
+            return JSON.parse(text);
+          } catch {
+            return loadYaml(text) as OpenAPIDocument;
+          }
+        } else {
+          // Local file
+          const fs = await import('node:fs/promises');
+          const text = await fs.readFile(source, 'utf-8');
+          try {
+            return JSON.parse(text);
+          } catch {
+            return loadYaml(text) as OpenAPIDocument;
+          }
+        }
+      } else if (source instanceof URL) {
+        const response = await fetch(source);
+        const text = await response.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          return loadYaml(text) as OpenAPIDocument;
+        }
+      } else if (
+        typeof source === 'object' &&
+        source !== null &&
+        !Buffer.isBuffer(source) &&
+        !('read' in source)
+      ) {
+        return source as unknown as OpenAPIDocument;
+      }
+    } catch (error) {
+      console.warn('Failed to load raw OpenAPI document:', error);
+    }
+    return null;
   }
 
   /**
@@ -190,12 +239,28 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
   private buildMetadata(
     source: InputSource,
     options?: OpenAPIOptions,
+    rawDocument?: OpenAPIDocument | null,
   ): Metadata | null {
-    return {
+    const metadata: Metadata = {
       generatedAt: new Date().toISOString(),
       source: typeof source === 'string' ? source : undefined,
-      commonPrefix: options?.pathClassification?.commonPrefix,
+      options: options,
     };
+
+    if (rawDocument) {
+      if (rawDocument.info) {
+        metadata.title = rawDocument.info.title;
+        metadata.description = rawDocument.info.description;
+      }
+      if (
+        rawDocument.servers &&
+        Array.isArray(rawDocument.servers) &&
+        rawDocument.servers.length > 0
+      ) {
+        metadata.baseUrl = rawDocument.servers[0]?.url;
+      }
+    }
+    return metadata;
   }
 
   /**
@@ -203,8 +268,7 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
    */
   async validate(source: InputSource): Promise<boolean> {
     try {
-      // openapiTS 接受 string | URL 作为参数
-      await openapiTS(source as string | URL);
+      await openapiTS(source);
       return true;
     } catch {
       return false;

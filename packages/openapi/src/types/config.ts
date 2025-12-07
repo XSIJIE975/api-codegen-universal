@@ -3,6 +3,24 @@ import type { OpenAPI3, OpenAPITSOptions } from 'openapi-typescript';
 import type { AdapterOptions, NamingStyle } from '@api-codegen-universal/core';
 
 /**
+ * 简化的 OpenAPI 文档结构接口，用于元数据提取
+ */
+export interface OpenAPIDocument {
+  info?: {
+    title?: string;
+    description?: string;
+    version?: string;
+    [key: string]: unknown;
+  };
+  servers?: Array<{
+    url: string;
+    description?: string;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+/**
  * 输入源类型
  */
 export type InputSource = string | URL | OpenAPI3 | Buffer | Readable;

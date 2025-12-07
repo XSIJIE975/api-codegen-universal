@@ -11,6 +11,9 @@ import type {
 import {
   extractStringFromNode,
   extractOperationIdReference,
+  extractJSDocComment,
+  parseJSDoc,
+  type JSDocInfo,
 } from './ast-utils';
 import { PathClassifier } from '../utils/path-classifier';
 import { ParameterExtractor } from './parameter-extractor';
@@ -83,6 +86,12 @@ export class ApiExtractor {
               if (operationId && operationsMap.has(operationId)) {
                 const operationNode = operationsMap.get(operationId)!;
 
+                // 提取 JSDoc 信息
+                const jsDocComment = extractJSDocComment(methodMember);
+                const jsDocInfo = jsDocComment
+                  ? parseJSDoc(jsDocComment)
+                  : undefined;
+
                 // 构建 ApiDefinition
                 const api = this.buildApiDefinition(
                   path,
@@ -91,6 +100,7 @@ export class ApiExtractor {
                   operationNode,
                   schemas,
                   interfaces,
+                  jsDocInfo,
                 );
 
                 apis.push(api);
@@ -112,6 +122,7 @@ export class ApiExtractor {
     operationNode: ts.TypeLiteralNode,
     schemas: Record<string, SchemaDefinition>,
     interfaces: Record<string, string>,
+    jsDocInfo?: JSDocInfo,
   ): ApiDefinition {
     // 分类路径
     const category = this.pathClassifier.classify(path);
@@ -121,6 +132,10 @@ export class ApiExtractor {
       path,
       method: method as ApiDefinition['method'],
       operationId,
+      summary: jsDocInfo?.summary,
+      description: jsDocInfo?.description,
+      deprecated: jsDocInfo?.deprecated,
+      tags: jsDocInfo?.tags,
       category,
       responses: {},
     };

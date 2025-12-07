@@ -263,10 +263,10 @@ export interface Metadata {
   description?: string;
   /** 基础 URL */
   baseUrl?: string;
-  /** 公共路径前缀(如 '/api/v1') */
-  commonPrefix?: string;
   /** 生成时间 */
   generatedAt: string;
   /** 原始文档来源 */
   source?: string;
+  /** 生成选项/配置参数 */
+  options?: Record<string, unknown>;
 }
