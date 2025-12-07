@@ -1,6 +1,6 @@
 {
   "name": "api-codegen-universal",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "通用 API 代码生成器 - 支持多种 API 规范的统一 TypeScript 接口生成",
   "type": "module",
   "main": "./dist/index.cjs",
