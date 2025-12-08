@@ -128,7 +128,7 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     let operationsNode: ts.InterfaceDeclaration | undefined;
     let componentsNode: ts.InterfaceDeclaration | undefined;
 
-    // 第一遍遍历: 找到关键接口
+    // 第一遍遍历: 找到关键接口 - 早期退出优化
     for (const node of ast) {
       if (ts.isInterfaceDeclaration(node)) {
         const interfaceName = node.name.text;
@@ -139,6 +139,11 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
           operationsNode = node;
         } else if (interfaceName === 'components') {
           componentsNode = node;
+        }
+
+        // 早期退出: 如果找到所有三个接口，无需继续遍历
+        if (pathsNode && operationsNode && componentsNode) {
+          break;
         }
       }
     }
