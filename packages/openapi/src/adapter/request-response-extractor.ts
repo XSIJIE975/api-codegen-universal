@@ -14,6 +14,12 @@ import { GenericDetector } from '../utils/generic-detector';
 export class RequestResponseExtractor {
   private genericDetector: GenericDetector;
   private genericBaseTypes: Map<string, string>;
+  /** 复用的 printer 实例 */
+  private readonly printer: ts.Printer;
+  /** 复用的 sourceFile 实例 */
+  private readonly sourceFile: ts.SourceFile;
+  /** 缓存的正则表达式 */
+  private readonly descriptionRegex = /\*\s*@description\s+(.+?)\s*$/;
 
   constructor(
     genericDetector: GenericDetector,
@@ -21,6 +27,14 @@ export class RequestResponseExtractor {
   ) {
     this.genericDetector = genericDetector;
     this.genericBaseTypes = genericBaseTypes;
+    this.printer = ts.createPrinter();
+    this.sourceFile = ts.createSourceFile(
+      'temp.ts',
+      '',
+      ts.ScriptTarget.Latest,
+      false,
+      ts.ScriptKind.TS,
+    );
   }
 
   /**
@@ -109,9 +123,7 @@ export class RequestResponseExtractor {
               // comment.kind === 3 是多行注释 /* */
               // comment.text 格式: "* @description 注册成功 "
               if (comment.text) {
-                const match = comment.text.match(
-                  /\*\s*@description\s+(.+?)\s*$/,
-                );
+                const match = comment.text.match(this.descriptionRegex);
                 if (match && match[1]) {
                   description = match[1].trim();
                   break;
@@ -146,18 +158,10 @@ export class RequestResponseExtractor {
                       contentMember.type
                     ) {
                       // 检测泛型模式 - 使用 printer 将 TypeNode 转为文本
-                      const printer = ts.createPrinter();
-                      const sourceFile = ts.createSourceFile(
-                        'temp.ts',
-                        '',
-                        ts.ScriptTarget.Latest,
-                        false,
-                        ts.ScriptKind.TS,
-                      );
-                      const typeText = printer.printNode(
+                      const typeText = this.printer.printNode(
                         ts.EmitHint.Unspecified,
                         contentMember.type,
-                        sourceFile,
+                        this.sourceFile,
                       );
                       const genericResult =
                         this.genericDetector.detect(typeText);

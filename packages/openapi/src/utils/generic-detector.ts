@@ -24,6 +24,11 @@ export interface GenericDetectionResult {
  * 识别为: BaseType<SpecificType>
  */
 export class GenericDetector {
+  /** 缓存的正则表达式 */
+  private readonly genericPattern =
+    /^(.+?)\s*&\s*\{\s*([a-zA-Z0-9_]+)\?:\s*(.+?)\s*;?\s*\}$/;
+  private readonly baseTypePattern = /\["schemas"\]\["([^"]+)"\]/;
+
   /**
    * 检测交叉类型字符串是否为泛型模式
    *
@@ -34,9 +39,7 @@ export class GenericDetector {
   detect(typeString: string): GenericDetectionResult {
     // 匹配模式: BaseType & { fieldName?: DataType }
     // 支持 data, items, result, list 等常见字段，或者任意字段
-    const pattern = /^(.+?)\s*&\s*\{\s*([a-zA-Z0-9_]+)\?:\s*(.+?)\s*;?\s*\}$/;
-
-    const match = typeString.match(pattern);
+    const match = typeString.match(this.genericPattern);
 
     if (!match || !match[1] || !match[2] || !match[3]) {
       return { isGeneric: false };
@@ -68,7 +71,7 @@ export class GenericDetector {
    */
   private extractBaseType(baseTypeStr: string): string {
     // 匹配: components["schemas"]["TypeName"]
-    const match = baseTypeStr.match(/\["schemas"\]\["([^"]+)"\]/);
+    const match = baseTypeStr.match(this.baseTypePattern);
     if (match && match[1]) {
       return match[1];
     }
@@ -83,12 +86,12 @@ export class GenericDetector {
    * - components["schemas"]["UserDto"][]
    */
   private extractGenericParam(paramStr: string): string {
-    // 处理数组类型
+    // 处理数组类型 - 使用 endsWith 比 regex.test() 更高效
     const isArray = paramStr.endsWith('[]');
     const cleanParam = isArray ? paramStr.slice(0, -2).trim() : paramStr;
 
     // 匹配: components["schemas"]["TypeName"]
-    const match = cleanParam.match(/\["schemas"\]\["([^"]+)"\]/);
+    const match = cleanParam.match(this.baseTypePattern);
     if (match && match[1]) {
       return isArray ? `${match[1]}[]` : match[1];
     }

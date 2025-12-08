@@ -22,6 +22,8 @@ export class ParameterExtractor {
   private shouldGenerateInterfaces: boolean;
   private schemaExtractor: SchemaExtractor;
   private interfaceGenerator: InterfaceGenerator;
+  /** 缓存的正则表达式 */
+  private readonly splitRegex = /[_-]/;
 
   constructor(
     namingStyle: NamingStyle,
@@ -202,13 +204,13 @@ export class ParameterExtractor {
       case 'PascalCase':
         // AuthController_register_Query_Params -> AuthControllerRegisterQueryParams
         return name
-          .split(/[_-]/)
+          .split(this.splitRegex)
           .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
           .join('');
 
       case 'camelCase': {
         // AuthController_register_Query_Params -> authControllerRegisterQueryParams
-        const parts = name.split(/[_-]/).filter((p) => p.length > 0);
+        const parts = name.split(this.splitRegex).filter((p) => p.length > 0);
         if (parts.length === 0) return name;
         const firstPart = parts[0]!;
         return (
