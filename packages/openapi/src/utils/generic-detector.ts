@@ -29,7 +29,6 @@ export class GenericDetector {
     /^(.+?)\s*&\s*\{\s*([a-zA-Z0-9_]+)\?:\s*(.+?)\s*;?\s*\}$/;
   private readonly baseTypePattern = /\["schemas"\]\["([^"]+)"\]/;
   private readonly arrayPattern = /\[\]$/;
-  private readonly cleanArrayPattern = /\[\]$/;
 
   /**
    * 检测交叉类型字符串是否为泛型模式
@@ -89,7 +88,7 @@ export class GenericDetector {
    */
   private extractGenericParam(paramStr: string): string {
     // 处理数组类型
-    const isArray = this.cleanArrayPattern.test(paramStr);
+    const isArray = this.arrayPattern.test(paramStr);
     const cleanParam = isArray ? paramStr.slice(0, -2).trim() : paramStr;
 
     // 匹配: components["schemas"]["TypeName"]

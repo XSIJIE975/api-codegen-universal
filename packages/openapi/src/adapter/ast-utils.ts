@@ -78,7 +78,7 @@ const sharedSourceFile = ts.createSourceFile(
   ts.ScriptKind.TS,
 );
 
-// 缓存正则表达式
+// 缓存正则表达式 - 使用全局共享的正则
 const componentsSchemaRegex = /components\["schemas"\]\["([^"]+)"\]/g;
 const arrayTypeRegex = /Array<(.+)>/g;
 
@@ -134,11 +134,9 @@ export function primitiveTypeToString(kind: ts.SyntaxKind): string {
  * 将 components["schemas"]["X"] 简化为 X
  * @example components["schemas"]["UserRole"] => UserRole
  */
-// 复用正则表达式以提高性能
-const simplifyRegex = /components\["schemas"\]\["([^"]+)"\]/g;
-
 export function simplifyTypeReference(text: string): string {
-  return text.replace(simplifyRegex, '$1');
+  // 复用 componentsSchemaRegex 以避免重复定义
+  return text.replace(componentsSchemaRegex, '$1');
 }
 
 /**
