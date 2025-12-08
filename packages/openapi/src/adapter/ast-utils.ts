@@ -68,28 +68,33 @@ export function extractSchemaReference(
 /**
  * 将 TypeNode 转换为类型字符串
  */
-export function typeNodeToString(typeNode: ts.TypeNode): string {
-  const printer = ts.createPrinter();
-  const sourceFile = ts.createSourceFile(
-    'temp.ts',
-    '',
-    ts.ScriptTarget.Latest,
-    false,
-    ts.ScriptKind.TS,
-  );
+// 缓存 printer 和 sourceFile 以提高性能
+const sharedPrinter = ts.createPrinter();
+const sharedSourceFile = ts.createSourceFile(
+  'temp.ts',
+  '',
+  ts.ScriptTarget.Latest,
+  false,
+  ts.ScriptKind.TS,
+);
 
+// 缓存正则表达式
+const componentsSchemaRegex = /components\["schemas"\]\["([^"]+)"\]/g;
+const arrayTypeRegex = /Array<(.+)>/g;
+
+export function typeNodeToString(typeNode: ts.TypeNode): string {
   // 打印类型节点
-  let typeStr = printer.printNode(
+  let typeStr = sharedPrinter.printNode(
     ts.EmitHint.Unspecified,
     typeNode,
-    sourceFile,
+    sharedSourceFile,
   );
 
   // 处理 components["schemas"]["XXX"] 格式,提取出类型名
-  typeStr = typeStr.replace(/components\["schemas"\]\["([^"]+)"\]/g, '$1');
+  typeStr = typeStr.replace(componentsSchemaRegex, '$1');
 
   // 处理数组类型
-  typeStr = typeStr.replace(/Array<(.+)>/g, '$1[]');
+  typeStr = typeStr.replace(arrayTypeRegex, '$1[]');
 
   return typeStr;
 }
@@ -129,8 +134,11 @@ export function primitiveTypeToString(kind: ts.SyntaxKind): string {
  * 将 components["schemas"]["X"] 简化为 X
  * @example components["schemas"]["UserRole"] => UserRole
  */
+// 复用正则表达式以提高性能
+const simplifyRegex = /components\["schemas"\]\["([^"]+)"\]/g;
+
 export function simplifyTypeReference(text: string): string {
-  return text.replace(/components\["schemas"\]\["([^"]+)"\]/g, '$1');
+  return text.replace(simplifyRegex, '$1');
 }
 
 /**

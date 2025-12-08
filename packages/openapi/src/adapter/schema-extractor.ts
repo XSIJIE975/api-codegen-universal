@@ -10,9 +10,28 @@ import { extractStringFromNode, simplifyTypeReference } from './ast-utils';
 export class SchemaExtractor {
   /** 泛型基类集合(从 responses 中检测到的) name -> fieldName */
   private genericBaseTypes: Map<string, string>;
+  /** 复用的 printer 实例 */
+  private readonly printer: ts.Printer;
+  /** 复用的 sourceFile 实例 */
+  private readonly sourceFile: ts.SourceFile;
+  /** 缓存的正则表达式 */
+  private readonly descRegex = /^\*\s*@description\s+(.+)$/;
+  private readonly exampleRegex = /^\*\s*@example\s*(.*)$/;
+  private readonly formatRegex = /^\*\s*Format:\s*(.+)$/;
+  private readonly enumRegex = /^\*\s*@enum\s+\{(.+)\}$/;
+  private readonly plainRegex = /^\*\s*(.+)$/;
+  private readonly stringLiteralRegex = /^["'](.*)["']$/;
 
   constructor(genericBaseTypes: Map<string, string>) {
     this.genericBaseTypes = genericBaseTypes;
+    this.printer = ts.createPrinter();
+    this.sourceFile = ts.createSourceFile(
+      'temp.ts',
+      '',
+      ts.ScriptTarget.Latest,
+      false,
+      ts.ScriptKind.TS,
+    );
   }
 
   /**
@@ -48,8 +67,9 @@ export class SchemaExtractor {
                   schemaMember.type,
                 );
 
-                // 检测是否为泛型基类
-                if (this.genericBaseTypes.has(schemaName)) {
+                // 检测是否为泛型基类 - 优化: 只查找一次 Map
+                const genericField = this.genericBaseTypes.get(schemaName);
+                if (genericField !== undefined) {
                   schema.isGeneric = true;
                   schema.baseType = schemaName;
                   schema.type = 'generic';
@@ -132,9 +152,7 @@ export class SchemaExtractor {
 
                   // @description 标签
                   if (!collectingExample) {
-                    const descMatch = trimmedLine.match(
-                      /^\*\s*@description\s+(.+)$/,
-                    );
+                    const descMatch = trimmedLine.match(this.descRegex);
                     if (descMatch && descMatch[1]) {
                       description = descMatch[1].trim();
                       continue;
@@ -143,9 +161,7 @@ export class SchemaExtractor {
 
                   // @example 标签 - 开始收集
                   if (!collectingExample) {
-                    const exampleMatch = trimmedLine.match(
-                      /^\*\s*@example\s*(.*)$/,
-                    );
+                    const exampleMatch = trimmedLine.match(this.exampleRegex);
                     if (exampleMatch !== null) {
                       const firstLineContent = exampleMatch[1]?.trim();
                       if (firstLineContent) {
@@ -158,9 +174,7 @@ export class SchemaExtractor {
 
                   // Format: xxx 格式
                   if (!collectingExample) {
-                    const formatMatch = trimmedLine.match(
-                      /^\*\s*Format:\s*(.+)$/,
-                    );
+                    const formatMatch = trimmedLine.match(this.formatRegex);
                     if (formatMatch && formatMatch[1]) {
                       format = formatMatch[1].trim();
                       continue;
@@ -169,9 +183,7 @@ export class SchemaExtractor {
 
                   // @enum 标签
                   if (!collectingExample) {
-                    const enumMatch = trimmedLine.match(
-                      /^\*\s*@enum\s+\{(.+)\}$/,
-                    );
+                    const enumMatch = trimmedLine.match(this.enumRegex);
                     if (enumMatch) {
                       continue;
                     }
@@ -184,7 +196,7 @@ export class SchemaExtractor {
                     trimmedLine.startsWith('*') &&
                     !trimmedLine.startsWith('* @')
                   ) {
-                    const plainMatch = trimmedLine.match(/^\*\s*(.+)$/);
+                    const plainMatch = trimmedLine.match(this.plainRegex);
                     if (plainMatch && plainMatch[1]) {
                       description = plainMatch[1].trim();
                     }
@@ -296,22 +308,12 @@ export class SchemaExtractor {
    * 将 TS 类型转换为 schema 类型字符串
    */
   private tsTypeToSchemaType(typeNode: ts.TypeNode): string {
-    // 使用 printer 将 TypeNode 转为文本
-    const printer = ts.createPrinter();
-    const sourceFile = ts.createSourceFile(
-      'temp.ts',
-      '',
-      ts.ScriptTarget.Latest,
-      false,
-      ts.ScriptKind.TS,
-    );
-
     // 特殊处理 Record<string, never>
     if (ts.isTypeReferenceNode(typeNode)) {
-      const typeText = printer.printNode(
+      const typeText = this.printer.printNode(
         ts.EmitHint.Unspecified,
         typeNode,
-        sourceFile,
+        this.sourceFile,
       );
       if (typeText.includes('Record<string, never>')) {
         return 'any'; // 或者 'object'
@@ -337,7 +339,11 @@ export class SchemaExtractor {
       default:
         // 对于其他类型，直接返回其文本表示
         return simplifyTypeReference(
-          printer.printNode(ts.EmitHint.Unspecified, typeNode, sourceFile),
+          this.printer.printNode(
+            ts.EmitHint.Unspecified,
+            typeNode,
+            this.sourceFile,
+          ),
         );
     }
   }
@@ -347,20 +353,14 @@ export class SchemaExtractor {
    */
   private extractEnumValues(node: ts.UnionTypeNode): (string | number)[] {
     const enumValues: (string | number)[] = [];
-    const printer = ts.createPrinter();
-    const sourceFile = ts.createSourceFile(
-      'temp.ts',
-      '',
-      ts.ScriptTarget.Latest,
-    );
 
     for (const t of node.types) {
-      const text = printer
-        .printNode(ts.EmitHint.Unspecified, t, sourceFile)
+      const text = this.printer
+        .printNode(ts.EmitHint.Unspecified, t, this.sourceFile)
         .trim();
 
       // 检查字符串字面量 "..." 或 '...'
-      const stringMatch = text.match(/^["'](.*)["']$/);
+      const stringMatch = text.match(this.stringLiteralRegex);
       if (stringMatch && typeof stringMatch[1] === 'string') {
         enumValues.push(stringMatch[1]);
         continue;

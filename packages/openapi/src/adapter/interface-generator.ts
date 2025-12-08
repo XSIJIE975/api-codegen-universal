@@ -11,6 +11,12 @@ export class InterfaceGenerator {
   private genericBaseTypes: Map<string, string>;
   /** 接口导出模式 */
   private interfaceExportMode: 'export' | 'declare';
+  /** 复用的 printer 实例 */
+  private readonly printer: ts.Printer;
+  /** 复用的 sourceFile 实例 */
+  private readonly sourceFile: ts.SourceFile;
+  /** 缓存的注释匹配正则 */
+  private readonly commentRegex = /^(\s*\/\*\*[\s\S]*?\*\/)/;
 
   constructor(
     genericBaseTypes: Map<string, string>,
@@ -18,6 +24,14 @@ export class InterfaceGenerator {
   ) {
     this.genericBaseTypes = genericBaseTypes;
     this.interfaceExportMode = interfaceExportMode;
+    this.printer = ts.createPrinter({ removeComments: false });
+    this.sourceFile = ts.createSourceFile(
+      'temp.ts',
+      '',
+      ts.ScriptTarget.Latest,
+      false,
+      ts.ScriptKind.TS,
+    );
   }
 
   /**
@@ -47,12 +61,13 @@ export class InterfaceGenerator {
               const schemaName = extractStringFromNode(schemaMember.name);
 
               if (schemaName) {
-                // 生成接口代码
+                // 生成接口代码 - 优化: 只查找一次 Map
+                const genericField = this.genericBaseTypes.get(schemaName);
                 const interfaceCode = this.generateInterfaceString(
                   schemaName,
                   schemaMember.type,
-                  this.genericBaseTypes.has(schemaName),
-                  this.genericBaseTypes.get(schemaName),
+                  genericField !== undefined,
+                  genericField,
                 );
                 interfaces[schemaName] = interfaceCode;
               }
@@ -82,31 +97,21 @@ export class InterfaceGenerator {
       const genericPart = isGeneric ? '<T = any>' : '';
       lines.push(`${exportKeyword}interface ${name}${genericPart} {`);
 
-      // 创建 printer 用于打印注释
-      const printer = ts.createPrinter({ removeComments: false });
-      const sourceFile = ts.createSourceFile(
-        'temp.ts',
-        '',
-        ts.ScriptTarget.Latest,
-        false,
-        ts.ScriptKind.TS,
-      );
-
       // 遍历所有属性
       for (const member of typeNode.members) {
         if (ts.isPropertySignature(member) && member.name && member.type) {
           // 打印整个成员节点(包括注释)
-          const memberText = printer.printNode(
+          const memberText = this.printer.printNode(
             ts.EmitHint.Unspecified,
             member,
-            sourceFile,
+            this.sourceFile,
           );
 
           const propName = (member.name as ts.Identifier).text;
 
           if (isGeneric && genericField && propName === genericField) {
             // 提取注释
-            const commentMatch = memberText.match(/^(\s*\/\*\*[\s\S]*?\*\/)/);
+            const commentMatch = memberText.match(this.commentRegex);
             const comment = commentMatch ? commentMatch[1] + '\n' : '';
 
             // 构建新行，替换类型为 T
@@ -129,19 +134,10 @@ export class InterfaceGenerator {
     const genericPart = isGeneric ? '<T = any>' : '';
 
     // 使用 printer 打印类型定义
-    const printer = ts.createPrinter({ removeComments: false });
-    const sourceFile = ts.createSourceFile(
-      'temp.ts',
-      '',
-      ts.ScriptTarget.Latest,
-      false,
-      ts.ScriptKind.TS,
-    );
-
-    const typeText = printer.printNode(
+    const typeText = this.printer.printNode(
       ts.EmitHint.Unspecified,
       typeNode,
-      sourceFile,
+      this.sourceFile,
     );
 
     return `${exportKeyword}type ${name}${genericPart} = ${simplifyTypeReference(typeText)};`;
