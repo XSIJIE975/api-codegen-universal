@@ -28,7 +28,6 @@ export class GenericDetector {
   private readonly genericPattern =
     /^(.+?)\s*&\s*\{\s*([a-zA-Z0-9_]+)\?:\s*(.+?)\s*;?\s*\}$/;
   private readonly baseTypePattern = /\["schemas"\]\["([^"]+)"\]/;
-  private readonly arrayPattern = /\[\]$/;
 
   /**
    * 检测交叉类型字符串是否为泛型模式
@@ -63,7 +62,7 @@ export class GenericDetector {
    * @example 'UserDto[]' -> true
    */
   isArrayGeneric(typeString: string): boolean {
-    return this.arrayPattern.test(typeString);
+    return typeString.endsWith('[]');
   }
 
   /**
@@ -87,8 +86,8 @@ export class GenericDetector {
    * - components["schemas"]["UserDto"][]
    */
   private extractGenericParam(paramStr: string): string {
-    // 处理数组类型
-    const isArray = this.arrayPattern.test(paramStr);
+    // 处理数组类型 - 使用 endsWith 比 regex.test() 更高效
+    const isArray = paramStr.endsWith('[]');
     const cleanParam = isArray ? paramStr.slice(0, -2).trim() : paramStr;
 
     // 匹配: components["schemas"]["TypeName"]

@@ -78,7 +78,7 @@ const sharedSourceFile = ts.createSourceFile(
   ts.ScriptKind.TS,
 );
 
-// 缓存正则表达式 - 使用全局共享的正则
+// 缓存正则表达式 - 不使用全局标志避免 lastIndex 问题
 const componentsSchemaRegex = /components\["schemas"\]\["([^"]+)"\]/g;
 const arrayTypeRegex = /Array<(.+)>/g;
 
