@@ -68,6 +68,12 @@ export class ApifoxAdapter
   private fixOpenApiCompatibility(data: any): any {
     if (!data) return data;
 
+    // 修复失效的引用
+    this.fixBrokenRefs(data);
+
+    // 修复泛型名称 (Java 风格的 « »)
+    this.fixGenericsNames(data);
+
     // 1. 修复 Security Schemes 定义问题
     // type: http 的 scheme 不允许包含 'name' 和 'in' 字段
     if (data.components?.securitySchemes) {
@@ -165,5 +171,122 @@ export class ApifoxAdapter
       console.error('[ApifoxAdapter] Network Request Error:', error);
       throw error;
     }
+  }
+
+  /**
+   * 递归检查并修复失效的引用
+   */
+  private fixBrokenRefs(data: any): void {
+    const findAndFix = (obj: any) => {
+      if (!obj || typeof obj !== 'object') return;
+
+      if (Array.isArray(obj)) {
+        obj.forEach(findAndFix);
+        return;
+      }
+
+      if (
+        obj.$ref &&
+        typeof obj.$ref === 'string' &&
+        obj.$ref.startsWith('#/')
+      ) {
+        if (!this.hasRef(data, obj.$ref)) {
+          const decodedRef = decodeURIComponent(obj.$ref);
+          console.warn(
+            `[ApifoxAdapter] Fixing broken reference: ${decodedRef}`,
+          );
+          delete obj.$ref;
+          obj.type = 'object'; // Fallback to generic object
+          obj.description = `(Fixed broken reference: ${decodedRef})`;
+        }
+      }
+
+      Object.values(obj).forEach(findAndFix);
+    };
+
+    findAndFix(data);
+  }
+
+  /**
+   * 检查引用是否存在
+   */
+  private hasRef(root: any, ref: string): boolean {
+    try {
+      const path = ref.substring(2).split('/');
+      let current = root;
+      for (const segment of path) {
+        const decodedSegment = segment.replace(/~1/g, '/').replace(/~0/g, '~');
+        if (
+          current &&
+          typeof current === 'object' &&
+          decodedSegment in current
+        ) {
+          current = current[decodedSegment];
+        } else {
+          return false;
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 修复泛型名称 (Java 风格的 « »)
+   */
+  private fixGenericsNames(data: any): void {
+    if (!data?.components?.schemas) return;
+
+    const schemaMap = new Map<string, string>();
+    const schemas = data.components.schemas;
+
+    // 1. 建立映射并重命名 Schema Key
+    Object.keys(schemas).forEach((key) => {
+      if (key.includes('«') || key.includes('»')) {
+        // 替换策略：« -> _, » -> (空), , -> _
+        // 例如: Success«Data» -> Success_Data
+        const newKey = key
+          .replace(/«/g, '_')
+          .replace(/»/g, '')
+          .replace(/,/g, '_');
+
+        // 只有当新 key 不存在时才重命名，防止冲突
+        if (!schemas[newKey]) {
+          schemas[newKey] = schemas[key];
+          delete schemas[key];
+          schemaMap.set(
+            `#/components/schemas/${key}`,
+            `#/components/schemas/${newKey}`,
+          );
+        }
+      }
+    });
+
+    if (schemaMap.size === 0) return;
+
+    console.log(
+      `[ApifoxAdapter] Renamed ${schemaMap.size} schemas with generic names.`,
+    );
+
+    // 2. 遍历整个对象更新引用
+    const updateRefs = (obj: any) => {
+      if (!obj || typeof obj !== 'object') return;
+
+      if (Array.isArray(obj)) {
+        obj.forEach(updateRefs);
+        return;
+      }
+
+      if (obj.$ref && typeof obj.$ref === 'string') {
+        if (schemaMap.has(obj.$ref)) {
+          obj.$ref = schemaMap.get(obj.$ref);
+        }
+      }
+
+      Object.values(obj).forEach(updateRefs);
+    };
+
+    updateRefs(data);
   }
 }
