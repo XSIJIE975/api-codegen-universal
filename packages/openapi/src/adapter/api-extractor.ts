@@ -18,20 +18,28 @@ import {
 import { PathClassifier } from '../utils/path-classifier';
 import { ParameterExtractor } from './parameter-extractor';
 import { RequestResponseExtractor } from './request-response-extractor';
+import type { SchemaExtractor } from './schema-extractor';
+import type { InterfaceGenerator } from './interface-generator';
 
 export class ApiExtractor {
   private pathClassifier: PathClassifier;
   private parameterExtractor: ParameterExtractor;
   private requestResponseExtractor: RequestResponseExtractor;
+  private schemaExtractor?: SchemaExtractor;
+  private interfaceGenerator?: InterfaceGenerator;
 
   constructor(
     pathClassifier: PathClassifier,
     parameterExtractor: ParameterExtractor,
     requestResponseExtractor: RequestResponseExtractor,
+    schemaExtractor?: SchemaExtractor,
+    interfaceGenerator?: InterfaceGenerator,
   ) {
     this.pathClassifier = pathClassifier;
     this.parameterExtractor = parameterExtractor;
     this.requestResponseExtractor = requestResponseExtractor;
+    this.schemaExtractor = schemaExtractor;
+    this.interfaceGenerator = interfaceGenerator;
   }
 
   /**
@@ -39,7 +47,7 @@ export class ApiExtractor {
    */
   extractAPIs(
     pathsNode: ts.InterfaceDeclaration,
-    operationsNode: ts.InterfaceDeclaration,
+    operationsNode: ts.InterfaceDeclaration | undefined,
     apis: ApiDefinition[],
     schemas: Record<string, SchemaDefinition>,
     interfaces: Record<string, string>,
@@ -47,11 +55,13 @@ export class ApiExtractor {
     // 1. 构建 operations 的映射表
     const operationsMap = new Map<string, ts.TypeLiteralNode>();
 
-    for (const member of operationsNode.members) {
-      if (ts.isPropertySignature(member) && member.name && member.type) {
-        const operationId = (member.name as ts.Identifier).text;
-        if (ts.isTypeLiteralNode(member.type)) {
-          operationsMap.set(operationId, member.type);
+    if (operationsNode) {
+      for (const member of operationsNode.members) {
+        if (ts.isPropertySignature(member) && member.name && member.type) {
+          const operationId = (member.name as ts.Identifier).text;
+          if (ts.isTypeLiteralNode(member.type)) {
+            operationsMap.set(operationId, member.type);
+          }
         }
       }
     }
@@ -74,17 +84,43 @@ export class ApiExtractor {
               methodMember.name &&
               methodMember.type
             ) {
-              const method = (
-                methodMember.name as ts.Identifier
-              ).text.toUpperCase();
+              const methodName = extractStringFromNode(methodMember.name);
+              if (!methodName) continue;
+
+              const method = methodName.toUpperCase();
+
+              // 忽略 parameters 字段和其他非 HTTP 方法字段
+              if (
+                [
+                  'PARAMETERS',
+                  '$REF',
+                  'SUMMARY',
+                  'DESCRIPTION',
+                  'SERVERS',
+                ].includes(method)
+              ) {
+                continue;
+              }
 
               // 提取 operationId 引用
-              const operationId = extractOperationIdReference(
+              const operationIdRef = extractOperationIdReference(
                 methodMember.type,
               );
 
-              if (operationId && operationsMap.has(operationId)) {
-                const operationNode = operationsMap.get(operationId)!;
+              let operationNode: ts.TypeLiteralNode | undefined;
+              let operationId = operationIdRef;
+
+              if (operationIdRef && operationsMap.has(operationIdRef)) {
+                operationNode = operationsMap.get(operationIdRef)!;
+              } else if (ts.isTypeLiteralNode(methodMember.type)) {
+                operationNode = methodMember.type;
+              }
+
+              if (operationNode) {
+                // 如果没有 operationId，生成一个
+                if (!operationId) {
+                  operationId = this.generateOperationId(path, method);
+                }
 
                 // 提取 JSDoc 信息
                 const jsDocComment = extractJSDocComment(methodMember);
@@ -110,6 +146,22 @@ export class ApiExtractor {
         }
       }
     }
+  }
+
+  private generateOperationId(path: string, method: string): string {
+    const parts = path.split('/').filter((p) => p);
+    const pathStr = parts
+      .map((p) => {
+        if (p.startsWith('{') && p.endsWith('}')) {
+          const paramName = p.slice(1, -1);
+          return (
+            'By' + (paramName.charAt(0).toUpperCase() + paramName.slice(1))
+          );
+        }
+        return p.charAt(0).toUpperCase() + p.slice(1);
+      })
+      .join('');
+    return method.toLowerCase() + pathStr;
   }
 
   /**
@@ -166,6 +218,11 @@ export class ApiExtractor {
           // 提取 responses
           api.responses = this.requestResponseExtractor.extractResponses(
             member.type,
+            operationId,
+            schemas,
+            interfaces,
+            this.schemaExtractor,
+            this.interfaceGenerator,
           );
         }
       }

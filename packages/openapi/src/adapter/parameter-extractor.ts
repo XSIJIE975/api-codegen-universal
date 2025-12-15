@@ -44,18 +44,20 @@ export class ParameterExtractor {
    */
   extractParametersOnly(
     pathsNode: ts.InterfaceDeclaration,
-    operationsNode: ts.InterfaceDeclaration,
+    operationsNode: ts.InterfaceDeclaration | undefined,
     schemas: Record<string, SchemaDefinition>,
     interfaces: Record<string, string>,
   ): void {
     // 1. 构建 operations 的映射表
     const operationsMap = new Map<string, ts.TypeLiteralNode>();
 
-    for (const member of operationsNode.members) {
-      if (ts.isPropertySignature(member) && member.name && member.type) {
-        const operationId = (member.name as ts.Identifier).text;
-        if (ts.isTypeLiteralNode(member.type)) {
-          operationsMap.set(operationId, member.type);
+    if (operationsNode) {
+      for (const member of operationsNode.members) {
+        if (ts.isPropertySignature(member) && member.name && member.type) {
+          const operationId = (member.name as ts.Identifier).text;
+          if (ts.isTypeLiteralNode(member.type)) {
+            operationsMap.set(operationId, member.type);
+          }
         }
       }
     }
@@ -77,13 +79,40 @@ export class ParameterExtractor {
               methodMember.name &&
               methodMember.type
             ) {
+              const methodName = extractStringFromNode(methodMember.name);
+              if (!methodName) continue;
+
+              // 忽略 parameters 字段和其他非 HTTP 方法字段
+              if (
+                [
+                  'PARAMETERS',
+                  '$REF',
+                  'SUMMARY',
+                  'DESCRIPTION',
+                  'SERVERS',
+                ].includes(methodName.toUpperCase())
+              ) {
+                continue;
+              }
+
               // 提取 operationId 引用
-              const operationId = extractOperationIdReference(
+              const operationIdRef = extractOperationIdReference(
                 methodMember.type,
               );
 
-              if (operationId && operationsMap.has(operationId)) {
-                const operationNode = operationsMap.get(operationId)!;
+              let operationNode: ts.TypeLiteralNode | undefined;
+              let operationId = operationIdRef;
+
+              if (operationIdRef && operationsMap.has(operationIdRef)) {
+                operationNode = operationsMap.get(operationIdRef)!;
+              } else if (ts.isTypeLiteralNode(methodMember.type)) {
+                operationNode = methodMember.type;
+              }
+
+              if (operationNode) {
+                if (!operationId) {
+                  operationId = `temp_${path}_${methodMember.name.getText()}`;
+                }
 
                 // 只提取 parameters
                 for (const member of operationNode.members) {

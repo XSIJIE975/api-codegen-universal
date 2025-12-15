@@ -35,6 +35,11 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
   private genericDetector: GenericDetector;
   /** 泛型基类集合(从 responses 中检测到的) name -> fieldName */
   private genericBaseTypes = new Map<string, string>();
+  /** 泛型信息映射 (Schema Name -> Generic Info) */
+  private genericInfoMap = new Map<
+    string,
+    { baseType: string; generics: string[] }
+  >();
   /** 命名风格配置 */
   private namingStyle: NamingStyle = 'PascalCase';
   /** 接口导出模式 */
@@ -94,16 +99,32 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
 
     // 4. 重置泛型基类集合
     this.genericBaseTypes.clear();
+    this.genericInfoMap.clear();
+
+    // 预处理泛型信息 (从 x-apifox-generic 元数据中提取)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const components = rawDocument?.components as any;
+    if (components?.schemas) {
+      for (const [key, schema] of Object.entries(components.schemas)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const meta = (schema as any)['x-apifox-generic'];
+        if (meta) {
+          this.genericInfoMap.set(key, meta);
+        }
+      }
+    }
 
     // 5. 初始化所有提取器
     this.schemaExtractor = new SchemaExtractor(this.genericBaseTypes);
     this.interfaceGenerator = new InterfaceGenerator(
       this.genericBaseTypes,
       this.interfaceExportMode,
+      this.genericInfoMap,
     );
     this.requestResponseExtractor = new RequestResponseExtractor(
       this.genericDetector,
       this.genericBaseTypes,
+      this.genericInfoMap,
     );
     this.parameterExtractor = new ParameterExtractor(
       this.namingStyle,
@@ -116,6 +137,8 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
       this.pathClassifier,
       this.parameterExtractor,
       this.requestResponseExtractor,
+      this.schemaExtractor,
+      this.interfaceGenerator,
     );
 
     // 6. 遍历 AST 提取信息
@@ -151,7 +174,7 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     // 第二遍处理: 提取数据
 
     // 提取 APIs (优先提取以检测泛型和生成参数 Schema)
-    if (pathsNode && operationsNode) {
+    if (pathsNode) {
       if (shouldGenerateApis) {
         this.apiExtractor.extractAPIs(
           pathsNode,
@@ -173,7 +196,12 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
 
     // 提取 schemas
     if (componentsNode && this.shouldGenerateSchemas) {
-      this.schemaExtractor.extractSchemas(componentsNode, schemas);
+      this.schemaExtractor.extractSchemas(
+        componentsNode,
+        schemas,
+        undefined, // rawSchemas 不再需要，因为我们已经预处理了 genericInfoMap
+        this.genericInfoMap,
+      );
     }
 
     // 提取 interfaces
