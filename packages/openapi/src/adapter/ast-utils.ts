@@ -57,7 +57,18 @@ export function extractSchemaReference(
         ts.isLiteralTypeNode(typeNode.indexType) &&
         ts.isStringLiteral(typeNode.indexType.literal)
       ) {
-        return typeNode.indexType.literal.text;
+        let ref = typeNode.indexType.literal.text;
+        // 如果 ref 是 URL 编码的，尝试解码
+        if (ref.includes('%')) {
+          try {
+            ref = decodeURIComponent(ref);
+          } catch {
+            // ignore
+          }
+        }
+        // 处理泛型符号
+        ref = ref.replace(/«/g, '<').replace(/»/g, '>');
+        return ref;
       }
     }
   }
@@ -91,6 +102,7 @@ export function typeNodeToString(typeNode: ts.TypeNode): string {
   );
 
   // 处理 components["schemas"]["XXX"] 格式,提取出类型名
+  // 注意：如果 XXX 包含 < >，这里也会正确提取
   typeStr = typeStr.replace(componentsSchemaRegex, '$1');
 
   // 处理数组类型

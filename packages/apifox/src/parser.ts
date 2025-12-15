@@ -68,11 +68,12 @@ export class ApifoxAdapter
   private fixOpenApiCompatibility(data: any): any {
     if (!data) return data;
 
+    // 修复泛型名称 (Java 风格的 « »)
+    // 注意：必须在 fixBrokenRefs 之前执行，因为 fixBrokenRefs 可能会因为编码不匹配误删泛型引用
+    this.fixGenericsNames(data);
+
     // 修复失效的引用
     this.fixBrokenRefs(data);
-
-    // 修复泛型名称 (Java 风格的 « »)
-    this.fixGenericsNames(data);
 
     // 1. 修复 Security Schemes 定义问题
     // type: http 的 scheme 不允许包含 'name' 和 'in' 字段
@@ -216,12 +217,24 @@ export class ApifoxAdapter
       let current = root;
       for (const segment of path) {
         const decodedSegment = segment.replace(/~1/g, '/').replace(/~0/g, '~');
-        if (
-          current &&
-          typeof current === 'object' &&
-          decodedSegment in current
-        ) {
-          current = current[decodedSegment];
+
+        if (current && typeof current === 'object') {
+          if (decodedSegment in current) {
+            current = current[decodedSegment];
+            continue;
+          }
+          // 尝试 URL 解码后查找
+          try {
+            const urlDecoded = decodeURIComponent(decodedSegment);
+            if (urlDecoded in current) {
+              current = current[urlDecoded];
+              continue;
+            }
+          } catch {
+            // ignore
+          }
+
+          return false;
         } else {
           return false;
         }
@@ -234,6 +247,12 @@ export class ApifoxAdapter
 
   /**
    * 修复泛型名称 (Java 风格的 « »)
+   *
+   * 策略：
+   * 1. 将特殊字符转换为下划线，生成安全的 Schema 名称，避免 openapi-typescript 解析为 unknown
+   *    例如: PageVO«ApplyListVO» -> PageVO_ApplyListVO
+   * 2. 在 Schema 中注入 x-apifox-generic 元数据，记录原始泛型结构
+   *    例如: { baseType: 'PageVO', generics: ['ApplyListVO'] }
    */
   private fixGenericsNames(data: any): void {
     if (!data?.components?.schemas) return;
@@ -243,22 +262,71 @@ export class ApifoxAdapter
 
     // 1. 建立映射并重命名 Schema Key
     Object.keys(schemas).forEach((key) => {
-      if (key.includes('«') || key.includes('»')) {
+      let decodedKey = key;
+      try {
+        decodedKey = decodeURIComponent(key);
+      } catch {
+        // ignore
+      }
+
+      if (decodedKey.includes('«') || decodedKey.includes('»')) {
+        // 1. 生成 Safe Name (用于 TS 类型名)
         // 替换策略：« -> _, » -> (空), , -> _
-        // 例如: Success«Data» -> Success_Data
-        const newKey = key
+        const newKeyName = decodedKey
           .replace(/«/g, '_')
           .replace(/»/g, '')
-          .replace(/,/g, '_');
+          .replace(/,/g, '_')
+          .replace(/\s/g, ''); // 去除空格
 
-        // 只有当新 key 不存在时才重命名，防止冲突
-        if (!schemas[newKey]) {
-          schemas[newKey] = schemas[key];
+        const newRef = `#/components/schemas/${newKeyName}`;
+
+        // 2. 建立映射 (无论是否重命名，都要建立映射)
+        // 映射原始 key
+        schemaMap.set(`#/components/schemas/${key}`, newRef);
+        // 映射解码后的 key
+        if (key !== decodedKey) {
+          schemaMap.set(`#/components/schemas/${decodedKey}`, newRef);
+        }
+        // 映射编码后的 key
+        const encodedKey = encodeURIComponent(key);
+        if (encodedKey !== key) {
+          schemaMap.set(`#/components/schemas/${encodedKey}`, newRef);
+        }
+        // 映射编码后的解码 key
+        const encodedDecodedKey = encodeURIComponent(decodedKey);
+        if (encodedDecodedKey !== key && encodedDecodedKey !== encodedKey) {
+          schemaMap.set(`#/components/schemas/${encodedDecodedKey}`, newRef);
+        }
+
+        // 3. 注入泛型元数据 (x-apifox-generic)
+        const match = decodedKey.match(/^(.+?)«(.+)»$/);
+        let meta = undefined;
+        if (match) {
+          const base = match[1];
+          const args = match[2];
+          const generics = args?.split(',').map((s) => s.trim());
+          meta = {
+            baseType: base,
+            generics: generics,
+          };
+        }
+
+        // 4. 重命名 Schema
+        if (!schemas[newKeyName]) {
+          schemas[newKeyName] = schemas[key];
           delete schemas[key];
-          schemaMap.set(
-            `#/components/schemas/${key}`,
-            `#/components/schemas/${newKey}`,
-          );
+          if (meta) {
+            schemas[newKeyName]['x-apifox-generic'] = meta;
+          }
+        } else {
+          // 如果目标已存在，也尝试注入元数据
+          if (meta && !schemas[newKeyName]['x-apifox-generic']) {
+            schemas[newKeyName]['x-apifox-generic'] = meta;
+          }
+          // 删除旧的 key，避免重复和 invalid identifier
+          if (key !== newKeyName) {
+            delete schemas[key];
+          }
         }
       }
     });
@@ -266,8 +334,10 @@ export class ApifoxAdapter
     if (schemaMap.size === 0) return;
 
     console.log(
-      `[ApifoxAdapter] Renamed ${schemaMap.size} schemas with generic names.`,
+      `[ApifoxAdapter] Renamed ${schemaMap.size} schemas with generic names (to underscore style).`,
     );
+    // Debug: print some map entries
+    // Array.from(schemaMap.entries()).slice(0, 5).forEach(([k, v]) => console.log(`Map: ${k} -> ${v}`));
 
     // 2. 遍历整个对象更新引用
     const updateRefs = (obj: any) => {
@@ -279,8 +349,22 @@ export class ApifoxAdapter
       }
 
       if (obj.$ref && typeof obj.$ref === 'string') {
-        if (schemaMap.has(obj.$ref)) {
-          obj.$ref = schemaMap.get(obj.$ref);
+        const ref = obj.$ref;
+        // 尝试直接匹配
+        if (schemaMap.has(ref)) {
+          // console.log(`[ApifoxAdapter] Updating ref: ${ref} -> ${schemaMap.get(ref)}`);
+          obj.$ref = schemaMap.get(ref);
+        } else {
+          // 尝试解码后匹配
+          try {
+            const decodedRef = decodeURIComponent(ref);
+            if (schemaMap.has(decodedRef)) {
+              // console.log(`[ApifoxAdapter] Updating ref (decoded): ${ref} -> ${schemaMap.get(decodedRef)}`);
+              obj.$ref = schemaMap.get(decodedRef);
+            }
+          } catch {
+            // ignore
+          }
         }
       }
 
