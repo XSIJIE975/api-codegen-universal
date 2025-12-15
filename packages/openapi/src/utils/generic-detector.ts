@@ -26,7 +26,7 @@ export interface GenericDetectionResult {
 export class GenericDetector {
   /** 缓存的正则表达式 */
   private readonly genericPattern =
-    /^(.+?)\s*&\s*\{\s*([a-zA-Z0-9_]+)\?:\s*(.+?)\s*;?\s*\}$/;
+    /^(.+?)\s*&\s*\{\s*([a-zA-Z0-9_]+)\??:\s*(.+?)\s*;?\s*\}$/;
   private readonly baseTypePattern = /\["schemas"\]\["([^"]+)"\]/;
 
   /**
@@ -73,6 +73,9 @@ export class GenericDetector {
     // 匹配: components["schemas"]["TypeName"]
     const match = baseTypeStr.match(this.baseTypePattern);
     if (match && match[1]) {
+      // 如果提取出的名称包含 < >，说明是泛型实例，需要进一步处理
+      // 例如: PageVO<XXXXX>
+      // 但这里我们只返回名称，后续处理会决定是否将其视为泛型基类
       return match[1];
     }
     // 如果不是索引访问，直接返回
@@ -94,6 +97,10 @@ export class GenericDetector {
     const match = cleanParam.match(this.baseTypePattern);
     if (match && match[1]) {
       return isArray ? `${match[1]}[]` : match[1];
+    }
+
+    if (cleanParam === '{}') {
+      return isArray ? 'any[]' : 'any';
     }
 
     // 如果不是索引访问，直接返回

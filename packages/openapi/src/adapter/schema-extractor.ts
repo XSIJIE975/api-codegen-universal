@@ -40,6 +40,8 @@ export class SchemaExtractor {
   extractSchemas(
     componentsNode: ts.InterfaceDeclaration,
     schemas: Record<string, SchemaDefinition>,
+    rawSchemas?: Record<string, unknown>,
+    genericInfoMap?: Map<string, { baseType: string; generics: string[] }>,
   ): void {
     // 找到 schemas 属性
     for (const member of componentsNode.members) {
@@ -58,9 +60,31 @@ export class SchemaExtractor {
               schemaMember.name &&
               schemaMember.type
             ) {
-              const schemaName = extractStringFromNode(schemaMember.name);
+              let schemaName = extractStringFromNode(schemaMember.name);
 
               if (schemaName) {
+                // 解码并处理泛型符号
+                if (schemaName.includes('%')) {
+                  try {
+                    schemaName = decodeURIComponent(schemaName);
+                  } catch {
+                    // ignore
+                  }
+                }
+                // 移除旧的替换逻辑，因为现在已经在 ApifoxAdapter 中处理为下划线了
+                // schemaName = schemaName.replace(/«/g, '<').replace(/»/g, '>');
+
+                // 检查 x-apifox-generic 元数据
+                if (rawSchemas && genericInfoMap && rawSchemas[schemaName]) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const meta = (rawSchemas[schemaName] as Record<string, any>)[
+                    'x-apifox-generic'
+                  ];
+                  if (meta) {
+                    genericInfoMap.set(schemaName, meta);
+                  }
+                }
+
                 // 解析具体的 schema 结构
                 const schema = this.typeNodeToSchema(
                   schemaName,
@@ -82,12 +106,145 @@ export class SchemaExtractor {
         }
       }
     }
+
+    // 提取完成后，合成泛型基类
+    if (genericInfoMap && genericInfoMap.size > 0) {
+      // console.log('Synthesizing generic base types...', genericInfoMap.size);
+      this.synthesizeGenericBaseTypes(schemas, genericInfoMap);
+    }
+  }
+
+  /**
+   * 合成泛型基类
+   * 根据具体实例 (PageVO_ApplyListVO) 推导出基类 (PageVO<T>)
+   */
+  private synthesizeGenericBaseTypes(
+    schemas: Record<string, SchemaDefinition>,
+    genericInfoMap: Map<string, { baseType: string; generics: string[] }>,
+  ) {
+    // 按 baseType 分组
+    const groups = new Map<string, string[]>();
+    for (const [name, info] of genericInfoMap) {
+      if (!groups.has(info.baseType)) {
+        groups.set(info.baseType, []);
+      }
+      groups.get(info.baseType)!.push(name);
+    }
+
+    for (const [baseType, instances] of groups) {
+      if (schemas[baseType]) continue; // 基类已存在
+
+      // 取第一个实例作为模板
+      const instanceName = instances[0];
+      if (instanceName) {
+        const instanceSchema = schemas[instanceName];
+        if (!instanceSchema) {
+          // console.log(`Instance schema not found: ${instanceName}`);
+          continue;
+        }
+
+        // 创建基类 Schema
+        const baseSchema: SchemaDefinition = JSON.parse(
+          JSON.stringify(instanceSchema),
+        );
+        baseSchema.name = baseType;
+        baseSchema.isGeneric = true;
+        baseSchema.genericParam = 'T'; // 暂时假设单泛型参数
+
+        // 获取泛型参数名 (例如 ApplyListVO)
+        const rawArg = genericInfoMap.get(instanceName)?.generics[0];
+        if (!rawArg) continue;
+
+        // 规范化参数名 (ApplyListVO -> ApplyListVO, ResultVO«User» -> ResultVO_User)
+        const targetType = rawArg
+          .replace(/«/g, '_')
+          .replace(/»/g, '')
+          .replace(/,/g, '_')
+          .replace(/\s/g, '');
+
+        // console.log(`Synthesizing ${baseType} from ${instanceName}, targetType=${targetType}`);
+
+        // 查找并替换泛型字段
+        let genericFieldFound = false;
+        if (baseSchema.properties) {
+          for (const [propName, propDef] of Object.entries(
+            baseSchema.properties,
+          )) {
+            // console.log(`Checking prop ${propName}`, propDef);
+            // 检查属性是否引用了 targetType
+            if (this.isTypeRefTo(propDef.type, targetType)) {
+              // 使用正则替换，确保只替换完整的单词
+              // ApplyListVO[] | null -> T[] | null
+              const regex = new RegExp(
+                `\\b${this.escapeRegExp(targetType)}\\b`,
+                'g',
+              );
+              const newType = propDef.type.replace(regex, 'T');
+
+              baseSchema.properties[propName] = { ...propDef, type: newType };
+              genericFieldFound = true;
+            }
+          }
+        }
+
+        if (genericFieldFound) {
+          schemas[baseType] = baseSchema;
+          // console.log(`Synthesized generic base type: ${baseType}<T> from ${instanceName}`);
+        } else {
+          // console.log(`Failed to find generic field for ${baseType}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * 检查类型字符串是否引用了指定类型
+   */
+  private isTypeRefTo(typeStr: string, targetName: string): boolean {
+    if (!typeStr) return false;
+
+    // 移除空白字符
+    const cleanType = typeStr.replace(/\s/g, '');
+    const cleanTarget = targetName.replace(/\s/g, '');
+
+    // 1. 精确匹配
+    if (cleanType === cleanTarget) return true;
+
+    // 2. 数组匹配
+    if (cleanType === `${cleanTarget}[]`) return true;
+
+    // 3. 联合类型匹配 (e.g. "Type|null", "Type[]|null")
+    if (cleanType.includes('|')) {
+      const parts = cleanType.split('|');
+      return parts.some((part) => {
+        // 去除可能的括号
+        const p = part.replace(/^\(|\)$/g, '');
+        return (
+          p === cleanTarget ||
+          p === `${cleanTarget}[]` ||
+          p.endsWith(`/${cleanTarget}`) ||
+          p.endsWith(`/${cleanTarget}[]`)
+        );
+      });
+    }
+
+    // 4. 包含匹配 (最宽松，用于处理复杂情况)
+    // 确保 targetName 是作为一个完整的单词出现
+    const regex = new RegExp(`\\b${this.escapeRegExp(targetName)}\\b`);
+    return regex.test(typeStr);
+  }
+
+  private escapeRegExp(string: string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**
    * 将 TypeNode 转换为 SchemaDefinition
    */
-  typeNodeToSchema(name: string, typeNode: ts.TypeNode): SchemaDefinition {
+  public typeNodeToSchema(
+    name: string,
+    typeNode: ts.TypeNode,
+  ): SchemaDefinition {
     const schema: SchemaDefinition = {
       name,
       type: 'object',
