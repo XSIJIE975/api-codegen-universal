@@ -10,6 +10,8 @@
     "prepare": "husky",
     "commitlint": "commitlint --edit",
     "changeset": "changeset",
+    "changeset:beta": "changeset pre enter beta",
+    "changeset:exit": "changeset pre exit",
     "version-packages": "changeset version",
     "release": "changeset publish"
   },
