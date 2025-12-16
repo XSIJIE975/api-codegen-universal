@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm -r test",
+    "test": "rstest",
     "lint": "eslint \"{packages}/**/*.ts\"",
     "lint:fix": "eslint \"{packages}/**/*.ts\" --fix",
     "format": "prettier --write .",
