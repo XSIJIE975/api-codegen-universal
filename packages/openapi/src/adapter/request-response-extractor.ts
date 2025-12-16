@@ -9,6 +9,7 @@ import type {
   ApiDefinition,
   SchemaReference,
   SchemaDefinition,
+  NamingStyle,
 } from '@api-codegen-universal/core';
 import {
   extractStringFromNode,
@@ -30,23 +31,30 @@ export class RequestResponseExtractor {
   private genericBaseTypes: Map<string, string>;
   /** 泛型信息映射表 (RefName -> { baseType, generics }) */
   private genericInfoMap: Map<string, { baseType: string; generics: string[] }>;
+  /** 命名风格配置 */
+  private namingStyle: NamingStyle;
   /** 缓存的正则表达式，用于提取 JSDoc 中的 @description */
   private readonly descriptionRegex = /\*\s*@description\s+(.+?)\s*$/;
+  /** 缓存的正则表达式，用于分割字符串 */
+  private readonly splitRegex = /[_-]/;
 
   /**
    * 构造函数
    * @param genericDetector 泛型检测器
    * @param genericBaseTypes 泛型基类映射表
    * @param genericInfoMap 泛型信息映射表
+   * @param namingStyle 命名风格
    */
   constructor(
     genericDetector: GenericDetector,
     genericBaseTypes: Map<string, string>,
     genericInfoMap: Map<string, { baseType: string; generics: string[] }>,
+    namingStyle: NamingStyle,
   ) {
     this.genericDetector = genericDetector;
     this.genericBaseTypes = genericBaseTypes;
     this.genericInfoMap = genericInfoMap;
+    this.namingStyle = namingStyle;
   }
 
   /**
@@ -101,6 +109,50 @@ export class RequestResponseExtractor {
     }
 
     return ref;
+  }
+
+  /**
+   * 转换为指定的命名风格
+   * 支持 PascalCase, camelCase, snake_case
+   *
+   * @param name 原始名称
+   * @returns 转换后的名称
+   */
+  private convertToNamingStyle(name: string): string {
+    switch (this.namingStyle) {
+      case 'PascalCase':
+        // AuthController_register_Query_Params -> AuthControllerRegisterQueryParams
+        return name
+          .split(this.splitRegex)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join('');
+
+      case 'camelCase': {
+        // AuthController_register_Query_Params -> authControllerRegisterQueryParams
+        const parts = name.split(this.splitRegex).filter((p) => p.length > 0);
+        if (parts.length === 0) return name;
+        const firstPart = parts[0]!;
+        return (
+          firstPart.charAt(0).toLowerCase() +
+          firstPart.slice(1) +
+          parts
+            .slice(1)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join('')
+        );
+      }
+
+      case 'snake_case':
+        // AuthController_register_Query_Params -> auth_controller_register_query_params
+        return name
+          .toLowerCase()
+          .replace(/[A-Z]/g, (letter, index) =>
+            index === 0 ? letter.toLowerCase() : '_' + letter.toLowerCase(),
+          );
+
+      default:
+        return name;
+    }
   }
 
   /**
@@ -313,11 +365,10 @@ export class RequestResponseExtractor {
                             interfaceGenerator
                           ) {
                             // 生成唯一名称: OperationId + Response
-                            // 首字母大写
-                            const pascalOpId =
-                              operationId.charAt(0).toUpperCase() +
-                              operationId.slice(1);
-                            const generatedName = `${pascalOpId}Response`;
+                            // 使用配置的命名风格
+                            const generatedName = this.convertToNamingStyle(
+                              `${operationId}_Response`,
+                            );
 
                             // 生成 Schema
                             const schema = schemaExtractor.typeNodeToSchema(
