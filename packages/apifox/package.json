@@ -22,7 +22,8 @@
   ],
   "scripts": {
     "build": "rslib build",
-    "dev": "rslib build --watch"
+    "dev": "rslib build --watch",
+    "test": "rstest"
   },
   "dependencies": {
     "@api-codegen-universal/core": "workspace:*",

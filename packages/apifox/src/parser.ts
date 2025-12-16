@@ -1,3 +1,8 @@
+/**
+ * Apifox 适配器
+ * 负责从 Apifox API 获取 OpenAPI 数据，并进行兼容性修复和转换
+ */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import SwaggerParser from '@apidevtools/swagger-parser';
 import type { IAdapter, StandardOutput } from '@api-codegen-universal/core';
@@ -12,11 +17,19 @@ import type {
   ApifoxExportToOpenAPIOptions,
 } from './types';
 
+/**
+ * Apifox 适配器类
+ * 实现 IAdapter 接口，用于处理 Apifox 项目数据的导入和转换
+ */
 export class ApifoxAdapter
   implements IAdapter<ApifoxAdapterOptions, ApifoxConfig>
 {
   /**
    * 验证配置有效性
+   * 检查是否包含必要的 projectId 和 token
+   *
+   * @param source Apifox 配置对象
+   * @returns 如果配置有效返回 true，否则返回 false
    */
   async validate(source: ApifoxConfig): Promise<boolean> {
     return !!(source && source.projectId && source.token);
@@ -24,6 +37,14 @@ export class ApifoxAdapter
 
   /**
    * 解析主入口
+   * 1. 从 Apifox API 获取 OpenAPI 数据
+   * 2. 修复数据中的兼容性问题 (泛型命名、失效引用、非标字段)
+   * 3. 验证修复后的数据是否符合 OpenAPI 标准
+   * 4. 使用 OpenAPIAdapter 将其转换为标准输出格式
+   *
+   * @param source Apifox 配置对象
+   * @param options 适配器选项
+   * @returns 标准输出格式 (StandardOutput)
    */
   async parse(
     source: ApifoxConfig,
@@ -32,14 +53,22 @@ export class ApifoxAdapter
     console.log(
       `[ApifoxAdapter] Starting export for project: ${source.projectId}`,
     );
+
+    // 1. 获取数据
     let openApiData = await this.fetchOpenApiData(source);
+
+    // 2. 修复兼容性
     openApiData = this.fixOpenApiCompatibility(openApiData);
-    // 校验数据格式是否符合 OpenAPI 标准
+
+    // 3. 校验数据格式是否符合 OpenAPI 标准
     try {
+      // 使用 JSON.parse(JSON.stringify()) 深拷贝一份数据进行校验，避免校验过程修改原数据
       await SwaggerParser.validate(JSON.parse(JSON.stringify(openApiData)));
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error(`[ApifoxAdapter] Validation Failed: ${err.message}`);
+        // 即使校验失败，也尝试继续处理，因为有些非关键错误可能不影响代码生成
+        // 但这里选择抛出错误以保证数据质量，可视情况调整策略
         throw new Error(
           `Invalid OpenAPI data received from Apifox: ${err.message}`,
         );
@@ -47,6 +76,7 @@ export class ApifoxAdapter
     }
     console.log(`[ApifoxAdapter] Converting using OpenAPIAdapter...`);
 
+    // 4. 转换为标准格式
     const openApiAdapter = new OpenAPIAdapter();
 
     const result = await openApiAdapter.parse(
@@ -54,6 +84,7 @@ export class ApifoxAdapter
       options as OpenAPIOptions,
     );
 
+    // 补充元数据
     if (result.metadata) {
       result.metadata.source = `Apifox Project ${source.projectId}`;
       result.metadata.generatedAt = new Date().toISOString();
@@ -64,6 +95,10 @@ export class ApifoxAdapter
 
   /**
    * 修复 Apifox 导出数据中不符合 OpenAPI 3.0/3.1 标准的地方
+   * 以及处理 Apifox 特有的泛型命名风格
+   *
+   * @param data 原始 OpenAPI 数据
+   * @returns 修复后的 OpenAPI 数据
    */
   private fixOpenApiCompatibility(data: any): any {
     if (!data) return data;
@@ -122,12 +157,16 @@ export class ApifoxAdapter
   }
 
   /**
-   * 请求 Apifox 开放 API
+   * 请求 Apifox 开放 API 获取 OpenAPI 数据
+   *
+   * @param config Apifox 配置
+   * @returns OpenAPI JSON 数据
    */
-  private async fetchOpenApiData(config: ApifoxConfig): Promise<unknown> {
+  protected async fetchOpenApiData(config: ApifoxConfig): Promise<unknown> {
     const baseUrl = 'https://api.apifox.com/v1';
     const url = `${baseUrl}/projects/${config.projectId}/export-openapi`;
 
+    // 构建请求体
     const requestBody: ApifoxExportToOpenAPIOptions = {
       exportFormat: 'JSON',
       oasVersion: '3.0',
@@ -141,6 +180,7 @@ export class ApifoxAdapter
       ...config.exportOptions,
     };
 
+    // 合并用户配置
     if (config.exportOptions?.scope) {
       requestBody.scope = config.exportOptions.scope;
     }
@@ -150,6 +190,7 @@ export class ApifoxAdapter
         ...config.exportOptions.options,
       };
     }
+
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -175,7 +216,10 @@ export class ApifoxAdapter
   }
 
   /**
-   * 递归检查并修复失效的引用
+   * 递归检查并修复失效的引用 ($ref)
+   * 如果引用指向的路径不存在，则删除该引用并回退到普通对象
+   *
+   * @param data OpenAPI 数据
    */
   private fixBrokenRefs(data: any): void {
     const findAndFix = (obj: any) => {
@@ -196,7 +240,7 @@ export class ApifoxAdapter
           console.warn(
             `[ApifoxAdapter] Fixing broken reference: ${decodedRef}`,
           );
-          delete obj.$ref;
+          Reflect.deleteProperty(obj, '$ref');
           obj.type = 'object'; // Fallback to generic object
           obj.description = `(Fixed broken reference: ${decodedRef})`;
         }
@@ -210,6 +254,11 @@ export class ApifoxAdapter
 
   /**
    * 检查引用是否存在
+   * 解析 JSON Pointer 并在根对象中查找
+   *
+   * @param root 根对象
+   * @param ref 引用字符串 (例如 #/components/schemas/User)
+   * @returns 如果引用存在返回 true，否则返回 false
    */
   private hasRef(root: any, ref: string): boolean {
     try {
@@ -253,6 +302,8 @@ export class ApifoxAdapter
    *    例如: PageVO«ApplyListVO» -> PageVO_ApplyListVO
    * 2. 在 Schema 中注入 x-apifox-generic 元数据，记录原始泛型结构
    *    例如: { baseType: 'PageVO', generics: ['ApplyListVO'] }
+   *
+   * @param data OpenAPI 数据
    */
   private fixGenericsNames(data: any): void {
     if (!data?.components?.schemas) return;
@@ -336,8 +387,6 @@ export class ApifoxAdapter
     console.log(
       `[ApifoxAdapter] Renamed ${schemaMap.size} schemas with generic names (to underscore style).`,
     );
-    // Debug: print some map entries
-    // Array.from(schemaMap.entries()).slice(0, 5).forEach(([k, v]) => console.log(`Map: ${k} -> ${v}`));
 
     // 2. 遍历整个对象更新引用
     const updateRefs = (obj: any) => {
