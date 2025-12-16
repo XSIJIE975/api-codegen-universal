@@ -31,6 +31,7 @@
     "@apidevtools/swagger-parser": "^12.1.0"
   },
   "devDependencies": {
-    "@rslib/core": "^0.17.2"
+    "@rslib/core": "^0.17.2",
+    "@rstest/core": "^0.6.9"
   }
 }
