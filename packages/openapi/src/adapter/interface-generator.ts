@@ -1,10 +1,21 @@
 /**
  * 接口代码生成器
  * 负责生成 TypeScript 接口字符串
+ *
+ * 主要功能：
+ * 1. 遍历 components.schemas 节点
+ * 2. 生成 interface 或 type alias 定义
+ * 3. 处理泛型基类和泛型别名
+ * 4. 智能替换泛型参数 (T)
  */
 
 import ts from 'typescript';
-import { extractStringFromNode, simplifyTypeReference } from './ast-utils';
+import {
+  extractStringFromNode,
+  simplifyTypeReference,
+  sharedPrinter,
+  sharedSourceFile,
+} from './ast-utils';
 
 export class InterfaceGenerator {
   /** 泛型基类集合 name -> fieldName */
@@ -13,10 +24,6 @@ export class InterfaceGenerator {
   private genericInfoMap: Map<string, { baseType: string; generics: string[] }>;
   /** 接口导出模式 */
   private interfaceExportMode: 'export' | 'declare';
-  /** 复用的 printer 实例 */
-  private readonly printer: ts.Printer;
-  /** 复用的 sourceFile 实例 */
-  private readonly sourceFile: ts.SourceFile;
   /** 缓存的注释匹配正则 */
   private readonly commentRegex = /^(\s*\/\*\*[\s\S]*?\*\/)/;
 
@@ -28,18 +35,13 @@ export class InterfaceGenerator {
     this.genericBaseTypes = genericBaseTypes;
     this.interfaceExportMode = interfaceExportMode;
     this.genericInfoMap = genericInfoMap || new Map();
-    this.printer = ts.createPrinter({ removeComments: false });
-    this.sourceFile = ts.createSourceFile(
-      'temp.ts',
-      '',
-      ts.ScriptTarget.Latest,
-      false,
-      ts.ScriptKind.TS,
-    );
   }
 
   /**
    * 从 components 节点生成所有接口代码
+   *
+   * @param componentsNode components 接口节点
+   * @param interfaces 接口代码集合(输出)
    */
   generateInterfaceCode(
     componentsNode: ts.InterfaceDeclaration,
@@ -135,6 +137,7 @@ export class InterfaceGenerator {
 
   /**
    * 查找泛型字段名
+   * 在类型定义中查找引用了 targetType 的属性名
    */
   private findGenericField(
     typeNode: ts.TypeNode,
@@ -164,10 +167,10 @@ export class InterfaceGenerator {
    * 检查 TypeNode 是否引用了目标类型
    */
   private isTypeRefTo(typeNode: ts.TypeNode, target: string): boolean {
-    const typeStr = this.printer.printNode(
+    const typeStr = sharedPrinter.printNode(
       ts.EmitHint.Unspecified,
       typeNode,
-      this.sourceFile,
+      sharedSourceFile,
     );
     const simple = simplifyTypeReference(typeStr);
 
@@ -208,6 +211,12 @@ export class InterfaceGenerator {
 
   /**
    * 生成单个接口的代码字符串
+   *
+   * @param name 接口名称
+   * @param typeNode 类型节点
+   * @param isGeneric 是否为泛型接口
+   * @param genericField 泛型字段名(如果 isGeneric 为 true)
+   * @param genericTargetType 泛型目标类型(用于替换为 T)
    */
   public generateInterfaceString(
     name: string,
@@ -230,10 +239,10 @@ export class InterfaceGenerator {
       for (const member of typeNode.members) {
         if (ts.isPropertySignature(member) && member.name && member.type) {
           // 打印整个成员节点(包括注释)
-          const memberText = this.printer.printNode(
+          const memberText = sharedPrinter.printNode(
             ts.EmitHint.Unspecified,
             member,
-            this.sourceFile,
+            sharedSourceFile,
           );
 
           const propName = (member.name as ts.Identifier).text;
@@ -244,10 +253,10 @@ export class InterfaceGenerator {
             const comment = commentMatch ? commentMatch[1] + '\n' : '';
 
             // 获取原始类型字符串
-            const typeText = this.printer.printNode(
+            const typeText = sharedPrinter.printNode(
               ts.EmitHint.Unspecified,
               member.type,
-              this.sourceFile,
+              sharedSourceFile,
             );
             const simplifiedType = simplifyTypeReference(typeText);
 
@@ -288,10 +297,10 @@ export class InterfaceGenerator {
     const genericPart = isGeneric ? '<T = any>' : '';
 
     // 使用 printer 打印类型定义
-    const typeText = this.printer.printNode(
+    const typeText = sharedPrinter.printNode(
       ts.EmitHint.Unspecified,
       typeNode,
-      this.sourceFile,
+      sharedSourceFile,
     );
 
     return `${exportKeyword}type ${name}${genericPart} = ${simplifyTypeReference(typeText)};`;

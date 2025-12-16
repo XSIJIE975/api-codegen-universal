@@ -1,12 +1,17 @@
 /**
  * AST 工具函数
  * 提供 TypeScript AST 相关的通用操作
+ * 用于解析、提取和转换 AST 节点信息
  */
 
 import ts from 'typescript';
 
 /**
  * 从节点提取字符串值
+ * 支持 StringLiteral, Identifier, NumericLiteral
+ *
+ * @param node 属性名节点
+ * @returns 提取的字符串值，如果无法提取则返回 null
  */
 export function extractStringFromNode(node: ts.PropertyName): string | null {
   if (ts.isStringLiteral(node)) {
@@ -24,6 +29,9 @@ export function extractStringFromNode(node: ts.PropertyName): string | null {
 /**
  * 提取 operations 引用
  * 例如: operations["AuthController_register"]
+ *
+ * @param typeNode 类型节点
+ * @returns operationId 字符串，如果不是引用则返回 null
  */
 export function extractOperationIdReference(
   typeNode: ts.TypeNode,
@@ -43,6 +51,9 @@ export function extractOperationIdReference(
 /**
  * 提取 schema 引用
  * 例如: components["schemas"]["UserDto"]
+ *
+ * @param typeNode 类型节点
+ * @returns Schema 名称，如果不是引用则返回 undefined
  */
 export function extractSchemaReference(
   typeNode: ts.TypeNode,
@@ -66,7 +77,7 @@ export function extractSchemaReference(
             // ignore
           }
         }
-        // 处理泛型符号
+        // 处理泛型符号 (Java 风格的泛型 « »)
         ref = ref.replace(/«/g, '<').replace(/»/g, '>');
         return ref;
       }
@@ -80,8 +91,8 @@ export function extractSchemaReference(
  * 将 TypeNode 转换为类型字符串
  */
 // 缓存 printer 和 sourceFile 以提高性能
-const sharedPrinter = ts.createPrinter();
-const sharedSourceFile = ts.createSourceFile(
+export const sharedPrinter = ts.createPrinter();
+export const sharedSourceFile = ts.createSourceFile(
   'temp.ts',
   '',
   ts.ScriptTarget.Latest,
@@ -93,6 +104,13 @@ const sharedSourceFile = ts.createSourceFile(
 const componentsSchemaRegex = /components\["schemas"\]\["([^"]+)"\]/g;
 const arrayTypeRegex = /Array<(.+)>/g;
 
+/**
+ * 将 TypeNode 转换为类型字符串
+ * 并简化 components["schemas"] 引用
+ *
+ * @param typeNode 类型节点
+ * @returns 类型字符串
+ */
 export function typeNodeToString(typeNode: ts.TypeNode): string {
   // 打印类型节点
   let typeStr = sharedPrinter.printNode(
@@ -113,6 +131,10 @@ export function typeNodeToString(typeNode: ts.TypeNode): string {
 
 /**
  * 基础类型映射
+ * 将 SyntaxKind 转换为对应的 TypeScript 类型字符串
+ *
+ * @param kind 语法类型
+ * @returns 类型字符串
  */
 export function primitiveTypeToString(kind: ts.SyntaxKind): string {
   switch (kind) {
@@ -144,7 +166,10 @@ export function primitiveTypeToString(kind: ts.SyntaxKind): string {
 /**
  * 简化类型引用字符串
  * 将 components["schemas"]["X"] 简化为 X
+ *
  * @example components["schemas"]["UserRole"] => UserRole
+ * @param text 原始类型字符串
+ * @returns 简化后的类型字符串
  */
 export function simplifyTypeReference(text: string): string {
   // 复用 componentsSchemaRegex 以避免重复定义
@@ -153,6 +178,10 @@ export function simplifyTypeReference(text: string): string {
 
 /**
  * 提取 JSDoc 注释内容
+ * 支持从 jsDoc 属性或合成前导注释中提取
+ *
+ * @param node AST 节点
+ * @returns 注释内容字符串，如果没有注释则返回 undefined
  */
 export function extractJSDocComment(node: ts.Node): string | undefined {
   // 1. 尝试获取 jsDoc 属性 (解析源码时产生)
@@ -187,14 +216,22 @@ export function extractJSDocComment(node: ts.Node): string | undefined {
 }
 
 export interface JSDocInfo {
+  /** 摘要 */
   summary?: string;
+  /** 详细描述 */
   description?: string;
+  /** 是否已废弃 */
   deprecated?: boolean;
+  /** 标签列表 */
   tags?: string[];
 }
 
 /**
  * 解析 JSDoc 注释内容
+ * 提取 summary, description, deprecated, tags 等信息
+ *
+ * @param comment 原始注释字符串
+ * @returns 解析后的 JSDoc 信息对象
  */
 export function parseJSDoc(comment: string): JSDocInfo {
   const info: JSDocInfo = {};

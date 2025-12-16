@@ -1,19 +1,26 @@
 /**
  * Schema 提取器
- * 负责从 AST 中提取 Schema 定义
+ * 负责从 TypeScript AST 中提取 Schema 定义
+ *
+ * 主要功能：
+ * 1. 遍历 components.schemas 节点
+ * 2. 解析类型定义 (TypeLiteral, UnionType, IntersectionType 等)
+ * 3. 提取 JSDoc 注释 (description, example, format, enum)
+ * 4. 处理泛型基类合成 (Generic Synthesis)
  */
 
 import ts from 'typescript';
 import type { SchemaDefinition } from '@api-codegen-universal/core';
-import { extractStringFromNode, simplifyTypeReference } from './ast-utils';
+import {
+  extractStringFromNode,
+  simplifyTypeReference,
+  sharedPrinter,
+  sharedSourceFile,
+} from './ast-utils';
 
 export class SchemaExtractor {
   /** 泛型基类集合(从 responses 中检测到的) name -> fieldName */
   private genericBaseTypes: Map<string, string>;
-  /** 复用的 printer 实例 */
-  private readonly printer: ts.Printer;
-  /** 复用的 sourceFile 实例 */
-  private readonly sourceFile: ts.SourceFile;
   /** 缓存的正则表达式 */
   private readonly descRegex = /^\*\s*@description\s+(.+)$/;
   private readonly exampleRegex = /^\*\s*@example\s*(.*)$/;
@@ -24,18 +31,15 @@ export class SchemaExtractor {
 
   constructor(genericBaseTypes: Map<string, string>) {
     this.genericBaseTypes = genericBaseTypes;
-    this.printer = ts.createPrinter();
-    this.sourceFile = ts.createSourceFile(
-      'temp.ts',
-      '',
-      ts.ScriptTarget.Latest,
-      false,
-      ts.ScriptKind.TS,
-    );
   }
 
   /**
    * 从 components 节点提取所有 schemas
+   *
+   * @param componentsNode components 接口节点
+   * @param schemas Schema 定义集合(输出)
+   * @param rawSchemas 原始 Schema 定义(可选，用于提取扩展字段)
+   * @param genericInfoMap 泛型信息映射(可选，用于辅助泛型合成)
    */
   extractSchemas(
     componentsNode: ts.InterfaceDeclaration,
@@ -117,6 +121,12 @@ export class SchemaExtractor {
   /**
    * 合成泛型基类
    * 根据具体实例 (PageVO_ApplyListVO) 推导出基类 (PageVO<T>)
+   *
+   * 算法逻辑：
+   * 1. 按 baseType 对泛型实例进行分组
+   * 2. 对每个基类，取第一个实例作为模板
+   * 3. 复制模板 Schema
+   * 4. 查找并替换泛型字段 (将具体类型替换为 'T')
    */
   private synthesizeGenericBaseTypes(
     schemas: Record<string, SchemaDefinition>,
@@ -199,6 +209,11 @@ export class SchemaExtractor {
 
   /**
    * 检查类型字符串是否引用了指定类型
+   * 支持:
+   * - 精确匹配: User
+   * - 数组匹配: User[]
+   * - 联合类型: User | null
+   * - 包含匹配: Response<User>
    */
   private isTypeRefTo(typeStr: string, targetName: string): boolean {
     if (!typeStr) return false;
@@ -240,6 +255,9 @@ export class SchemaExtractor {
 
   /**
    * 将 TypeNode 转换为 SchemaDefinition
+   *
+   * @param name Schema 名称
+   * @param typeNode TypeScript 类型节点
    */
   public typeNodeToSchema(
     name: string,
@@ -467,10 +485,10 @@ export class SchemaExtractor {
   private tsTypeToSchemaType(typeNode: ts.TypeNode): string {
     // 特殊处理 Record<string, never>
     if (ts.isTypeReferenceNode(typeNode)) {
-      const typeText = this.printer.printNode(
+      const typeText = sharedPrinter.printNode(
         ts.EmitHint.Unspecified,
         typeNode,
-        this.sourceFile,
+        sharedSourceFile,
       );
       if (typeText.includes('Record<string, never>')) {
         return 'any'; // 或者 'object'
@@ -496,10 +514,10 @@ export class SchemaExtractor {
       default:
         // 对于其他类型，直接返回其文本表示
         return simplifyTypeReference(
-          this.printer.printNode(
+          sharedPrinter.printNode(
             ts.EmitHint.Unspecified,
             typeNode,
-            this.sourceFile,
+            sharedSourceFile,
           ),
         );
     }
@@ -512,8 +530,8 @@ export class SchemaExtractor {
     const enumValues: (string | number)[] = [];
 
     for (const t of node.types) {
-      const text = this.printer
-        .printNode(ts.EmitHint.Unspecified, t, this.sourceFile)
+      const text = sharedPrinter
+        .printNode(ts.EmitHint.Unspecified, t, sharedSourceFile)
         .trim();
 
       // 检查字符串字面量 "..." 或 '...'
