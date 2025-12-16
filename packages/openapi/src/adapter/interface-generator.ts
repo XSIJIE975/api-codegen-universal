@@ -101,7 +101,7 @@ export class InterfaceGenerator {
                   }
 
                   // 2. 生成具体类型的别名
-                  // export type PageVO_ApplyListVO = PageVO<ApplyListVO>;
+                  // export type Generic_SomeDataType = Generic<Type>;
                   const args = info.generics.map((g) =>
                     g
                       .replace(/«/g, '_')

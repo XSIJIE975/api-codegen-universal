@@ -260,7 +260,7 @@ export class RequestResponseExtractor {
           if (memberWithEmit.emitNode?.leadingComments) {
             for (const comment of memberWithEmit.emitNode.leadingComments) {
               // comment.kind === 3 是多行注释 /* */
-              // comment.text 格式: "* @description 注册成功 "
+              // comment.text 格式: "* @description 这是一段详细的接口描述 "
               if (comment.text) {
                 const match = comment.text.match(this.descriptionRegex);
                 if (match && match[1]) {
@@ -283,7 +283,7 @@ export class RequestResponseExtractor {
                 ts.isTypeLiteralNode(respMember.type)
               ) {
                 // 查找 application/json
-                // 目前主要支持 application/json，其他类型可扩展
+                // TODO: 目前主要支持 application/json，其他类型可扩展
                 for (const contentMember of respMember.type.members) {
                   if (
                     ts.isPropertySignature(contentMember) &&

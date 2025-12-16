@@ -115,8 +115,9 @@ export class ApifoxAdapter
     if (data.components?.securitySchemes) {
       Object.values(data.components.securitySchemes).forEach((scheme: any) => {
         if (scheme.type === 'http') {
-          delete scheme.name; // 删除非标字段
-          delete scheme.in; // 删除非标字段
+          // 删除非标字段
+          Reflect.deleteProperty(scheme, 'name');
+          Reflect.deleteProperty(scheme, 'in');
         }
       });
     }
@@ -143,7 +144,7 @@ export class ApifoxAdapter
                 // 删除 secItem 中所有以 'x-' 开头的 key
                 Object.keys(secItem).forEach((key) => {
                   if (key.toLowerCase().startsWith('x-')) {
-                    delete secItem[key];
+                    Reflect.deleteProperty(secItem, key);
                   }
                 });
               });

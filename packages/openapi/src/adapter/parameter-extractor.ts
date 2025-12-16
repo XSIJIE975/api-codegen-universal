@@ -222,10 +222,12 @@ export class ParameterExtractor {
           // 根据配置生成接口代码
           if (this.shouldGenerateInterfaces) {
             // 使用 interfaceGenerator 的内部方法生成接口字符串
-            // 注意：这里使用了索引访问来调用私有/受保护方法，实际开发中应公开该方法或调整设计
-            const interfaceCode = this.interfaceGenerator[
-              'generateInterfaceString'
-            ](interfaceName, member.type, false);
+            const interfaceCode =
+              this.interfaceGenerator.generateInterfaceString(
+                interfaceName,
+                member.type,
+                false,
+              );
             interfaces[interfaceName] = interfaceCode;
           }
 

@@ -38,13 +38,11 @@ export class SchemaExtractor {
    *
    * @param componentsNode components 接口节点
    * @param schemas Schema 定义集合(输出)
-   * @param rawSchemas 原始 Schema 定义(可选，用于提取扩展字段)
    * @param genericInfoMap 泛型信息映射(可选，用于辅助泛型合成)
    */
   extractSchemas(
     componentsNode: ts.InterfaceDeclaration,
     schemas: Record<string, SchemaDefinition>,
-    rawSchemas?: Record<string, unknown>,
     genericInfoMap?: Map<string, { baseType: string; generics: string[] }>,
   ): void {
     // 找到 schemas 属性
@@ -75,19 +73,6 @@ export class SchemaExtractor {
                     // ignore
                   }
                 }
-                // 移除旧的替换逻辑，因为现在已经在 ApifoxAdapter 中处理为下划线了
-                // schemaName = schemaName.replace(/«/g, '<').replace(/»/g, '>');
-
-                // 检查 x-apifox-generic 元数据
-                if (rawSchemas && genericInfoMap && rawSchemas[schemaName]) {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const meta = (rawSchemas[schemaName] as Record<string, any>)[
-                    'x-apifox-generic'
-                  ];
-                  if (meta) {
-                    genericInfoMap.set(schemaName, meta);
-                  }
-                }
 
                 // 解析具体的 schema 结构
                 const schema = this.typeNodeToSchema(
@@ -113,7 +98,6 @@ export class SchemaExtractor {
 
     // 提取完成后，合成泛型基类
     if (genericInfoMap && genericInfoMap.size > 0) {
-      // console.log('Synthesizing generic base types...', genericInfoMap.size);
       this.synthesizeGenericBaseTypes(schemas, genericInfoMap);
     }
   }
@@ -149,7 +133,6 @@ export class SchemaExtractor {
       if (instanceName) {
         const instanceSchema = schemas[instanceName];
         if (!instanceSchema) {
-          // console.log(`Instance schema not found: ${instanceName}`);
           continue;
         }
 
@@ -161,18 +144,16 @@ export class SchemaExtractor {
         baseSchema.isGeneric = true;
         baseSchema.genericParam = 'T'; // 暂时假设单泛型参数
 
-        // 获取泛型参数名 (例如 ApplyListVO)
+        // 获取泛型参数名
         const rawArg = genericInfoMap.get(instanceName)?.generics[0];
         if (!rawArg) continue;
 
-        // 规范化参数名 (ApplyListVO -> ApplyListVO, ResultVO«User» -> ResultVO_User)
+        // 规范化参数名
         const targetType = rawArg
           .replace(/«/g, '_')
           .replace(/»/g, '')
           .replace(/,/g, '_')
           .replace(/\s/g, '');
-
-        // console.log(`Synthesizing ${baseType} from ${instanceName}, targetType=${targetType}`);
 
         // 查找并替换泛型字段
         let genericFieldFound = false;
@@ -180,11 +161,9 @@ export class SchemaExtractor {
           for (const [propName, propDef] of Object.entries(
             baseSchema.properties,
           )) {
-            // console.log(`Checking prop ${propName}`, propDef);
             // 检查属性是否引用了 targetType
             if (this.isTypeRefTo(propDef.type, targetType)) {
               // 使用正则替换，确保只替换完整的单词
-              // ApplyListVO[] | null -> T[] | null
               const regex = new RegExp(
                 `\\b${this.escapeRegExp(targetType)}\\b`,
                 'g',
@@ -199,9 +178,6 @@ export class SchemaExtractor {
 
         if (genericFieldFound) {
           schemas[baseType] = baseSchema;
-          // console.log(`Synthesized generic base type: ${baseType}<T> from ${instanceName}`);
-        } else {
-          // console.log(`Failed to find generic field for ${baseType}`);
         }
       }
     }
@@ -457,8 +433,7 @@ export class SchemaExtractor {
             ];
           }
         } else if (ts.isTypeReferenceNode(t)) {
-          // 如果是引用，我们可能无法在这里解析它，因为我们只有 AST
-          // 但我们可以记录它
+          // FIXME: 如果是引用，这里可能无法在这里解析它，因为这里只有 AST
           // schema.allOf = ...
         }
       }

@@ -185,7 +185,7 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     let operationsNode: ts.InterfaceDeclaration | undefined;
     let componentsNode: ts.InterfaceDeclaration | undefined;
 
-    // 第一遍遍历: 找到关键接口 - 早期退出优化
+    // 第一遍遍历: 找到关键接口
     for (const node of ast) {
       if (ts.isInterfaceDeclaration(node)) {
         const interfaceName = node.name.text;
@@ -233,7 +233,6 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
       this.schemaExtractor.extractSchemas(
         componentsNode,
         schemas,
-        undefined, // rawSchemas 不再需要，因为我们已经预处理了 genericInfoMap
         this.genericInfoMap,
       );
     }
