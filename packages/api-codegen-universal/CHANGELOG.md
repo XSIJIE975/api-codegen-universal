@@ -1,5 +1,23 @@
 # api-codegen-universal
 
+## 0.5.0
+
+### Minor Changes
+
+- [#5](https://github.com/XSIJIE975/api-codegen-universal/pull/5) [`ee98cd0`](https://github.com/XSIJIE975/api-codegen-universal/commit/ee98cd0bad6701fdf44a1f47be51806d53a2590b) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - feat: Release v0.5.0
+  - **Features**:
+    - Support response object naming style configuration (`namingStyle`); generated response interface names will follow the configured style.
+    - Add reference repair and generic name processing to Apifox adapter, improving compatibility with complex Schemas.
+  - **Bug Fixes**:
+    - Fix URL-encoded Schema name parsing issue in Apifox adapter.
+    - Fix generic detection and interface generation logic in OpenAPI adapter.
+    - Enhance robustness of inline response processing and API extraction in OpenAPI adapter.
+  - **Performance**:
+    - Eliminate redundant object creation and cache expensive operations to improve performance.
+  - **Documentation & Tests**:
+    - Comprehensively improve source code comments and type definition explanations for core module, OpenAPI adapter, and Apifox adapter.
+    - Add unit tests for core modules to improve project stability.
+
 ## 0.4.0
 
 ### Minor Changes
