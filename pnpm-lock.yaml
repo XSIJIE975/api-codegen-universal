@@ -24,8 +24,8 @@ importers:
         specifier: ^9.39.0
         version: 9.39.1
       '@rstest/core':
-        specifier: ^0.6.3
-        version: 0.6.5
+        specifier: ^0.6.9
+        version: 0.6.9
       '@types/node':
         specifier: ^24.10.0
         version: 24.10.1
@@ -109,12 +109,18 @@ importers:
       '@rslib/core':
         specifier: ^0.17.2
         version: 0.17.2(@microsoft/api-extractor@7.55.0(@types/node@24.10.1))(typescript@5.9.3)
+      '@rstest/core':
+        specifier: ^0.6.9
+        version: 0.6.9
 
   packages/core:
     devDependencies:
       '@rslib/core':
         specifier: ^0.17.2
         version: 0.17.2(@microsoft/api-extractor@7.55.0(@types/node@24.10.1))(typescript@5.9.3)
+      '@rstest/core':
+        specifier: ^0.6.9
+        version: 0.6.9
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -140,6 +146,9 @@ importers:
       '@rslib/core':
         specifier: ^0.17.2
         version: 0.17.2(@microsoft/api-extractor@7.55.0(@types/node@24.10.1))(typescript@5.9.3)
+      '@rstest/core':
+        specifier: ^0.6.9
+        version: 0.6.9
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -701,8 +710,8 @@ packages:
   '@rspack/lite-tapable@1.1.0':
     resolution: {integrity: sha512-E2B0JhYFmVAwdDiG14+DW0Di4Ze4Jg10Pc4/lILUrd5DRCaklduz2OvJ5HYQ6G+hd+WTzqQb3QnDNfK4yvAFYw==}
 
-  '@rstest/core@0.6.5':
-    resolution: {integrity: sha512-nnJkWso5H4JetdHoK6gBPAcgN727xxrCrTC++5oo42lmmk1HRvHYOtOVi3uCdcNUaESrgjKYF4L5PDpowZUy/A==}
+  '@rstest/core@0.6.9':
+    resolution: {integrity: sha512-0qImkQB6T5NLrlgeuaZxSfgpAaaciouKJycpZe673M+cn1WLai7blt2z+Tf4Qv4DVOw/ZyphSmM8WNYz09vNmw==}
     engines: {node: '>=18.12.0'}
     hasBin: true
     peerDependencies:
@@ -2708,7 +2717,7 @@ snapshots:
 
   '@rspack/lite-tapable@1.1.0': {}
 
-  '@rstest/core@0.6.5':
+  '@rstest/core@0.6.9':
     dependencies:
       '@rsbuild/core': 1.6.0-beta.1
       '@types/chai': 5.2.3

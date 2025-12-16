@@ -1,27 +1,49 @@
 /**
  * 标准输出数据结构
  * 所有适配器都必须输出这种统一的格式
+ *
+ * 该文件定义了核心的数据模型，用于抹平不同 API 规范（如 OpenAPI 2.0/3.0, Swagger, GraphQL 等）之间的差异。
+ * 代码生成器将基于此标准格式生成最终的代码。
  */
 
 /**
  * 标准输出格式 - 核心导出
+ * 包含所有提取出的 Schema、Interface 和 API 定义
  */
 export interface StandardOutput {
-  /** Schema 定义集合 */
+  /**
+   * Schema 定义集合
+   * Key 为 Schema 名称（如 UserDto），Value 为详细定义
+   * 用于生成类型定义文件或验证逻辑
+   */
   schemas: Record<string, SchemaDefinition>;
-  /** TypeScript 接口代码字符串集合 */
+
+  /**
+   * TypeScript 接口代码字符串集合
+   * Key 为接口名称，Value 为生成的 TypeScript 代码字符串
+   * 适配器可以直接生成 TS 代码，也可以留空由后续流程生成
+   */
   interfaces: Record<string, string>;
-  /** API 接口定义列表 */
+
+  /**
+   * API 接口定义列表
+   * 包含所有提取出的 API 操作详情
+   */
   apis: ApiDefinition[];
-  /** 元数据信息 */
+
+  /**
+   * 元数据信息
+   * 包含文档标题、版本、生成时间等
+   */
   metadata: Metadata | null;
 }
 
 /**
  * Schema 定义
+ * 描述数据结构的元信息，类似于 JSON Schema
  */
 export interface SchemaDefinition {
-  /** Schema 名称 */
+  /** Schema 名称 (如 User, OrderDetail) */
   name: string;
   /** 描述信息 */
   description?: string;
@@ -29,19 +51,19 @@ export interface SchemaDefinition {
   type: SchemaType;
 
   // ======== object 类型特有 ========
-  /** 对象属性定义 */
+  /** 对象属性定义 (当 type='object' 时有效) */
   properties?: Record<string, PropertyDefinition>;
   /** 必填字段列表 */
   required?: string[];
-  /** 额外属性定义 */
+  /** 额外属性定义 (索引签名) */
   additionalProperties?: SchemaReference;
 
   // ======== array 类型特有 ========
-  /** 数组元素类型 */
+  /** 数组元素类型 (当 type='array' 时有效) */
   items?: SchemaReference;
 
   // ======== enum 类型特有 ========
-  /** 枚举值 */
+  /** 枚举值列表 (当 type='enum' 时有效) */
   enum?: Array<string | number>;
 
   // ======== 泛型相关 ========
@@ -73,11 +95,12 @@ export type SchemaType =
 
 /**
  * 属性定义
+ * 描述对象中的单个属性
  */
 export interface PropertyDefinition {
   /** 属性名 */
   name: string;
-  /** 属性类型(TS 类型字符串) */
+  /** 属性类型(TS 类型字符串，如 string, number, UserDto) */
   type: string;
   /** 描述信息 */
   description?: string;
@@ -108,6 +131,13 @@ export interface PropertyDefinition {
 /**
  * Schema 引用
  * 用于表示类型引用或内联定义
+ *
+ * @example
+ * // 引用类型
+ * { type: 'ref', ref: 'User' }
+ *
+ * // 内联定义
+ * { type: 'inline', schema: { type: 'object', properties: { ... } } }
  */
 export interface SchemaReference {
   /** 引用类型 */
@@ -241,6 +271,15 @@ export interface ExampleDefinition {
 /**
  * 分类信息
  * 用于将API按路径分类到不同文件
+ *
+ * @example
+ * // 路径: /api/v1/users/profile
+ * {
+ *   segments: ['api', 'v1', 'users'],
+ *   depth: 3,
+ *   isUnclassified: false,
+ *   filePath: 'api/v1/users/index.ts'
+ * }
  */
 export interface CategoryInfo {
   /** 路径段数组(如 ['auth', 'users']) */

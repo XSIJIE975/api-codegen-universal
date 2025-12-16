@@ -1,13 +1,28 @@
 import type { OpenAPIOptions } from '@api-codegen-universal/openapi';
 
-/** Apifox 适配器配置 */
+/**
+ * Apifox 适配器配置
+ * 用于配置 Apifox 项目的连接信息和导出选项
+ */
 export interface ApifoxConfig {
-  /** Apifox 项目 ID */
+  /**
+   * Apifox 项目 ID
+   * 可以在 Apifox 项目设置中找到
+   */
   projectId: string | number;
-  /** Apifox 访问令牌 (Bearer Token) */
+
+  /**
+   * Apifox 访问令牌 (Bearer Token)
+   * 用于调用 Apifox 开放 API
+   */
   token: string;
-  /**  Apifox API 版本 */
+
+  /**
+   * Apifox API 版本
+   * 默认为 '2024-03-28'
+   */
   apiVersion?: ApiFoxVersion;
+
   /**
    * 导出选项 (可选)
    * 如果不传，默认导出全部接口，OpenAPI 3.0 格式
@@ -21,7 +36,10 @@ export type ApiFoxVersion = '2024-03-28' | '2025-09-01';
 /** 适配器选项，继承自 OpenAPI 的选项 */
 export type ApifoxAdapterOptions = OpenAPIOptions;
 
-/** Apifox 导出 OpenAPI/Swagger 格式数据选项 */
+/**
+ * Apifox 导出 OpenAPI/Swagger 格式数据选项
+ * 对应 Apifox 开放 API 的请求体结构
+ */
 export interface ApifoxExportToOpenAPIOptions {
   /** 指定要导出的分支ID，默认导出主分支 */
   branchId?: number;
@@ -47,6 +65,7 @@ export type ExportFormat = 'JSON' | 'YAML';
  */
 export type OasVersion = '3.0' | '3.1' | '2.0';
 
+/** 导出详细选项 */
 export interface Options {
   /** 指定是否在标签字段中包含接口的目录名称 */
   addFoldersToTags?: boolean;
@@ -54,7 +73,10 @@ export interface Options {
   includeApifoxExtensionProperties?: boolean;
 }
 
-/** 导出全部 / 指定接口 / 指定标签 / 指定目录 */
+/**
+ * 导出范围配置
+ * 支持导出全部、指定接口、指定标签或指定目录
+ */
 export interface Scope {
   /** 排除掉包含指定标签的内容 */
   excludedByTags?: string[];

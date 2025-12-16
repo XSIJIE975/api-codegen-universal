@@ -22,10 +22,12 @@
   ],
   "scripts": {
     "build": "rslib build",
-    "dev": "rslib build --watch"
+    "dev": "rslib build --watch",
+    "test": "rstest"
   },
   "devDependencies": {
     "@rslib/core": "^0.17.2",
+    "@rstest/core": "^0.6.9",
     "typescript": "^5.9.3"
   }
 }

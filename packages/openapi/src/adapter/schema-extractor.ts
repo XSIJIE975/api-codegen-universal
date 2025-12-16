@@ -1,19 +1,26 @@
 /**
  * Schema 提取器
- * 负责从 AST 中提取 Schema 定义
+ * 负责从 TypeScript AST 中提取 Schema 定义
+ *
+ * 主要功能：
+ * 1. 遍历 components.schemas 节点
+ * 2. 解析类型定义 (TypeLiteral, UnionType, IntersectionType 等)
+ * 3. 提取 JSDoc 注释 (description, example, format, enum)
+ * 4. 处理泛型基类合成 (Generic Synthesis)
  */
 
 import ts from 'typescript';
 import type { SchemaDefinition } from '@api-codegen-universal/core';
-import { extractStringFromNode, simplifyTypeReference } from './ast-utils';
+import {
+  extractStringFromNode,
+  simplifyTypeReference,
+  sharedPrinter,
+  sharedSourceFile,
+} from './ast-utils';
 
 export class SchemaExtractor {
   /** 泛型基类集合(从 responses 中检测到的) name -> fieldName */
   private genericBaseTypes: Map<string, string>;
-  /** 复用的 printer 实例 */
-  private readonly printer: ts.Printer;
-  /** 复用的 sourceFile 实例 */
-  private readonly sourceFile: ts.SourceFile;
   /** 缓存的正则表达式 */
   private readonly descRegex = /^\*\s*@description\s+(.+)$/;
   private readonly exampleRegex = /^\*\s*@example\s*(.*)$/;
@@ -24,22 +31,19 @@ export class SchemaExtractor {
 
   constructor(genericBaseTypes: Map<string, string>) {
     this.genericBaseTypes = genericBaseTypes;
-    this.printer = ts.createPrinter();
-    this.sourceFile = ts.createSourceFile(
-      'temp.ts',
-      '',
-      ts.ScriptTarget.Latest,
-      false,
-      ts.ScriptKind.TS,
-    );
   }
 
   /**
    * 从 components 节点提取所有 schemas
+   *
+   * @param componentsNode components 接口节点
+   * @param schemas Schema 定义集合(输出)
+   * @param genericInfoMap 泛型信息映射(可选，用于辅助泛型合成)
    */
   extractSchemas(
     componentsNode: ts.InterfaceDeclaration,
     schemas: Record<string, SchemaDefinition>,
+    genericInfoMap?: Map<string, { baseType: string; generics: string[] }>,
   ): void {
     // 找到 schemas 属性
     for (const member of componentsNode.members) {
@@ -58,9 +62,18 @@ export class SchemaExtractor {
               schemaMember.name &&
               schemaMember.type
             ) {
-              const schemaName = extractStringFromNode(schemaMember.name);
+              let schemaName = extractStringFromNode(schemaMember.name);
 
               if (schemaName) {
+                // 解码并处理泛型符号
+                if (schemaName.includes('%')) {
+                  try {
+                    schemaName = decodeURIComponent(schemaName);
+                  } catch {
+                    // ignore
+                  }
+                }
+
                 // 解析具体的 schema 结构
                 const schema = this.typeNodeToSchema(
                   schemaName,
@@ -82,12 +95,150 @@ export class SchemaExtractor {
         }
       }
     }
+
+    // 提取完成后，合成泛型基类
+    if (genericInfoMap && genericInfoMap.size > 0) {
+      this.synthesizeGenericBaseTypes(schemas, genericInfoMap);
+    }
+  }
+
+  /**
+   * 合成泛型基类
+   * 根据具体实例 (PageVO_ApplyListVO) 推导出基类 (PageVO<T>)
+   *
+   * 算法逻辑：
+   * 1. 按 baseType 对泛型实例进行分组
+   * 2. 对每个基类，取第一个实例作为模板
+   * 3. 复制模板 Schema
+   * 4. 查找并替换泛型字段 (将具体类型替换为 'T')
+   */
+  private synthesizeGenericBaseTypes(
+    schemas: Record<string, SchemaDefinition>,
+    genericInfoMap: Map<string, { baseType: string; generics: string[] }>,
+  ) {
+    // 按 baseType 分组
+    const groups = new Map<string, string[]>();
+    for (const [name, info] of genericInfoMap) {
+      if (!groups.has(info.baseType)) {
+        groups.set(info.baseType, []);
+      }
+      groups.get(info.baseType)!.push(name);
+    }
+
+    for (const [baseType, instances] of groups) {
+      if (schemas[baseType]) continue; // 基类已存在
+
+      // 取第一个实例作为模板
+      const instanceName = instances[0];
+      if (instanceName) {
+        const instanceSchema = schemas[instanceName];
+        if (!instanceSchema) {
+          continue;
+        }
+
+        // 创建基类 Schema
+        const baseSchema: SchemaDefinition = JSON.parse(
+          JSON.stringify(instanceSchema),
+        );
+        baseSchema.name = baseType;
+        baseSchema.isGeneric = true;
+        baseSchema.genericParam = 'T'; // 暂时假设单泛型参数
+
+        // 获取泛型参数名
+        const rawArg = genericInfoMap.get(instanceName)?.generics[0];
+        if (!rawArg) continue;
+
+        // 规范化参数名
+        const targetType = rawArg
+          .replace(/«/g, '_')
+          .replace(/»/g, '')
+          .replace(/,/g, '_')
+          .replace(/\s/g, '');
+
+        // 查找并替换泛型字段
+        let genericFieldFound = false;
+        if (baseSchema.properties) {
+          for (const [propName, propDef] of Object.entries(
+            baseSchema.properties,
+          )) {
+            // 检查属性是否引用了 targetType
+            if (this.isTypeRefTo(propDef.type, targetType)) {
+              // 使用正则替换，确保只替换完整的单词
+              const regex = new RegExp(
+                `\\b${this.escapeRegExp(targetType)}\\b`,
+                'g',
+              );
+              const newType = propDef.type.replace(regex, 'T');
+
+              baseSchema.properties[propName] = { ...propDef, type: newType };
+              genericFieldFound = true;
+            }
+          }
+        }
+
+        if (genericFieldFound) {
+          schemas[baseType] = baseSchema;
+        }
+      }
+    }
+  }
+
+  /**
+   * 检查类型字符串是否引用了指定类型
+   * 支持:
+   * - 精确匹配: User
+   * - 数组匹配: User[]
+   * - 联合类型: User | null
+   * - 包含匹配: Response<User>
+   */
+  private isTypeRefTo(typeStr: string, targetName: string): boolean {
+    if (!typeStr) return false;
+
+    // 移除空白字符
+    const cleanType = typeStr.replace(/\s/g, '');
+    const cleanTarget = targetName.replace(/\s/g, '');
+
+    // 1. 精确匹配
+    if (cleanType === cleanTarget) return true;
+
+    // 2. 数组匹配
+    if (cleanType === `${cleanTarget}[]`) return true;
+
+    // 3. 联合类型匹配 (e.g. "Type|null", "Type[]|null")
+    if (cleanType.includes('|')) {
+      const parts = cleanType.split('|');
+      return parts.some((part) => {
+        // 去除可能的括号
+        const p = part.replace(/^\(|\)$/g, '');
+        return (
+          p === cleanTarget ||
+          p === `${cleanTarget}[]` ||
+          p.endsWith(`/${cleanTarget}`) ||
+          p.endsWith(`/${cleanTarget}[]`)
+        );
+      });
+    }
+
+    // 4. 包含匹配 (最宽松，用于处理复杂情况)
+    // 确保 targetName 是作为一个完整的单词出现
+    const regex = new RegExp(`\\b${this.escapeRegExp(targetName)}\\b`);
+    return regex.test(typeStr);
+  }
+
+  private escapeRegExp(string: string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**
    * 将 TypeNode 转换为 SchemaDefinition
+   *
+   * @param name Schema 名称
+   * @param typeNode TypeScript 类型节点
    */
-  typeNodeToSchema(name: string, typeNode: ts.TypeNode): SchemaDefinition {
+  public typeNodeToSchema(
+    name: string,
+    typeNode: ts.TypeNode,
+  ): SchemaDefinition {
     const schema: SchemaDefinition = {
       name,
       type: 'object',
@@ -282,8 +433,7 @@ export class SchemaExtractor {
             ];
           }
         } else if (ts.isTypeReferenceNode(t)) {
-          // 如果是引用，我们可能无法在这里解析它，因为我们只有 AST
-          // 但我们可以记录它
+          // FIXME: 如果是引用，这里可能无法在这里解析它，因为这里只有 AST
           // schema.allOf = ...
         }
       }
@@ -310,10 +460,10 @@ export class SchemaExtractor {
   private tsTypeToSchemaType(typeNode: ts.TypeNode): string {
     // 特殊处理 Record<string, never>
     if (ts.isTypeReferenceNode(typeNode)) {
-      const typeText = this.printer.printNode(
+      const typeText = sharedPrinter.printNode(
         ts.EmitHint.Unspecified,
         typeNode,
-        this.sourceFile,
+        sharedSourceFile,
       );
       if (typeText.includes('Record<string, never>')) {
         return 'any'; // 或者 'object'
@@ -339,10 +489,10 @@ export class SchemaExtractor {
       default:
         // 对于其他类型，直接返回其文本表示
         return simplifyTypeReference(
-          this.printer.printNode(
+          sharedPrinter.printNode(
             ts.EmitHint.Unspecified,
             typeNode,
-            this.sourceFile,
+            sharedSourceFile,
           ),
         );
     }
@@ -355,8 +505,8 @@ export class SchemaExtractor {
     const enumValues: (string | number)[] = [];
 
     for (const t of node.types) {
-      const text = this.printer
-        .printNode(ts.EmitHint.Unspecified, t, this.sourceFile)
+      const text = sharedPrinter
+        .printNode(ts.EmitHint.Unspecified, t, sharedSourceFile)
         .trim();
 
       // 检查字符串字面量 "..." 或 '...'
