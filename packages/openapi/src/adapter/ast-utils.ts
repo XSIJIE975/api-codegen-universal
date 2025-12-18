@@ -109,9 +109,13 @@ const arrayTypeRegex = /Array<(.+)>/g;
  * 并简化 components["schemas"] 引用
  *
  * @param typeNode 类型节点
+ * @param nameConverter 名称转换函数(可选)
  * @returns 类型字符串
  */
-export function typeNodeToString(typeNode: ts.TypeNode): string {
+export function typeNodeToString(
+  typeNode: ts.TypeNode,
+  nameConverter?: (name: string) => string,
+): string {
   // 打印类型节点
   let typeStr = sharedPrinter.printNode(
     ts.EmitHint.Unspecified,
@@ -121,7 +125,9 @@ export function typeNodeToString(typeNode: ts.TypeNode): string {
 
   // 处理 components["schemas"]["XXX"] 格式,提取出类型名
   // 注意：如果 XXX 包含 < >，这里也会正确提取
-  typeStr = typeStr.replace(componentsSchemaRegex, '$1');
+  typeStr = typeStr.replace(componentsSchemaRegex, (_match, p1) => {
+    return nameConverter ? nameConverter(p1) : p1;
+  });
 
   // 处理数组类型
   typeStr = typeStr.replace(arrayTypeRegex, '$1[]');
@@ -169,11 +175,17 @@ export function primitiveTypeToString(kind: ts.SyntaxKind): string {
  *
  * @example components["schemas"]["UserRole"] => UserRole
  * @param text 原始类型字符串
+ * @param nameConverter 名称转换函数(可选)
  * @returns 简化后的类型字符串
  */
-export function simplifyTypeReference(text: string): string {
+export function simplifyTypeReference(
+  text: string,
+  nameConverter?: (name: string) => string,
+): string {
   // 复用 componentsSchemaRegex 以避免重复定义
-  return text.replace(componentsSchemaRegex, '$1');
+  return text.replace(componentsSchemaRegex, (_match, p1) => {
+    return nameConverter ? nameConverter(p1) : p1;
+  });
 }
 
 /**

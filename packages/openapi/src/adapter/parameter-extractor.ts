@@ -16,6 +16,7 @@ import {
 } from './ast-utils';
 import { SchemaExtractor } from './schema-extractor';
 import { InterfaceGenerator } from './interface-generator';
+import { NamingUtils } from '../utils/naming-utils';
 
 /**
  * 参数提取器类
@@ -32,8 +33,6 @@ export class ParameterExtractor {
   private schemaExtractor: SchemaExtractor;
   /** 接口生成器实例 */
   private interfaceGenerator: InterfaceGenerator;
-  /** 缓存的正则表达式，用于分割字符串 */
-  private readonly splitRegex = /[_-]/;
 
   /**
    * 构造函数
@@ -263,52 +262,9 @@ export class ParameterExtractor {
       location.charAt(0).toUpperCase() + location.slice(1);
 
     // 根据命名风格转换
-    return this.convertToNamingStyle(
+    return NamingUtils.convert(
       `${operationId}_${locationCapitalized}_Params`,
+      this.namingStyle,
     );
-  }
-
-  /**
-   * 转换为指定的命名风格
-   * 支持 PascalCase, camelCase, snake_case
-   *
-   * @param name 原始名称
-   * @returns 转换后的名称
-   */
-  private convertToNamingStyle(name: string): string {
-    switch (this.namingStyle) {
-      case 'PascalCase':
-        // AuthController_register_Query_Params -> AuthControllerRegisterQueryParams
-        return name
-          .split(this.splitRegex)
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join('');
-
-      case 'camelCase': {
-        // AuthController_register_Query_Params -> authControllerRegisterQueryParams
-        const parts = name.split(this.splitRegex).filter((p) => p.length > 0);
-        if (parts.length === 0) return name;
-        const firstPart = parts[0]!;
-        return (
-          firstPart.charAt(0).toLowerCase() +
-          firstPart.slice(1) +
-          parts
-            .slice(1)
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join('')
-        );
-      }
-
-      case 'snake_case':
-        // AuthController_register_Query_Params -> auth_controller_register_query_params
-        return name
-          .toLowerCase()
-          .replace(/[A-Z]/g, (letter, index) =>
-            index === 0 ? letter.toLowerCase() : '_' + letter.toLowerCase(),
-          );
-
-      default:
-        return name;
-    }
   }
 }
