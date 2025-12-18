@@ -74,6 +74,9 @@ export interface SchemaDefinition {
   /** 泛型参数(如 User, User[]) */
   genericParam?: string;
 
+  /** 继承的基类列表 */
+  extends?: string[];
+
   // ======== 其他元信息 ========
   /** 示例值 */
   example?: unknown;
