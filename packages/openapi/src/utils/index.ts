@@ -4,3 +4,4 @@
 
 export * from './path-classifier';
 export * from './generic-detector';
+export * from './naming-utils';
