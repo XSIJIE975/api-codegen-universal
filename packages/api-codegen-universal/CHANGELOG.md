@@ -1,5 +1,14 @@
 # api-codegen-universal
 
+## 0.6.0
+
+### Minor Changes
+
+- [#7](https://github.com/XSIJIE975/api-codegen-universal/pull/7) [`3bea986`](https://github.com/XSIJIE975/api-codegen-universal/commit/3bea9864dd4462599688342770a7210db673601b) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - - feat: schema definition 新增 extends 字段以支持继承关系
+  - feat: 新增 naming utils 工具类用于统一命名风格转换
+  - feat: 优化 schema 提取逻辑，支持交叉类型继承和 jsdoc 解析重构
+  - refactor: 应用 naming utils 实现全局命名风格统一，并修复 oneof 类型处理
+
 ## 0.5.0
 
 ### Minor Changes
