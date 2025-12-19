@@ -10,17 +10,23 @@
  */
 
 import ts from 'typescript';
-import type { SchemaDefinition } from '@api-codegen-universal/core';
+import type {
+  SchemaDefinition,
+  NamingStyle,
+} from '@api-codegen-universal/core';
 import {
   extractStringFromNode,
-  simplifyTypeReference,
   sharedPrinter,
   sharedSourceFile,
+  typeNodeToString,
 } from './ast-utils';
+import { NamingUtils } from '../utils/naming-utils';
 
 export class SchemaExtractor {
   /** 泛型基类集合(从 responses 中检测到的) name -> fieldName */
   private genericBaseTypes: Map<string, string>;
+  /** 命名风格 */
+  private namingStyle: NamingStyle;
   /** 缓存的正则表达式 */
   private readonly descRegex = /^\*\s*@description\s+(.+)$/;
   private readonly exampleRegex = /^\*\s*@example\s*(.*)$/;
@@ -29,8 +35,12 @@ export class SchemaExtractor {
   private readonly plainRegex = /^\*\s*(.+)$/;
   private readonly stringLiteralRegex = /^["'](.*)["']$/;
 
-  constructor(genericBaseTypes: Map<string, string>) {
+  constructor(
+    genericBaseTypes: Map<string, string>,
+    namingStyle: NamingStyle = 'PascalCase',
+  ) {
     this.genericBaseTypes = genericBaseTypes;
+    this.namingStyle = namingStyle;
   }
 
   /**
@@ -74,21 +84,29 @@ export class SchemaExtractor {
                   }
                 }
 
+                const originalName = schemaName;
+                // 应用命名风格
+                const convertedName = NamingUtils.convert(
+                  originalName,
+                  this.namingStyle,
+                );
+
                 // 解析具体的 schema 结构
                 const schema = this.typeNodeToSchema(
-                  schemaName,
+                  convertedName,
                   schemaMember.type,
                 );
 
                 // 检测是否为泛型基类 - 优化: 只查找一次 Map
-                const genericField = this.genericBaseTypes.get(schemaName);
+                // 注意：genericBaseTypes 使用原始名称作为 Key
+                const genericField = this.genericBaseTypes.get(originalName);
                 if (genericField !== undefined) {
                   schema.isGeneric = true;
-                  schema.baseType = schemaName;
+                  schema.baseType = convertedName;
                   schema.type = 'generic';
                 }
 
-                schemas[schemaName] = schema;
+                schemas[convertedName] = schema;
               }
             }
           }
@@ -230,6 +248,130 @@ export class SchemaExtractor {
   }
 
   /**
+   * 从节点提取 JSDoc 元数据
+   */
+  private extractJSDocMetadata(node: ts.Node): {
+    description?: string;
+    example?: unknown;
+    format?: string;
+    enumValues?: (string | number)[];
+  } {
+    let description: string | undefined;
+    let example: unknown;
+    let format: string | undefined;
+    let enumValues: (string | number)[] | undefined;
+
+    const nodeWithEmit = node as ts.Node & {
+      emitNode?: {
+        leadingComments?: Array<{ kind: number; text: string }>;
+      };
+    };
+
+    if (nodeWithEmit.emitNode?.leadingComments) {
+      for (const comment of nodeWithEmit.emitNode.leadingComments) {
+        if (comment.text) {
+          // 解析多行注释中的所有标签
+          const lines = comment.text.split('\n');
+          let collectingExample = false;
+          let exampleLines: string[] = [];
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+
+            // 如果正在收集 example，继续累积
+            if (collectingExample) {
+              // 检查是否遇到新的标签或注释结束
+              if (trimmedLine.startsWith('* @') || trimmedLine === '*/') {
+                collectingExample = false;
+                // 尝试解析收集的 example
+                const exampleText = exampleLines.join('\n').trim();
+                if (exampleText) {
+                  try {
+                    example = JSON.parse(exampleText);
+                  } catch {
+                    example = exampleText;
+                  }
+                }
+                exampleLines = [];
+              } else if (trimmedLine.startsWith('*')) {
+                // 移除开头的 * 和空格，保留内容
+                const content = trimmedLine.replace(/^\*\s?/, '');
+                exampleLines.push(content);
+              }
+            }
+
+            // @description 标签
+            if (!collectingExample) {
+              const descMatch = trimmedLine.match(this.descRegex);
+              if (descMatch && descMatch[1]) {
+                description = descMatch[1].trim();
+                continue;
+              }
+            }
+
+            // @example 标签 - 开始收集
+            if (!collectingExample) {
+              const exampleMatch = trimmedLine.match(this.exampleRegex);
+              if (exampleMatch !== null) {
+                const firstLineContent = exampleMatch[1]?.trim();
+                if (firstLineContent) {
+                  exampleLines.push(firstLineContent);
+                }
+                collectingExample = true;
+                continue;
+              }
+            }
+
+            // Format: xxx 格式
+            if (!collectingExample) {
+              const formatMatch = trimmedLine.match(this.formatRegex);
+              if (formatMatch && formatMatch[1]) {
+                format = formatMatch[1].trim();
+                continue;
+              }
+            }
+
+            // @enum 标签
+            if (!collectingExample) {
+              const enumMatch = trimmedLine.match(this.enumRegex);
+              if (enumMatch) {
+                continue;
+              }
+            }
+
+            // 普通注释内容（没有标签的）
+            if (
+              !collectingExample &&
+              !description &&
+              trimmedLine.startsWith('*') &&
+              !trimmedLine.startsWith('* @')
+            ) {
+              const plainMatch = trimmedLine.match(this.plainRegex);
+              if (plainMatch && plainMatch[1]) {
+                description = plainMatch[1].trim();
+              }
+            }
+          }
+
+          // 处理注释结束时仍在收集的 example
+          if (collectingExample && exampleLines.length > 0) {
+            const exampleText = exampleLines.join('\n').trim();
+            if (exampleText) {
+              try {
+                example = JSON.parse(exampleText);
+              } catch {
+                example = exampleText;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return { description, example, format, enumValues };
+  }
+
+  /**
    * 将 TypeNode 转换为 SchemaDefinition
    *
    * @param name Schema 名称
@@ -257,117 +399,10 @@ export class SchemaExtractor {
             required.push(propName);
           }
 
-          // 从 emitNode.leadingComments 提取完整的字段信息
-          let description: string | undefined;
-          let example: unknown;
-          let format: string | undefined;
-          let enumValues: (string | number)[] | undefined;
-
-          const memberWithEmit = member as ts.Node & {
-            emitNode?: {
-              leadingComments?: Array<{ kind: number; text: string }>;
-            };
-          };
-          if (memberWithEmit.emitNode?.leadingComments) {
-            for (const comment of memberWithEmit.emitNode.leadingComments) {
-              if (comment.text) {
-                // 解析多行注释中的所有标签
-                const lines = comment.text.split('\n');
-                let collectingExample = false;
-                let exampleLines: string[] = [];
-
-                for (const line of lines) {
-                  const trimmedLine = line.trim();
-
-                  // 如果正在收集 example，继续累积
-                  if (collectingExample) {
-                    // 检查是否遇到新的标签或注释结束
-                    if (trimmedLine.startsWith('* @') || trimmedLine === '*/') {
-                      collectingExample = false;
-                      // 尝试解析收集的 example
-                      const exampleText = exampleLines.join('\n').trim();
-                      if (exampleText) {
-                        try {
-                          example = JSON.parse(exampleText);
-                        } catch {
-                          example = exampleText;
-                        }
-                      }
-                      exampleLines = [];
-                    } else if (trimmedLine.startsWith('*')) {
-                      // 移除开头的 * 和空格，保留内容
-                      const content = trimmedLine.replace(/^\*\s?/, '');
-                      exampleLines.push(content);
-                    }
-                  }
-
-                  // @description 标签
-                  if (!collectingExample) {
-                    const descMatch = trimmedLine.match(this.descRegex);
-                    if (descMatch && descMatch[1]) {
-                      description = descMatch[1].trim();
-                      continue;
-                    }
-                  }
-
-                  // @example 标签 - 开始收集
-                  if (!collectingExample) {
-                    const exampleMatch = trimmedLine.match(this.exampleRegex);
-                    if (exampleMatch !== null) {
-                      const firstLineContent = exampleMatch[1]?.trim();
-                      if (firstLineContent) {
-                        exampleLines.push(firstLineContent);
-                      }
-                      collectingExample = true;
-                      continue;
-                    }
-                  }
-
-                  // Format: xxx 格式
-                  if (!collectingExample) {
-                    const formatMatch = trimmedLine.match(this.formatRegex);
-                    if (formatMatch && formatMatch[1]) {
-                      format = formatMatch[1].trim();
-                      continue;
-                    }
-                  }
-
-                  // @enum 标签
-                  if (!collectingExample) {
-                    const enumMatch = trimmedLine.match(this.enumRegex);
-                    if (enumMatch) {
-                      continue;
-                    }
-                  }
-
-                  // 普通注释内容（没有标签的）
-                  if (
-                    !collectingExample &&
-                    !description &&
-                    trimmedLine.startsWith('*') &&
-                    !trimmedLine.startsWith('* @')
-                  ) {
-                    const plainMatch = trimmedLine.match(this.plainRegex);
-                    if (plainMatch && plainMatch[1]) {
-                      description = plainMatch[1].trim();
-                    }
-                  }
-                }
-
-                // 处理注释结束时仍在收集的 example
-                if (collectingExample && exampleLines.length > 0) {
-                  const exampleText = exampleLines.join('\n').trim();
-                  if (exampleText) {
-                    try {
-                      example = JSON.parse(exampleText);
-                    } catch {
-                      example = exampleText;
-                    }
-                  }
-                }
-              }
-            }
-          }
+          // 提取 JSDoc 元数据
+          // eslint-disable-next-line prefer-const
+          let { description, example, format, enumValues } =
+            this.extractJSDocMetadata(member);
 
           // 尝试从 UnionTypeNode 提取 inline enum
           if (!enumValues && ts.isUnionTypeNode(member.type)) {
@@ -414,8 +449,8 @@ export class SchemaExtractor {
     } else if (ts.isIntersectionTypeNode(typeNode)) {
       // 处理交叉类型 (allOf)
       // 简单策略：合并所有成员的属性
-      // 这只是一个近似实现，完整的实现需要递归合并
       schema.type = 'object';
+      const extendsList = new Set<string>();
 
       for (const t of typeNode.types) {
         if (ts.isTypeLiteralNode(t)) {
@@ -432,13 +467,23 @@ export class SchemaExtractor {
               ...subSchema.required,
             ];
           }
-        } else if (ts.isTypeReferenceNode(t)) {
-          // FIXME: 如果是引用，这里可能无法在这里解析它，因为这里只有 AST
-          // schema.allOf = ...
+        } else {
+          // 尝试提取引用名称 (支持 TypeReferenceNode 和 IndexedAccessTypeNode)
+          const refName = typeNodeToString(t, (name) =>
+            NamingUtils.convert(name, this.namingStyle),
+          );
+
+          if (this.isValidExtendsRef(refName)) {
+            extendsList.add(refName);
+          }
         }
       }
+
+      if (extendsList.size > 0) {
+        schema.extends = Array.from(extendsList);
+      }
     } else {
-      // 处理非对象类型 (如 type A = string; type B = A & C;)
+      // 处理非对象类型 (如 type A = string; type B = A & C; type C = User;)
       const typeStr = this.tsTypeToSchemaType(typeNode);
 
       if (typeStr.endsWith('[]')) {
@@ -446,12 +491,48 @@ export class SchemaExtractor {
       } else if (['string', 'number', 'boolean'].includes(typeStr)) {
         schema.type = 'primitive';
       } else {
-        // 默认为 object，可能是引用或复杂类型
-        schema.type = 'object';
+        // 检查是否为引用类型别名 (type Alias = Original)
+        if (this.isValidExtendsRef(typeStr)) {
+          schema.type = 'object';
+          schema.extends = [typeStr];
+        } else {
+          // 默认为 object，可能是引用或复杂类型
+          schema.type = 'object';
+        }
       }
     }
 
     return schema;
+  }
+
+  /**
+   * 验证是否为合法的继承引用
+   */
+  private isValidExtendsRef(refName: string): boolean {
+    if (!refName) return false;
+
+    // 排除基础类型
+    const primitiveTypes = new Set([
+      'string',
+      'number',
+      'boolean',
+      'any',
+      'object',
+      'undefined',
+      'null',
+      'void',
+      'never',
+      'unknown',
+    ]);
+    if (primitiveTypes.has(refName)) return false;
+
+    // 排除数组
+    if (refName.endsWith('[]')) return false;
+
+    // 排除对象字面量
+    if (refName.startsWith('{')) return false;
+
+    return true;
   }
 
   /**
@@ -460,10 +541,8 @@ export class SchemaExtractor {
   private tsTypeToSchemaType(typeNode: ts.TypeNode): string {
     // 特殊处理 Record<string, never>
     if (ts.isTypeReferenceNode(typeNode)) {
-      const typeText = sharedPrinter.printNode(
-        ts.EmitHint.Unspecified,
-        typeNode,
-        sharedSourceFile,
+      const typeText = typeNodeToString(typeNode, (name) =>
+        NamingUtils.convert(name, this.namingStyle),
       );
       if (typeText.includes('Record<string, never>')) {
         return 'any'; // 或者 'object'
@@ -488,12 +567,8 @@ export class SchemaExtractor {
       }
       default:
         // 对于其他类型，直接返回其文本表示
-        return simplifyTypeReference(
-          sharedPrinter.printNode(
-            ts.EmitHint.Unspecified,
-            typeNode,
-            sharedSourceFile,
-          ),
+        return typeNodeToString(typeNode, (name) =>
+          NamingUtils.convert(name, this.namingStyle),
         );
     }
   }

@@ -18,6 +18,7 @@ import {
   sharedSourceFile,
 } from './ast-utils';
 import { GenericDetector } from '../utils/generic-detector';
+import { NamingUtils } from '../utils/naming-utils';
 import type { SchemaExtractor } from './schema-extractor';
 import type { InterfaceGenerator } from './interface-generator';
 
@@ -35,8 +36,6 @@ export class RequestResponseExtractor {
   private namingStyle: NamingStyle;
   /** 缓存的正则表达式，用于提取 JSDoc 中的 @description */
   private readonly descriptionRegex = /\*\s*@description\s+(.+?)\s*$/;
-  /** 缓存的正则表达式，用于分割字符串 */
-  private readonly splitRegex = /[_-]/;
 
   /**
    * 构造函数
@@ -91,68 +90,38 @@ export class RequestResponseExtractor {
 
     // 提取基本引用
     const ref = extractSchemaReference(typeNode);
-    if (!ref) return undefined;
 
-    // 检查泛型信息，如果存在则还原为泛型语法
-    if (this.genericInfoMap && this.genericInfoMap.has(ref)) {
-      const info = this.genericInfoMap.get(ref)!;
-      // 转换为 Base<Arg>
-      // 规范化参数名 (ApplyListVO -> ApplyListVO, ResultVO«User» -> ResultVO_User)
-      const args = info.generics.map((arg) =>
-        arg
-          .replace(/«/g, '_')
-          .replace(/»/g, '')
-          .replace(/,/g, '_')
-          .replace(/\s/g, ''),
-      );
-      return `${info.baseType}<${args.join(', ')}>`;
-    }
-
-    return ref;
-  }
-
-  /**
-   * 转换为指定的命名风格
-   * 支持 PascalCase, camelCase, snake_case
-   *
-   * @param name 原始名称
-   * @returns 转换后的名称
-   */
-  private convertToNamingStyle(name: string): string {
-    switch (this.namingStyle) {
-      case 'PascalCase':
-        // AuthController_register_Query_Params -> AuthControllerRegisterQueryParams
-        return name
-          .split(this.splitRegex)
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join('');
-
-      case 'camelCase': {
-        // AuthController_register_Query_Params -> authControllerRegisterQueryParams
-        const parts = name.split(this.splitRegex).filter((p) => p.length > 0);
-        if (parts.length === 0) return name;
-        const firstPart = parts[0]!;
-        return (
-          firstPart.charAt(0).toLowerCase() +
-          firstPart.slice(1) +
-          parts
-            .slice(1)
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join('')
-        );
+    if (ref) {
+      // 检查泛型信息，如果存在则还原为泛型语法
+      if (this.genericInfoMap && this.genericInfoMap.has(ref)) {
+        const info = this.genericInfoMap.get(ref)!;
+        // 转换为 Base<Arg>
+        const args = info.generics.map((arg) => {
+          const normalized = arg
+            .replace(/«/g, '_')
+            .replace(/»/g, '')
+            .replace(/,/g, '_')
+            .replace(/\s/g, '');
+          return NamingUtils.convert(normalized, this.namingStyle);
+        });
+        const baseType = NamingUtils.convert(info.baseType, this.namingStyle);
+        return `${baseType}<${args.join(', ')}>`;
       }
-
-      case 'snake_case':
-        // AuthController_register_Query_Params -> auth_controller_register_query_params
-        return name
-          .toLowerCase()
-          .replace(/[A-Z]/g, (letter, index) =>
-            index === 0 ? letter.toLowerCase() : '_' + letter.toLowerCase(),
-          );
-
-      default:
-        return name;
+      return NamingUtils.convert(ref, this.namingStyle);
     }
+
+    // 处理联合类型 A | B
+    if (ts.isUnionTypeNode(typeNode)) {
+      const refs = typeNode.types
+        .map((t) => this.resolveSchemaRef(t))
+        .filter((ref): ref is string => !!ref);
+
+      if (refs.length > 0) {
+        return Array.from(new Set(refs)).join(' | ');
+      }
+    }
+
+    return undefined;
   }
 
   /**
@@ -319,10 +288,19 @@ export class RequestResponseExtractor {
                           genericResult.genericField,
                         );
 
+                        const baseType = NamingUtils.convert(
+                          genericResult.baseType,
+                          this.namingStyle,
+                        );
+                        const genericParam = NamingUtils.convert(
+                          genericResult.genericParam,
+                          this.namingStyle,
+                        );
+
                         // 直接使用完整类型名作为引用
                         schemaRef = {
                           type: 'ref',
-                          ref: `${genericResult.baseType}<${genericResult.genericParam}>`,
+                          ref: `${baseType}<${genericParam}>`,
                         };
                       } else {
                         // 普通引用
@@ -366,8 +344,9 @@ export class RequestResponseExtractor {
                           ) {
                             // 生成唯一名称: OperationId + Response
                             // 使用配置的命名风格
-                            const generatedName = this.convertToNamingStyle(
+                            const generatedName = NamingUtils.convert(
                               `${operationId}_Response`,
+                              this.namingStyle,
                             );
 
                             // 生成 Schema

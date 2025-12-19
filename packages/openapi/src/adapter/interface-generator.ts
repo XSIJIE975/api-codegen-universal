@@ -10,12 +10,14 @@
  */
 
 import ts from 'typescript';
+import type { NamingStyle } from '@api-codegen-universal/core';
 import {
   extractStringFromNode,
   simplifyTypeReference,
   sharedPrinter,
   sharedSourceFile,
 } from './ast-utils';
+import { NamingUtils } from '../utils/naming-utils';
 
 export class InterfaceGenerator {
   /** 泛型基类集合 name -> fieldName */
@@ -24,6 +26,8 @@ export class InterfaceGenerator {
   private genericInfoMap: Map<string, { baseType: string; generics: string[] }>;
   /** 接口导出模式 */
   private interfaceExportMode: 'export' | 'declare';
+  /** 命名风格 */
+  private namingStyle: NamingStyle;
   /** 缓存的注释匹配正则 */
   private readonly commentRegex = /^(\s*\/\*\*[\s\S]*?\*\/)/;
 
@@ -31,10 +35,12 @@ export class InterfaceGenerator {
     genericBaseTypes: Map<string, string>,
     interfaceExportMode: 'export' | 'declare' = 'export',
     genericInfoMap?: Map<string, { baseType: string; generics: string[] }>,
+    namingStyle: NamingStyle = 'PascalCase',
   ) {
     this.genericBaseTypes = genericBaseTypes;
     this.interfaceExportMode = interfaceExportMode;
     this.genericInfoMap = genericInfoMap || new Map();
+    this.namingStyle = namingStyle;
   }
 
   /**
@@ -69,12 +75,22 @@ export class InterfaceGenerator {
               const schemaName = extractStringFromNode(schemaMember.name);
 
               if (schemaName) {
+                const originalName = schemaName;
+                const convertedName = NamingUtils.convert(
+                  originalName,
+                  this.namingStyle,
+                );
+
                 // 检查泛型信息
-                if (this.genericInfoMap.has(schemaName)) {
-                  const info = this.genericInfoMap.get(schemaName)!;
+                if (this.genericInfoMap.has(originalName)) {
+                  const info = this.genericInfoMap.get(originalName)!;
+                  const convertedBaseType = NamingUtils.convert(
+                    info.baseType,
+                    this.namingStyle,
+                  );
 
                   // 1. 生成泛型基类接口 (如果尚未生成)
-                  if (!generatedBaseTypes.has(info.baseType)) {
+                  if (!generatedBaseTypes.has(convertedBaseType)) {
                     // 查找泛型字段
                     const genericArg = info.generics[0] || 'T';
                     // 规范化 genericArg 以匹配 AST 中的引用
@@ -84,48 +100,56 @@ export class InterfaceGenerator {
                       .replace(/,/g, '_')
                       .replace(/\s/g, '');
 
+                    // 转换目标类型名称，以便在 generateInterfaceString 中正确匹配
+                    const convertedGenericArg = NamingUtils.convert(
+                      normalizedGenericArg,
+                      this.namingStyle,
+                    );
+
                     const genericField = this.findGenericField(
                       schemaMember.type,
                       genericArg,
                     );
 
                     const baseInterfaceCode = this.generateInterfaceString(
-                      info.baseType,
+                      convertedBaseType,
                       schemaMember.type,
                       true, // isGeneric
                       genericField,
-                      normalizedGenericArg, // 传入目标类型
+                      convertedGenericArg, // 传入转换后的目标类型
                     );
-                    interfaces[info.baseType] = baseInterfaceCode;
-                    generatedBaseTypes.add(info.baseType);
+                    interfaces[convertedBaseType] = baseInterfaceCode;
+                    generatedBaseTypes.add(convertedBaseType);
                   }
 
                   // 2. 生成具体类型的别名
                   // export type Generic_SomeDataType = Generic<Type>;
-                  const args = info.generics.map((g) =>
-                    g
+                  const args = info.generics.map((g) => {
+                    const normalized = g
                       .replace(/«/g, '_')
                       .replace(/»/g, '')
                       .replace(/,/g, '_')
-                      .replace(/\s/g, ''),
-                  );
+                      .replace(/\s/g, '');
+                    return NamingUtils.convert(normalized, this.namingStyle);
+                  });
+
                   const exportKeyword =
                     this.interfaceExportMode === 'export'
                       ? 'export '
                       : 'declare ';
-                  const aliasCode = `${exportKeyword}type ${schemaName} = ${info.baseType}<${args.join(', ')}>;`;
-                  interfaces[schemaName] = aliasCode;
+                  const aliasCode = `${exportKeyword}type ${convertedName} = ${convertedBaseType}<${args.join(', ')}>;`;
+                  interfaces[convertedName] = aliasCode;
                 } else {
                   // 常规生成
                   // 生成接口代码 - 优化: 只查找一次 Map
-                  const genericField = this.genericBaseTypes.get(schemaName);
+                  const genericField = this.genericBaseTypes.get(originalName);
                   const interfaceCode = this.generateInterfaceString(
-                    schemaName,
+                    convertedName,
                     schemaMember.type,
                     genericField !== undefined,
                     genericField,
                   );
-                  interfaces[schemaName] = interfaceCode;
+                  interfaces[convertedName] = interfaceCode;
                 }
               }
             }
@@ -239,10 +263,15 @@ export class InterfaceGenerator {
       for (const member of typeNode.members) {
         if (ts.isPropertySignature(member) && member.name && member.type) {
           // 打印整个成员节点(包括注释)
-          const memberText = sharedPrinter.printNode(
+          let memberText = sharedPrinter.printNode(
             ts.EmitHint.Unspecified,
             member,
             sharedSourceFile,
+          );
+
+          // 应用类型引用简化和名称转换
+          memberText = simplifyTypeReference(memberText, (name) =>
+            NamingUtils.convert(name, this.namingStyle),
           );
 
           const propName = (member.name as ts.Identifier).text;
@@ -258,11 +287,19 @@ export class InterfaceGenerator {
               member.type,
               sharedSourceFile,
             );
-            const simplifiedType = simplifyTypeReference(typeText);
+            const simplifiedType = simplifyTypeReference(typeText, (name) =>
+              NamingUtils.convert(name, this.namingStyle),
+            );
 
             let newType = 'T';
             if (genericTargetType) {
               // 智能替换: 找到目标类型并替换为 T
+              // 注意：genericTargetType 应该是转换后的名称吗？
+              // genericTargetType 是从 genericArg 转换来的，如果 genericArg 是原始名称，那么这里也需要转换
+              // 但是在 generateInterfaceCode 中，我们传递的是 normalizedGenericArg
+              // 如果 normalizedGenericArg 是原始名称，那么这里匹配可能会失败，因为 simplifiedType 已经是转换后的了
+
+              // 让我们假设 genericTargetType 已经是转换后的名称（在调用处处理）
               const regex = new RegExp(
                 `\\b${this.escapeRegExp(genericTargetType)}\\b`,
                 'g',

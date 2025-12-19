@@ -148,11 +148,15 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     }
 
     // 5. 初始化所有提取器
-    this.schemaExtractor = new SchemaExtractor(this.genericBaseTypes);
+    this.schemaExtractor = new SchemaExtractor(
+      this.genericBaseTypes,
+      this.namingStyle,
+    );
     this.interfaceGenerator = new InterfaceGenerator(
       this.genericBaseTypes,
       this.interfaceExportMode,
       this.genericInfoMap,
+      this.namingStyle,
     );
     this.requestResponseExtractor = new RequestResponseExtractor(
       this.genericDetector,
