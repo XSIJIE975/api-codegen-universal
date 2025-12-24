@@ -64,6 +64,20 @@ export class RequestResponseExtractor {
    * @returns Schema 引用字符串，如果无法解析则返回 undefined
    */
   private resolveSchemaRef(typeNode: ts.TypeNode): string | undefined {
+    // 处理基本类型
+    if (typeNode.kind === ts.SyntaxKind.StringKeyword) {
+      return 'string';
+    }
+    if (typeNode.kind === ts.SyntaxKind.NumberKeyword) {
+      return 'number';
+    }
+    if (typeNode.kind === ts.SyntaxKind.BooleanKeyword) {
+      return 'boolean';
+    }
+    if (typeNode.kind === ts.SyntaxKind.VoidKeyword) {
+      return 'void';
+    }
+
     // 处理数组类型 Type[]
     if (ts.isArrayTypeNode(typeNode)) {
       const elementTypeRef = this.resolveSchemaRef(typeNode.elementType);
@@ -251,8 +265,7 @@ export class RequestResponseExtractor {
                 respMember.type &&
                 ts.isTypeLiteralNode(respMember.type)
               ) {
-                // 查找 application/json
-                // TODO: 目前主要支持 application/json，其他类型可扩展
+                // 遍历所有 content-type (application/json, application/xml, application/octet-stream, etc.)
                 for (const contentMember of respMember.type.members) {
                   if (
                     ts.isPropertySignature(contentMember) &&
@@ -262,10 +275,7 @@ export class RequestResponseExtractor {
                       contentMember.name,
                     );
 
-                    if (
-                      contentType === 'application/json' &&
-                      contentMember.type
-                    ) {
+                    if (contentType && contentMember.type) {
                       // 检测泛型模式 - 使用 printer 将 TypeNode 转为文本
                       const typeText = sharedPrinter.printNode(
                         ts.EmitHint.Unspecified,
