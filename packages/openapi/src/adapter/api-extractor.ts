@@ -234,6 +234,7 @@ export class ApiExtractor {
           // 提取 requestBody
           api.requestBody = this.requestResponseExtractor.extractRequestBody(
             member.type,
+            operationId,
           );
         } else if (propName === 'responses' && member.type) {
           // 提取 responses

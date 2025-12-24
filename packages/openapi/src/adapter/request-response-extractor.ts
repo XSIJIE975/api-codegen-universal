@@ -5,6 +5,7 @@
  */
 
 import ts from 'typescript';
+import { createHash } from 'node:crypto';
 import type {
   ApiDefinition,
   SchemaReference,
@@ -34,8 +35,20 @@ export class RequestResponseExtractor {
   private genericInfoMap: Map<string, { baseType: string; generics: string[] }>;
   /** 命名风格配置 */
   private namingStyle: NamingStyle;
+  /** Schema 提取器 */
+  private schemaExtractor?: SchemaExtractor;
+  /** Schema 定义集合 */
+  private schemas?: Record<string, SchemaDefinition>;
+  /** 接口代码生成器 */
+  private interfaceGenerator?: InterfaceGenerator;
+  /** 接口代码集合 */
+  private interfaces?: Record<string, string>;
   /** 缓存的正则表达式，用于提取 JSDoc 中的 @description */
   private readonly descriptionRegex = /\*\s*@description\s+(.+?)\s*$/;
+  /** 已生成的 schema 名称集合，用于避免重复 */
+  private generatedSchemaNames = new Set<string>();
+  /** TypeNode 内容到 schema 名称的映射缓存 */
+  private typeNodeToSchemaNameCache = new Map<string, string>();
 
   /**
    * 构造函数
@@ -57,13 +70,32 @@ export class RequestResponseExtractor {
   }
 
   /**
+   * 设置依赖项（用于处理内联 schema）
+   */
+  setDependencies(
+    schemaExtractor: SchemaExtractor,
+    schemas: Record<string, SchemaDefinition>,
+    interfaceGenerator: InterfaceGenerator,
+    interfaces: Record<string, string>,
+  ): void {
+    this.schemaExtractor = schemaExtractor;
+    this.schemas = schemas;
+    this.interfaceGenerator = interfaceGenerator;
+    this.interfaces = interfaces;
+  }
+
+  /**
    * 解析 Schema 引用，并处理泛型转换
    * 将 TypeScript 类型节点转换为 Schema 引用字符串
    *
    * @param typeNode TypeScript 类型节点
+   * @param contextName 上下文名称，用于生成匿名 schema 名称
    * @returns Schema 引用字符串，如果无法解析则返回 undefined
    */
-  private resolveSchemaRef(typeNode: ts.TypeNode): string | undefined {
+  private resolveSchemaRef(
+    typeNode: ts.TypeNode,
+    contextName?: string,
+  ): string | undefined {
     // 处理基本类型
     if (typeNode.kind === ts.SyntaxKind.StringKeyword) {
       return 'string';
@@ -78,9 +110,71 @@ export class RequestResponseExtractor {
       return 'void';
     }
 
+    // 处理 TypeLiteral（内联 object 类型）
+    if (ts.isTypeLiteralNode(typeNode)) {
+      // 如果有 schemaExtractor 和 schemas，则动态创建 schema
+      if (this.schemaExtractor && this.schemas) {
+        // 生成 TypeNode 的内容签名（用于缓存和去重）
+        const typeSignature = this.getTypeNodeSignature(typeNode);
+
+        // 检查缓存：如果相同结构的类型已经生成过，直接返回
+        if (this.typeNodeToSchemaNameCache.has(typeSignature)) {
+          return this.typeNodeToSchemaNameCache.get(typeSignature)!;
+        }
+
+        // 生成 schema 名称
+        let schemaName: string;
+        if (contextName) {
+          // 如果提供了 contextName，直接使用（不再拼接计数器）
+          schemaName = contextName;
+        } else {
+          // 没有 contextName 时，使用基于内容哈希的命名方式
+          schemaName = this.generateSchemaNameFromHash(typeSignature);
+        }
+
+        // 检查名称冲突（理论上基于哈希不会冲突，但做双重保险）
+        if (this.generatedSchemaNames.has(schemaName)) {
+          // 如果哈希冲突（极低概率），添加短随机后缀
+          schemaName = `${schemaName}_${Math.random().toString(36).substring(2, 6)}`;
+        }
+
+        // 标记为已生成
+        this.generatedSchemaNames.add(schemaName);
+        // 缓存 TypeNode 到 schema 名称的映射
+        this.typeNodeToSchemaNameCache.set(typeSignature, schemaName);
+
+        // 使用 schemaExtractor 提取 schema 定义
+        const schema = this.schemaExtractor.typeNodeToSchema(
+          schemaName,
+          typeNode,
+        );
+
+        // 添加到 schemas 集合中
+        this.schemas[schemaName] = schema;
+
+        // 如果有 interfaceGenerator，也生成对应的接口代码
+        if (this.interfaceGenerator && this.interfaces) {
+          const interfaceCode = this.generateInterfaceFromTypeLiteral(
+            schemaName,
+            typeNode,
+          );
+          if (interfaceCode) {
+            this.interfaces[schemaName] = interfaceCode;
+          }
+        }
+
+        return schemaName;
+      }
+      // 如果没有 schemaExtractor，返回 unknown
+      return 'unknown';
+    }
+
     // 处理数组类型 Type[]
     if (ts.isArrayTypeNode(typeNode)) {
-      const elementTypeRef = this.resolveSchemaRef(typeNode.elementType);
+      const elementTypeRef = this.resolveSchemaRef(
+        typeNode.elementType,
+        contextName,
+      );
       if (elementTypeRef) {
         return `${elementTypeRef}[]`;
       }
@@ -95,6 +189,7 @@ export class RequestResponseExtractor {
       if (typeNode.typeArguments && typeNode.typeArguments.length > 0) {
         const elementTypeRef = this.resolveSchemaRef(
           typeNode.typeArguments[0]!,
+          contextName,
         );
         if (elementTypeRef) {
           return `${elementTypeRef}[]`;
@@ -127,7 +222,7 @@ export class RequestResponseExtractor {
     // 处理联合类型 A | B
     if (ts.isUnionTypeNode(typeNode)) {
       const refs = typeNode.types
-        .map((t) => this.resolveSchemaRef(t))
+        .map((t) => this.resolveSchemaRef(t, contextName))
         .filter((ref): ref is string => !!ref);
 
       if (refs.length > 0) {
@@ -139,12 +234,64 @@ export class RequestResponseExtractor {
   }
 
   /**
+   * 生成 TypeNode 的内容签名
+   * 通过打印类型节点的完整内容来生成唯一签名
+   * 相同结构的类型会产生相同的签名
+   */
+  private getTypeNodeSignature(typeNode: ts.TypeNode): string {
+    return sharedPrinter.printNode(
+      ts.EmitHint.Unspecified,
+      typeNode,
+      sharedSourceFile,
+    );
+  }
+
+  /**
+   * 基于内容签名生成 schema 名称
+   * 使用 SHA256 哈希的前 8 位作为后缀，确保唯一性
+   */
+  private generateSchemaNameFromHash(typeSignature: string): string {
+    const hash = createHash('sha256')
+      .update(typeSignature)
+      .digest('hex')
+      .substring(0, 8);
+    return `AnonymousSchema_${hash}`;
+  }
+
+  /**
+   * 从 TypeLiteral 节点生成接口代码
+   */
+  private generateInterfaceFromTypeLiteral(
+    name: string,
+    typeNode: ts.TypeLiteralNode,
+  ): string | undefined {
+    // 使用 TypeScript 的 printer 生成接口代码
+    const interfaceDecl = ts.factory.createInterfaceDeclaration(
+      [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+      name,
+      undefined,
+      undefined,
+      typeNode.members as readonly ts.TypeElement[],
+    );
+
+    const code = sharedPrinter
+      .printNode(ts.EmitHint.Unspecified, interfaceDecl, sharedSourceFile)
+      .trim();
+
+    return code;
+  }
+
+  /**
    * 提取 requestBody 定义
    *
    * @param typeNode requestBody 对应的类型节点
+   * @param operationId 操作 ID，用于生成有意义的 schema 名称
    * @returns requestBody 定义对象
    */
-  extractRequestBody(typeNode: ts.TypeNode): ApiDefinition['requestBody'] {
+  extractRequestBody(
+    typeNode: ts.TypeNode,
+    operationId?: string,
+  ): ApiDefinition['requestBody'] {
     if (!ts.isTypeLiteralNode(typeNode)) {
       return undefined;
     }
@@ -170,8 +317,16 @@ export class RequestResponseExtractor {
               const contentType = extractStringFromNode(contentMember.name);
 
               if (contentType && contentMember.type) {
+                // 生成上下文名称：优先使用 operationId，否则使用 contentType
+                const contextName = operationId
+                  ? `${NamingUtils.convert(operationId, this.namingStyle)}RequestBody`
+                  : `${NamingUtils.convert(contentType.replace(/[^a-zA-Z0-9]/g, ''), this.namingStyle)}RequestBody`;
+
                 // 提取 schema 引用
-                const schemaRef = this.resolveSchemaRef(contentMember.type);
+                const schemaRef = this.resolveSchemaRef(
+                  contentMember.type,
+                  contextName,
+                );
 
                 if (schemaRef) {
                   content[contentType] = {

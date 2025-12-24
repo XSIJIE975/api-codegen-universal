@@ -184,6 +184,14 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     const interfaces: Record<string, string> = {};
     const apis: ApiDefinition[] = [];
 
+    // 设置 requestResponseExtractor 的依赖项（用于处理内联 schema）
+    this.requestResponseExtractor.setDependencies(
+      this.schemaExtractor,
+      schemas,
+      this.interfaceGenerator,
+      interfaces,
+    );
+
     // 存储中间数据
     let pathsNode: ts.InterfaceDeclaration | undefined;
     let operationsNode: ts.InterfaceDeclaration | undefined;
