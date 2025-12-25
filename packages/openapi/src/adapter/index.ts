@@ -265,7 +265,10 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
 
   /**
    * 加载原始 OpenAPI 文档
-   * 支持 URL, 本地文件路径, 或直接传入对象
+   * 支持 URL, 本地文件路径, Buffer, JSON/YAML 字符串内容, 或直接传入对象
+   *
+   * 注意：如果 source 是 ReadableStream，由于已被 openapi-typescript 消费，
+   * 这里无法再次读取，将返回 null。
    *
    * @param source 输入源
    * @returns 解析后的 OpenAPI 文档对象
@@ -274,45 +277,134 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     source: InputSource,
   ): Promise<OpenAPIDocument | null> {
     try {
+      // 1. URL 对象
+      if (source instanceof URL) {
+        return this.loadFromUrlObject(source);
+      }
+
+      // 2. Buffer
+      if (Buffer.isBuffer(source)) {
+        return this.parseContent(source.toString('utf-8'));
+      }
+
+      // 3. 字符串 (URL, 文件路径, 或 内容)
       if (typeof source === 'string') {
-        if (source.startsWith('http')) {
-          const response = await fetch(source);
-          const text = await response.text();
-          try {
-            return JSON.parse(text);
-          } catch {
-            return loadYaml(text) as OpenAPIDocument;
-          }
-        } else {
-          // Local file
-          const fs = await import('node:fs/promises');
-          const text = await fs.readFile(source, 'utf-8');
-          try {
-            return JSON.parse(text);
-          } catch {
-            return loadYaml(text) as OpenAPIDocument;
-          }
-        }
-      } else if (source instanceof URL) {
-        const response = await fetch(source);
-        const text = await response.text();
-        try {
-          return JSON.parse(text);
-        } catch {
-          return loadYaml(text) as OpenAPIDocument;
-        }
-      } else if (
+        return this.loadFromString(source);
+      }
+
+      // 4. 对象 (已经是 JSON 对象)
+      // 排除 Stream 类型 (Node.js Readable 或 Web ReadableStream)
+      if (
         typeof source === 'object' &&
         source !== null &&
-        !Buffer.isBuffer(source) &&
-        !('read' in source)
+        !('read' in source) &&
+        !('getReader' in source)
       ) {
         return source as unknown as OpenAPIDocument;
       }
     } catch (error) {
-      console.warn('Failed to load raw OpenAPI document:', error);
+      // 仅打印警告，不阻断主流程，因为这只是为了获取元数据
+      console.warn(
+        'Warning: Failed to load raw OpenAPI document for metadata extraction.',
+        error instanceof Error ? error.message : error,
+      );
     }
     return null;
+  }
+
+  /**
+   * 处理 URL 对象输入
+   */
+  private async loadFromUrlObject(url: URL): Promise<OpenAPIDocument> {
+    if (url.protocol.startsWith('http')) {
+      return this.fetchFromUrl(url);
+    }
+    if (url.protocol === 'file:') {
+      const { fileURLToPath } = await import('node:url');
+      return this.readFromFile(fileURLToPath(url));
+    }
+    throw new Error(`Unsupported URL protocol: ${url.protocol}`);
+  }
+
+  /**
+   * 处理字符串输入
+   */
+  private async loadFromString(source: string): Promise<OpenAPIDocument> {
+    // 1. 远程 URL
+    if (/^https?:\/\//i.test(source)) {
+      return this.fetchFromUrl(source);
+    }
+
+    // 2. 显式的内容特征 (多行, 或包含特定关键字)
+    // 如果包含换行符，或者以 { 开头，或者包含 openapi/swagger 关键字，极有可能是内容
+    if (
+      source.includes('\n') ||
+      source.trim().startsWith('{') ||
+      source.includes('openapi:') ||
+      source.includes('swagger:')
+    ) {
+      try {
+        return this.parseContent(source);
+      } catch {
+        // 解析失败，可能是奇怪的文件路径，继续尝试作为文件读取
+      }
+    }
+
+    // 3. 尝试作为文件路径读取
+    try {
+      return await this.readFromFile(source);
+    } catch (fileError) {
+      // 4. 文件读取失败，最后尝试一次作为内容解析 (处理不明显的单行内容)
+      try {
+        return this.parseContent(source);
+      } catch {
+        // 均失败，抛出文件读取错误
+        throw fileError;
+      }
+    }
+  }
+
+  /**
+   * 从 URL 获取内容
+   */
+  private async fetchFromUrl(url: string | URL): Promise<OpenAPIDocument> {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch OpenAPI document: ${response.status} ${response.statusText}`,
+      );
+    }
+    const text = await response.text();
+    return this.parseContent(text);
+  }
+
+  /**
+   * 从文件读取内容
+   */
+  private async readFromFile(filePath: string): Promise<OpenAPIDocument> {
+    // 处理 file:// 协议前缀的字符串
+    let targetPath = filePath;
+    if (targetPath.startsWith('file://')) {
+      const { fileURLToPath } = await import('node:url');
+      targetPath = fileURLToPath(targetPath);
+    }
+
+    const fs = await import('node:fs/promises');
+    const text = await fs.readFile(targetPath, 'utf-8');
+    return this.parseContent(text);
+  }
+
+  /**
+   * 解析内容 (JSON 或 YAML)
+   */
+  private parseContent(text: string): OpenAPIDocument {
+    try {
+      // 优先尝试 JSON
+      return JSON.parse(text);
+    } catch {
+      // 失败后尝试 YAML
+      return loadYaml(text) as OpenAPIDocument;
+    }
   }
 
   /**
