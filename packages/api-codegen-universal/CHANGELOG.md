@@ -1,5 +1,13 @@
 # api-codegen-universal
 
+## 0.6.1
+
+### Patch Changes
+
+- [`df4639e`](https://github.com/XSIJIE975/api-codegen-universal/commit/df4639e5df5f8fc5068afd3c018ed009ff52a2de) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - - feat: enhance OpenAPI document loading with support for Buffer and improved error handling
+  - feat: support extraction of inline schemas in request bodies
+  - fix: optimize type parsing and response content traversal logic
+
 ## 0.6.0
 
 ### Minor Changes
