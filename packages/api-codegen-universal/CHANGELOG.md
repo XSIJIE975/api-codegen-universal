@@ -1,5 +1,11 @@
 # api-codegen-universal
 
+## 0.6.2
+
+### Patch Changes
+
+- [`74e7c98`](https://github.com/XSIJIE975/api-codegen-universal/commit/74e7c989a10cf6ee9c0ad821629c759b4d851f02) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - fix: ensure RequestResponseExtractor respects interfaceExportMode when generating inline interfaces
+
 ## 0.6.1
 
 ### Patch Changes
