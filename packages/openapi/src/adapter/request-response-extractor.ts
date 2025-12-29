@@ -35,6 +35,8 @@ export class RequestResponseExtractor {
   private genericInfoMap: Map<string, { baseType: string; generics: string[] }>;
   /** 命名风格配置 */
   private namingStyle: NamingStyle;
+  /** 接口导出模式 */
+  private interfaceExportMode: 'export' | 'declare';
   /** Schema 提取器 */
   private schemaExtractor?: SchemaExtractor;
   /** Schema 定义集合 */
@@ -56,17 +58,20 @@ export class RequestResponseExtractor {
    * @param genericBaseTypes 泛型基类映射表
    * @param genericInfoMap 泛型信息映射表
    * @param namingStyle 命名风格
+   * @param interfaceExportMode 接口导出模式
    */
   constructor(
     genericDetector: GenericDetector,
     genericBaseTypes: Map<string, string>,
     genericInfoMap: Map<string, { baseType: string; generics: string[] }>,
     namingStyle: NamingStyle,
+    interfaceExportMode: 'export' | 'declare' = 'export',
   ) {
     this.genericDetector = genericDetector;
     this.genericBaseTypes = genericBaseTypes;
     this.genericInfoMap = genericInfoMap;
     this.namingStyle = namingStyle;
+    this.interfaceExportMode = interfaceExportMode;
   }
 
   /**
@@ -265,9 +270,18 @@ export class RequestResponseExtractor {
     name: string,
     typeNode: ts.TypeLiteralNode,
   ): string | undefined {
+    // 根据配置选择修饰符
+    const modifiers = [
+      ts.factory.createModifier(
+        this.interfaceExportMode === 'export'
+          ? ts.SyntaxKind.ExportKeyword
+          : ts.SyntaxKind.DeclareKeyword,
+      ),
+    ];
+
     // 使用 TypeScript 的 printer 生成接口代码
     const interfaceDecl = ts.factory.createInterfaceDeclaration(
-      [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+      modifiers,
       name,
       undefined,
       undefined,

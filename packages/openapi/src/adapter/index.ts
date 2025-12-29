@@ -163,6 +163,7 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
       this.genericBaseTypes,
       this.genericInfoMap,
       this.namingStyle,
+      this.interfaceExportMode,
     );
     this.parameterExtractor = new ParameterExtractor(
       this.namingStyle,
