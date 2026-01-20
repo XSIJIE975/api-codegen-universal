@@ -110,6 +110,14 @@ export class ApifoxAdapter
     // 修复失效的引用
     this.fixBrokenRefs(data);
 
+    // 修复 Apifox 导出中的 `type: null` (OpenAPI 3.0 不允许)
+    // OpenAPI 3.0 需要使用 `nullable: true` 来表达可为 null。
+    this.fixNullTypes(data);
+
+    // 修复重复 operationId（openapi-typescript / redocly 会报错）
+    // Apifox 导出的不同 path/method 有时会共用同一个 operationId。
+    this.fixDuplicateOperationIds(data);
+
     // 1. 修复 Security Schemes 定义问题
     // type: http 的 scheme 不允许包含 'name' 和 'in' 字段
     if (data.components?.securitySchemes) {
@@ -155,6 +163,123 @@ export class ApifoxAdapter
     }
 
     return data;
+  }
+
+  /**
+   * 确保 OpenAPI 文档中所有 operationId 唯一。
+   *
+   * openapi-typescript 会对重复 operationId 报错：
+   *   Every operation must have a unique `operationId`.
+   *
+   * 修复策略：
+   * - 保留第一次出现的 operationId
+   * - 对后续重复的 operationId 进行重命名：`${operationId}_${METHOD}_${PATH_SLUG}`
+   * - 生成的新 operationId 再次检查，若仍冲突则追加递增序号
+   */
+  private fixDuplicateOperationIds(data: any): void {
+    const paths = data?.paths;
+    if (!paths || typeof paths !== 'object') return;
+
+    const methods = [
+      'get',
+      'post',
+      'put',
+      'delete',
+      'patch',
+      'options',
+      'head',
+      'trace',
+    ];
+
+    const seen = new Set<string>();
+
+    const slugifyPath = (p: string) => {
+      // /api/v1/roles/batch-delete -> api_v1_roles_batch_delete
+      return p
+        .replace(/^\//, '')
+        .replace(/\{[^}]+\}/g, 'param')
+        .replace(/[^a-zA-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 60);
+    };
+
+    for (const [pathKey, pathItem] of Object.entries(paths)) {
+      if (!pathItem || typeof pathItem !== 'object') continue;
+
+      const item: any = pathItem;
+
+      for (const method of methods) {
+        const op = item[method];
+        if (!op || typeof op !== 'object') continue;
+
+        const operationId = op.operationId;
+        if (!operationId || typeof operationId !== 'string') continue;
+
+        if (!seen.has(operationId)) {
+          seen.add(operationId);
+          continue;
+        }
+
+        const base = `${operationId}_${method.toUpperCase()}_${slugifyPath(
+          String(pathKey),
+        )}`;
+        let next = base;
+        let i = 2;
+        while (seen.has(next)) {
+          next = `${base}_${i}`;
+          i += 1;
+        }
+
+        op.operationId = next;
+        seen.add(next);
+      }
+    }
+  }
+
+  /**
+   * 将 schema 中不合法的 `type: "null"` (或 type 包含 null) 修复为 OpenAPI 3.0 兼容形式。
+   *
+   * Apifox 在导出 OpenAPI 3.0.x 时，有时会生成：
+   *   { allOf: [{ $ref: ... }], type: "null" }
+   * 这会导致 swagger-parser 校验失败。
+   *
+   * 修复策略：
+   * - 当检测到 `type === "null"`：删除 type，并设置 `nullable: true`
+   * - 当检测到 `type` 是数组且包含 "null"：移除 "null"，并设置 `nullable: true`
+   */
+  private fixNullTypes(data: any): void {
+    const visit = (node: any) => {
+      if (!node || typeof node !== 'object') return;
+
+      if (Array.isArray(node)) {
+        node.forEach(visit);
+        return;
+      }
+
+      if ('type' in node) {
+        // Case 1: type: 'null'
+        if (node.type === 'null') {
+          Reflect.deleteProperty(node, 'type');
+          node.nullable = true;
+        }
+
+        // Case 2: type: ['object', 'null'] (more JSON-schema like)
+        if (Array.isArray(node.type) && node.type.includes('null')) {
+          node.type = node.type.filter((t: unknown) => t !== 'null');
+          node.nullable = true;
+
+          if (node.type.length === 1) {
+            node.type = node.type[0];
+          } else if (node.type.length === 0) {
+            Reflect.deleteProperty(node, 'type');
+          }
+        }
+      }
+
+      Object.values(node).forEach(visit);
+    };
+
+    visit(data);
   }
 
   /**
