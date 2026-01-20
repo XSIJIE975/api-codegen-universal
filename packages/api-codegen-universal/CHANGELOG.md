@@ -1,5 +1,11 @@
 # api-codegen-universal
 
+## 0.6.3
+
+### Patch Changes
+
+- [#11](https://github.com/XSIJIE975/api-codegen-universal/pull/11) [`c4cf838`](https://github.com/XSIJIE975/api-codegen-universal/commit/c4cf83873115587920a693da2331ff4d81cc005d) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - Fix the Apifox adapter to handle `null` schemas and deduplicate `operationId` values to prevent conflicts in generated output.
+
 ## 0.6.2
 
 ### Patch Changes
