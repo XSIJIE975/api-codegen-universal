@@ -7,6 +7,10 @@
 import SwaggerParser from '@apidevtools/swagger-parser';
 import type { IAdapter, StandardOutput } from '@api-codegen-universal/core';
 import {
+  createAdapterLogger,
+  createWarningsCollector,
+} from '@api-codegen-universal/core';
+import {
   InputSource,
   OpenAPIAdapter,
   type OpenAPIOptions,
@@ -24,6 +28,7 @@ import type {
 export class ApifoxAdapter
   implements IAdapter<ApifoxAdapterOptions, ApifoxConfig>
 {
+  // Note: warnings collector is per-parse invocation.
   /**
    * 验证配置有效性
    * 检查是否包含必要的 projectId 和 token
@@ -50,31 +55,62 @@ export class ApifoxAdapter
     source: ApifoxConfig,
     options: ApifoxAdapterOptions = {},
   ): Promise<StandardOutput> {
-    console.log(
-      `[ApifoxAdapter] Starting export for project: ${source.projectId}`,
-    );
+    /**
+     * 统一日志入口：
+     * - 默认 logLevel='error'（不输出 warn/info/debug）
+     * - 兼容性修复的“可预期告警”会以 warnings summary 形式汇总输出（Scheme A）
+     */
+    const startAt = Date.now();
+    const logger = createAdapterLogger(options, {
+      adapter: 'apifox',
+      source: `Apifox Project ${source.projectId}`,
+    });
+    const warnings = createWarningsCollector({
+      logger,
+      code: 'APIFOX_WARNINGS_SUMMARY',
+    });
 
     // 1. 获取数据
     let openApiData = await this.fetchOpenApiData(source);
 
     // 2. 修复兼容性
-    openApiData = this.fixOpenApiCompatibility(openApiData);
+    openApiData = this.fixOpenApiCompatibility(openApiData, warnings);
 
     // 3. 校验数据格式是否符合 OpenAPI 标准
-    try {
-      // 使用 JSON.parse(JSON.stringify()) 深拷贝一份数据进行校验，避免校验过程修改原数据
-      await SwaggerParser.validate(JSON.parse(JSON.stringify(openApiData)));
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error(`[ApifoxAdapter] Validation Failed: ${err.message}`);
-        // 即使校验失败，也尝试继续处理，因为有些非关键错误可能不影响代码生成
-        // 但这里选择抛出错误以保证数据质量，可视情况调整策略
-        throw new Error(
-          `Invalid OpenAPI data received from Apifox: ${err.message}`,
-        );
+    const shouldValidateOpenApi = options.validateOpenApi ?? true;
+    if (shouldValidateOpenApi) {
+      try {
+        type SwaggerValidateInput = Parameters<
+          typeof SwaggerParser.validate
+        >[0];
+
+        // swagger-parser 在校验过程中会修改输入对象，这里需要传入克隆副本。
+        // 优先使用 structuredClone (Node 20+) 避免 JSON stringify 带来的 CPU/内存峰值。
+        // 兜底：如果遇到不可克隆数据结构，再退回到 JSON 深拷贝。
+        const rawForValidation = openApiData as SwaggerValidateInput;
+        let validationInput: SwaggerValidateInput;
+        try {
+          validationInput = structuredClone(rawForValidation);
+        } catch {
+          validationInput = JSON.parse(
+            JSON.stringify(rawForValidation),
+          ) as SwaggerValidateInput;
+        }
+
+        await SwaggerParser.validate(validationInput);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          // 即使校验失败，也尝试继续处理，因为有些非关键错误可能不影响代码生成
+          // 但这里选择抛出错误以保证数据质量，可视情况调整策略
+          throw new Error(
+            `Invalid OpenAPI data received from Apifox: ${err.message}`,
+          );
+        }
       }
+    } else {
+      // 这不是错误：调用方显式关闭了校验（通常用于性能或容忍非标文档）。
+      warnings.inc('validationSkipped');
     }
-    console.log(`[ApifoxAdapter] Converting using OpenAPIAdapter...`);
 
     // 4. 转换为标准格式
     const openApiAdapter = new OpenAPIAdapter();
@@ -90,6 +126,11 @@ export class ApifoxAdapter
       result.metadata.generatedAt = new Date().toISOString();
     }
 
+    warnings.flush({
+      durationMs: Date.now() - startAt,
+      validation: shouldValidateOpenApi ? 'enabled' : 'skipped',
+    });
+
     return result;
   }
 
@@ -100,23 +141,32 @@ export class ApifoxAdapter
    * @param data 原始 OpenAPI 数据
    * @returns 修复后的 OpenAPI 数据
    */
-  private fixOpenApiCompatibility(data: any): any {
+  /**
+   * 修复 Apifox 导出数据中不符合 OpenAPI 标准的地方。
+   *
+   * 说明：这些修复属于“兼容性处理”，默认不会逐条输出 warn，
+   * 只会在 parse 末尾通过 warnings summary 汇总输出。
+   */
+  private fixOpenApiCompatibility(
+    data: any,
+    warnings?: ReturnType<typeof createWarningsCollector>,
+  ): any {
     if (!data) return data;
 
     // 修复泛型名称 (Java 风格的 « »)
     // 注意：必须在 fixBrokenRefs 之前执行，因为 fixBrokenRefs 可能会因为编码不匹配误删泛型引用
-    this.fixGenericsNames(data);
+    this.fixGenericsNames(data, warnings);
 
     // 修复失效的引用
-    this.fixBrokenRefs(data);
+    this.fixBrokenRefs(data, warnings);
 
     // 修复 Apifox 导出中的 `type: null` (OpenAPI 3.0 不允许)
     // OpenAPI 3.0 需要使用 `nullable: true` 来表达可为 null。
-    this.fixNullTypes(data);
+    this.fixNullTypes(data, warnings);
 
     // 修复重复 operationId（openapi-typescript / redocly 会报错）
     // Apifox 导出的不同 path/method 有时会共用同一个 operationId。
-    this.fixDuplicateOperationIds(data);
+    this.fixDuplicateOperationIds(data, warnings);
 
     // 1. 修复 Security Schemes 定义问题
     // type: http 的 scheme 不允许包含 'name' 和 'in' 字段
@@ -176,7 +226,14 @@ export class ApifoxAdapter
    * - 对后续重复的 operationId 进行重命名：`${operationId}_${METHOD}_${PATH_SLUG}`
    * - 生成的新 operationId 再次检查，若仍冲突则追加递增序号
    */
-  private fixDuplicateOperationIds(data: any): void {
+  private fixDuplicateOperationIds(
+    data: any,
+    warnings?: ReturnType<typeof createWarningsCollector>,
+  ): void {
+    /**
+     * openapi-typescript / redocly 会对重复 operationId 报错。
+     * 这里做“确定性重命名”，并将变更记录到 warnings summary。
+     */
     const paths = data?.paths;
     if (!paths || typeof paths !== 'object') return;
 
@@ -232,6 +289,13 @@ export class ApifoxAdapter
 
         op.operationId = next;
         seen.add(next);
+
+        warnings?.addDuplicateOperationId({
+          from: operationId,
+          to: next,
+          path: String(pathKey),
+          method,
+        });
       }
     }
   }
@@ -247,7 +311,14 @@ export class ApifoxAdapter
    * - 当检测到 `type === "null"`：删除 type，并设置 `nullable: true`
    * - 当检测到 `type` 是数组且包含 "null"：移除 "null"，并设置 `nullable: true`
    */
-  private fixNullTypes(data: any): void {
+  private fixNullTypes(
+    data: any,
+    warnings?: ReturnType<typeof createWarningsCollector>,
+  ): void {
+    /**
+     * Apifox 在导出 OpenAPI 3.0.x 时可能出现：type: null 或 type 数组包含 null。
+     * 该情况不符合 3.0 规范，需要转为 nullable 语义。
+     */
     const visit = (node: any) => {
       if (!node || typeof node !== 'object') return;
 
@@ -261,12 +332,15 @@ export class ApifoxAdapter
         if (node.type === 'null') {
           Reflect.deleteProperty(node, 'type');
           node.nullable = true;
+          warnings?.inc('fixedNullTypes');
         }
 
         // Case 2: type: ['object', 'null'] (more JSON-schema like)
         if (Array.isArray(node.type) && node.type.includes('null')) {
           node.type = node.type.filter((t: unknown) => t !== 'null');
           node.nullable = true;
+
+          warnings?.inc('fixedNullTypes');
 
           if (node.type.length === 1) {
             node.type = node.type[0];
@@ -289,6 +363,11 @@ export class ApifoxAdapter
    * @returns OpenAPI JSON 数据
    */
   protected async fetchOpenApiData(config: ApifoxConfig): Promise<unknown> {
+    /**
+     * 注意：这里不主动记录网络错误日志，直接 throw。
+     * - 避免适配器默认“重复输出”（业务侧通常会 catch 并记录）
+     * - 如需记录，可通过调用方的 try/catch + logger 注入实现
+     */
     const baseUrl = 'https://api.apifox.com/v1';
     const url = `${baseUrl}/projects/${config.projectId}/export-openapi`;
 
@@ -317,28 +396,23 @@ export class ApifoxAdapter
       };
     }
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${config.token}`,
-          'X-Apifox-Api-Version': config.apiVersion || '2024-03-28',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        'X-Apifox-Api-Version': config.apiVersion || '2024-03-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Apifox Export API Failed: [${response.status}] ${errorText}`,
-        );
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('[ApifoxAdapter] Network Request Error:', error);
-      throw error;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Apifox Export API Failed: [${response.status}] ${errorText}`,
+      );
     }
+    return await response.json();
   }
 
   /**
@@ -347,7 +421,15 @@ export class ApifoxAdapter
    *
    * @param data OpenAPI 数据
    */
-  private fixBrokenRefs(data: any): void {
+  private fixBrokenRefs(
+    data: any,
+    warnings?: ReturnType<typeof createWarningsCollector>,
+  ): void {
+    /**
+     * 递归修复失效引用：
+     * - 当 $ref 指向的路径不存在：删除 $ref 并回退为 object
+     * - 将变更记录到 warnings summary（带 sample ref）
+     */
     const findAndFix = (obj: any) => {
       if (!obj || typeof obj !== 'object') return;
 
@@ -363,9 +445,7 @@ export class ApifoxAdapter
       ) {
         if (!this.hasRef(data, obj.$ref)) {
           const decodedRef = decodeURIComponent(obj.$ref);
-          console.warn(
-            `[ApifoxAdapter] Fixing broken reference: ${decodedRef}`,
-          );
+          warnings?.addBrokenRef(decodedRef);
           Reflect.deleteProperty(obj, '$ref');
           obj.type = 'object'; // Fallback to generic object
           obj.description = `(Fixed broken reference: ${decodedRef})`;
@@ -431,7 +511,18 @@ export class ApifoxAdapter
    *
    * @param data OpenAPI 数据
    */
-  private fixGenericsNames(data: any): void {
+  private fixGenericsNames(
+    data: any,
+    warnings?: ReturnType<typeof createWarningsCollector>,
+  ): void {
+    /**
+     * 修复 Apifox 导出中 Java 风格泛型命名（« »）。
+     *
+     * 目标：
+     * - schema key 变为可用的 TS identifier（否则 openapi-typescript 可能生成 unknown）
+     * - 更新整个文档中的所有 $ref
+     * - 注入 x-apifox-generic 元数据，供 openapi adapter 侧识别泛型信息
+     */
     if (!data?.components?.schemas) return;
 
     const schemaMap = new Map<string, string>();
@@ -505,14 +596,12 @@ export class ApifoxAdapter
             delete schemas[key];
           }
         }
+
+        warnings?.addRenamedSchema(decodedKey, newKeyName);
       }
     });
 
     if (schemaMap.size === 0) return;
-
-    console.log(
-      `[ApifoxAdapter] Renamed ${schemaMap.size} schemas with generic names (to underscore style).`,
-    );
 
     // 2. 遍历整个对象更新引用
     const updateRefs = (obj: any) => {
@@ -527,14 +616,12 @@ export class ApifoxAdapter
         const ref = obj.$ref;
         // 尝试直接匹配
         if (schemaMap.has(ref)) {
-          // console.log(`[ApifoxAdapter] Updating ref: ${ref} -> ${schemaMap.get(ref)}`);
           obj.$ref = schemaMap.get(ref);
         } else {
           // 尝试解码后匹配
           try {
             const decodedRef = decodeURIComponent(ref);
             if (schemaMap.has(decodedRef)) {
-              // console.log(`[ApifoxAdapter] Updating ref (decoded): ${ref} -> ${schemaMap.get(decodedRef)}`);
               obj.$ref = schemaMap.get(decodedRef);
             }
           } catch {
