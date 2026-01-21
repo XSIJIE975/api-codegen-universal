@@ -7,6 +7,7 @@
 import openapiTS from 'openapi-typescript';
 import ts from 'typescript';
 import { load as loadYaml } from 'js-yaml';
+import { createAdapterLogger } from '@api-codegen-universal/core';
 import type {
   IAdapter,
   StandardOutput,
@@ -101,13 +102,32 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     source: InputSource,
     options?: OpenAPIOptions,
   ): Promise<StandardOutput> {
+    /**
+     * 统一日志入口（默认 logLevel='error'，因此不主动输出 warn/info）。
+     * 这里仅用于元数据加载失败时的警告（不影响主流程）。
+     */
+    const sourceLabel =
+      typeof source === 'string'
+        ? source
+        : source instanceof URL
+          ? source.toString()
+          : Buffer.isBuffer(source)
+            ? 'buffer'
+            : typeof source === 'object' && source !== null && 'read' in source
+              ? 'stream'
+              : 'object';
+    const logger = createAdapterLogger(options, {
+      adapter: 'openapi',
+      source: sourceLabel,
+    });
+
     // 1. 使用 openapi-typescript 生成 TypeScript AST
     const ast = await openapiTS(source, {
       transform: options?.transform,
     });
 
     // 加载原始文档以获取元数据
-    const rawDocument = await this.loadOpenAPIDocument(source);
+    const rawDocument = await this.loadOpenAPIDocument(source, logger);
 
     // 2. 提取配置选项
     const pathClassificationOpts = options?.pathClassification || {};
@@ -276,6 +296,7 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
    */
   private async loadOpenAPIDocument(
     source: InputSource,
+    logger: ReturnType<typeof createAdapterLogger>,
   ): Promise<OpenAPIDocument | null> {
     try {
       // 1. URL 对象
@@ -304,10 +325,13 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
         return source as unknown as OpenAPIDocument;
       }
     } catch (error) {
-      // 仅打印警告，不阻断主流程，因为这只是为了获取元数据
-      console.warn(
-        'Warning: Failed to load raw OpenAPI document for metadata extraction.',
-        error instanceof Error ? error.message : error,
+      // 仅记录 warn，不阻断主流程：该步骤仅用于 metadata 提取。
+      logger.warn(
+        'Failed to load raw OpenAPI document for metadata extraction.',
+        {
+          code: 'OPENAPI_METADATA_LOAD_FAILED',
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
       );
     }
     return null;
