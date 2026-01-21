@@ -7,12 +7,12 @@ export default defineConfig({
       syntax: ['node 20'],
       bundle: true,
       dts: {
-        bundle: true
-      }
+        bundle: true,
+      },
     },
     {
       format: 'cjs',
-      syntax: ['node 20']
+      syntax: ['node 20'],
     },
   ],
   source: {
