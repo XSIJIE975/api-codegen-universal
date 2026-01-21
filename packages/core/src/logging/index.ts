@@ -144,22 +144,92 @@ export type WarningType =
   | 'validationSkipped';
 
 export interface WarningsSummaryMeta {
-  /** 事件码：建议为包级前缀，例如 APIFOX_WARNINGS_SUMMARY */
+  /**
+   * 事件码（可用于日志聚合/过滤）。
+   *
+   * 建议使用“包级前缀”，例如：
+   * - APIFOX_WARNINGS_SUMMARY
+   * - OPENAPI_WARNINGS_SUMMARY
+   */
   code: string;
-  /** 适配器标识：如 'apifox'、'openapi' */
+  /**
+   * 适配器标识（适配器内部固定字符串）。
+   *
+   * 例如：'apifox'、'openapi'
+   */
   adapter: string;
+  /**
+   * 输入源标识（用于定位来源）。
+   *
+   * 示例：
+   * - URL 字符串
+   * - 文件路径
+   * - `Apifox Project <id>`
+   */
   source?: string;
+  /**
+   * 本次 parse 的耗时（毫秒）。
+   *
+   * 该字段通常由适配器在 parse 完成后写入，用于排障和性能观测。
+   */
   durationMs?: number;
   stats: {
+    /**
+     * 发生 schema 重命名的次数。
+     *
+     * 典型来源：将 Apifox 导出的泛型 schema 名称（含 « »）改为下划线形式。
+     */
     renamedGenericSchemas?: number;
+    /**
+     * 修复 broken $ref 的次数。
+     *
+     * 表示发现 $ref 指向的 JSON Pointer 在文档中不存在，并回退为普通 object。
+     */
     fixedBrokenRefs?: number;
+    /**
+     * 修复 `type: null` 或 `type` 数组包含 `null` 的次数。
+     *
+     * OpenAPI 3.0 不允许 `type: null`，一般会转为 `nullable: true` 语义。
+     */
     fixedNullTypes?: number;
+    /**
+     * 修复重复 operationId（重命名）的次数。
+     *
+     * openapi-typescript / redocly 等工具要求每个 operationId 唯一。
+     */
     renamedDuplicateOperationIds?: number;
+    /**
+     * 是否启用了 swagger-parser 校验。
+     *
+     * - enabled: 进行了校验
+     * - skipped: 调用方显式关闭校验（通常用于性能或容忍非标数据）
+     */
     validation: 'enabled' | 'skipped';
   };
   samples?: {
+    /**
+     * broken $ref 的样本列表。
+     *
+     * 仅保留部分样本，数量受 `logSampleLimit` 限制。
+     */
     brokenRefs?: string[];
+    /**
+     * schema 重命名样本列表。
+     *
+     * - from: 原 schema key（可能含 URL 编码或特殊字符）
+     * - to: 修复后的 schema key
+     *
+     * 仅保留部分样本，数量受 `logSampleLimit` 限制。
+     */
     renamedSchemas?: Array<{ from: string; to: string }>;
+    /**
+     * operationId 重命名样本列表。
+     *
+     * - from/to: 重命名前后的 operationId
+     * - path/method: 对应的 OpenAPI 路径与 HTTP method
+     *
+     * 仅保留部分样本，数量受 `logSampleLimit` 限制。
+     */
     duplicateOperationIds?: Array<{
       from: string;
       to: string;
