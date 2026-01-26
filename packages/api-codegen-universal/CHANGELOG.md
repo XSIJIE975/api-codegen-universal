@@ -1,5 +1,11 @@
 # api-codegen-universal
 
+## 0.6.4
+
+### Patch Changes
+
+- [#13](https://github.com/XSIJIE975/api-codegen-universal/pull/13) [`1d58776`](https://github.com/XSIJIE975/api-codegen-universal/commit/1d5877698feeb11b7b8f810019ec9c9bfb885de3) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - Add unified logging and warnings summary feature with logLevel, logger injection, and logSampleLimit support
+
 ## 0.6.3
 
 ### Patch Changes
