@@ -100,6 +100,65 @@ await adapter.parse(source, {
 });
 ```
 
+### Logging (logLevel / logger / logSampleLimit)
+
+All adapters support a unified set of logging options on `parse(source, options)`:
+
+- `logLevel?: 'silent' | 'error' | 'warn' | 'info' | 'debug'` (default: `'error'`)
+  - `silent`: no output
+  - `error`: errors only
+  - `warn`: warnings + errors (Apifox warnings summary requires at least `warn`)
+  - `info` / `debug`: more verbose output
+- `logger?: { debug?; info?; warn?; error? }`
+  - default format is `console.<level>(message, meta)` (`meta` is a structured object for filtering/collection)
+  - inject your own logger (write to file, integrate pino/winston, ship to observability, etc.)
+- `logSampleLimit?: number` (default: `10`)
+  - caps the amount of `samples` included in warnings summaries
+  - set to `0` to disable samples (stats are still reported)
+
+> Note: adapters generally **do not** print errors by default (they throw). If you want error logs, `try/catch` in your app and log there.
+
+#### Event codes (`meta.code`)
+
+- `APIFOX_WARNINGS_SUMMARY`
+  - Aggregated compatibility-fix warnings from the Apifox adapter.
+  - Emitted as **one** warn at the end of `parse` (Scheme A).
+  - Important `meta` fields:
+    - `adapter`: `apifox`
+    - `source`: `Apifox Project <id>`
+    - `durationMs`: parse duration in ms
+    - `stats`: counters (e.g. `fixedNullTypes` / `fixedBrokenRefs` / `renamedDuplicateOperationIds` / `renamedGenericSchemas` / `validation`)
+    - `samples`: capped by `logSampleLimit` (e.g. `brokenRefs` / `renamedSchemas` / `duplicateOperationIds`)
+- `OPENAPI_METADATA_LOAD_FAILED`
+  - Warn emitted when the OpenAPI adapter fails to load the _raw_ document for metadata extraction (does not block parsing).
+  - `meta` shape: `{ code: 'OPENAPI_METADATA_LOAD_FAILED', errorMessage: string }`
+
+#### Example: capture warnings summary via a custom logger
+
+```typescript
+import { ApifoxAdapter } from 'api-codegen-universal';
+
+const adapter = new ApifoxAdapter();
+
+const warnCalls: Array<{ message: string; meta?: Record<string, unknown> }> =
+  [];
+
+await adapter.parse(
+  { projectId: 'YOUR_PROJECT_ID', token: 'YOUR_ACCESS_TOKEN' },
+  {
+    logLevel: 'warn',
+    logSampleLimit: 5,
+    logger: {
+      warn: (message, meta) => {
+        warnCalls.push({ message, meta });
+      },
+    },
+  },
+);
+
+// warnCalls[0]?.meta?.code === 'APIFOX_WARNINGS_SUMMARY'
+```
+
 ### Apifox Configuration
 
 When using `ApifoxAdapter`, the first argument is a configuration object:

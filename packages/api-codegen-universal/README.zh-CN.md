@@ -98,6 +98,65 @@ await adapter.parse(source, {
 });
 ```
 
+### 日志（logLevel / logger / logSampleLimit）
+
+所有适配器的 `parse(source, options)` 都支持统一的日志选项：
+
+- `logLevel?: 'silent' | 'error' | 'warn' | 'info' | 'debug'`（默认：`'error'`）
+  - `silent`: 完全不输出
+  - `error`: 仅输出 error
+  - `warn`: 输出 warn + error（Apifox 的 warnings summary 需要至少 `warn`）
+  - `info` / `debug`: 更详细的输出
+- `logger?: { debug?; info?; warn?; error? }`
+  - 默认输出格式为 `console.<level>(message, meta)`（`meta` 为结构化对象，便于采集/过滤）
+  - 你可以注入自己的 logger（例如写入文件、接入 pino/winston、上报到监控等）
+- `logSampleLimit?: number`（默认：`10`）
+  - 用于限制 warnings summary 中的 `samples` 数量，避免单次解析产生日志 payload 过大
+  - 设置为 `0` 可禁用 samples（仍会保留统计 `stats`）
+
+> 说明：适配器默认 **不会**在内部重复打印错误（一般直接 throw）。如需记录错误，请在业务侧 `try/catch` 后自行记录。
+
+#### 事件码（`meta.code`）
+
+- `APIFOX_WARNINGS_SUMMARY`
+  - Apifox 适配器在兼容性修复过程中产生的告警汇总。
+  - 仅在 `parse` 结束时输出 **1 条** warn（Scheme A），避免刷屏。
+  - `meta` 结构（关键字段）：
+    - `adapter`: `apifox`
+    - `source`: `Apifox Project <id>`
+    - `durationMs`: 本次 parse 耗时（毫秒）
+    - `stats`: 计数（例如 `fixedNullTypes` / `fixedBrokenRefs` / `renamedDuplicateOperationIds` / `renamedGenericSchemas` / `validation`）
+    - `samples`: 受 `logSampleLimit` 限制的样本（例如 `brokenRefs` / `renamedSchemas` / `duplicateOperationIds`）
+- `OPENAPI_METADATA_LOAD_FAILED`
+  - OpenAPI 适配器在尝试加载“原始文档”以提取 metadata 时失败的 warn（不影响主流程）。
+  - `meta` 结构：`{ code: 'OPENAPI_METADATA_LOAD_FAILED', errorMessage: string }`
+
+#### 示例：注入自定义 logger 捕获 warnings summary
+
+```typescript
+import { ApifoxAdapter } from 'api-codegen-universal';
+
+const adapter = new ApifoxAdapter();
+
+const warnCalls: Array<{ message: string; meta?: Record<string, unknown> }> =
+  [];
+
+await adapter.parse(
+  { projectId: 'YOUR_PROJECT_ID', token: 'YOUR_ACCESS_TOKEN' },
+  {
+    logLevel: 'warn',
+    logSampleLimit: 5,
+    logger: {
+      warn: (message, meta) => {
+        warnCalls.push({ message, meta });
+      },
+    },
+  },
+);
+
+// warnCalls[0]?.meta?.code === 'APIFOX_WARNINGS_SUMMARY'
+```
+
 ### Apifox 配置
 
 使用 `ApifoxAdapter` 时，第一个参数是配置对象：
