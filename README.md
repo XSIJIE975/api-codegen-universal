@@ -31,6 +31,20 @@ pnpm build
 pnpm test
 ```
 
+## Logging
+
+Adapters expose a unified logging interface (implemented in `@api-codegen-universal/core`):
+
+- `logLevel` (default: `'error'`)
+- `logger` injection (default: `console.<level>(message, meta)`)
+- `logSampleLimit` (default: `10`, caps `samples` in warnings summaries)
+
+The Apifox adapter aggregates compatibility-fix warnings into a **single warnings summary** emitted once at the end (requires `logLevel >= 'warn'`).
+
+For full examples and event code details, see:
+
+- `packages/api-codegen-universal/README.md`
+
 ## License
 
 MIT

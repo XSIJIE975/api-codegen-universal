@@ -116,11 +116,25 @@ test('ApifoxAdapter should fix `type: null` schemas and pass validation', async 
     token: 'abc',
   };
 
-  const result = await adapter.parse(config);
+  const result = await adapter.parse(config, { validateOpenApi: true });
 
   expect(result).toBeDefined();
   expect(result.schemas).toBeDefined();
   expect(result.apis).toBeDefined();
+});
+
+test('ApifoxAdapter should allow skipping swagger-parser validation', async () => {
+  const adapter = new MockApifoxAdapterWithNullType();
+  const config = {
+    projectId: '123',
+    token: 'abc',
+  };
+
+  // Should not throw even though data contains invalid `type: null`, because
+  // validateOpenApi is disabled.
+  const result = await adapter.parse(config, { validateOpenApi: false });
+
+  expect(result).toBeDefined();
 });
 
 test('ApifoxAdapter should fix duplicate operationId', async () => {
@@ -204,4 +218,152 @@ test('ApifoxAdapter.parse should throw on non-OK response from Apifox API', asyn
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('ApifoxAdapter should emit warnings summary when logLevel=warn', async () => {
+  const adapter = new MockApifoxAdapterWithNullType();
+  const config = {
+    projectId: '123',
+    token: 'abc',
+  };
+
+  const warnCalls: Array<{ message: string; meta?: Record<string, unknown> }> =
+    [];
+  const logger = {
+    warn: (message: string, meta?: Record<string, unknown>) => {
+      warnCalls.push({ message, meta });
+    },
+  };
+
+  await adapter.parse(config, {
+    validateOpenApi: true,
+    logLevel: 'warn',
+    logger,
+  });
+
+  expect(warnCalls).toHaveLength(1);
+  const meta = warnCalls[0]?.meta ?? {};
+  expect(meta.code).toBe('APIFOX_WARNINGS_SUMMARY');
+
+  const stats = meta.stats as
+    | { fixedNullTypes?: number; validation?: 'enabled' | 'skipped' }
+    | undefined;
+  expect(stats?.validation).toBe('enabled');
+  expect(stats?.fixedNullTypes).toBe(1);
+});
+
+test('ApifoxAdapter should not emit warnings summary when logLevel=error', async () => {
+  const adapter = new MockApifoxAdapterWithNullType();
+  const config = {
+    projectId: '123',
+    token: 'abc',
+  };
+
+  const warnCalls: Array<{ message: string; meta?: Record<string, unknown> }> =
+    [];
+  const logger = {
+    warn: (message: string, meta?: Record<string, unknown>) => {
+      warnCalls.push({ message, meta });
+    },
+  };
+
+  await adapter.parse(config, {
+    validateOpenApi: true,
+    logLevel: 'error',
+    logger,
+  });
+
+  expect(warnCalls).toHaveLength(0);
+});
+
+test('ApifoxAdapter warnings summary should cap samples with logSampleLimit', async () => {
+  class MockApifoxAdapterWithMultipleDupOperationId extends ApifoxAdapter {
+    protected async fetchOpenApiData() {
+      return {
+        openapi: '3.0.1',
+        info: {
+          title: 'Apifox Duplicate OperationId Fixture (Multiple)',
+          version: '1.0.0',
+        },
+        paths: {
+          '/a': {
+            get: {
+              operationId: 'dup',
+              responses: {
+                '200': {
+                  description: 'ok',
+                },
+              },
+            },
+          },
+          '/b': {
+            post: {
+              operationId: 'dup',
+              responses: {
+                '200': {
+                  description: 'ok',
+                },
+              },
+            },
+          },
+          '/c': {
+            put: {
+              operationId: 'dup',
+              responses: {
+                '200': {
+                  description: 'ok',
+                },
+              },
+            },
+          },
+        },
+      };
+    }
+  }
+
+  const adapter = new MockApifoxAdapterWithMultipleDupOperationId();
+  const config = {
+    projectId: '123',
+    token: 'abc',
+  };
+
+  const warnCalls: Array<{ message: string; meta?: Record<string, unknown> }> =
+    [];
+  const logger = {
+    warn: (message: string, meta?: Record<string, unknown>) => {
+      warnCalls.push({ message, meta });
+    },
+  };
+
+  await adapter.parse(config, {
+    validateOpenApi: false,
+    logLevel: 'warn',
+    logSampleLimit: 1,
+    logger,
+  });
+
+  expect(warnCalls).toHaveLength(1);
+  const meta = warnCalls[0]?.meta ?? {};
+  expect(meta.code).toBe('APIFOX_WARNINGS_SUMMARY');
+
+  const stats = meta.stats as
+    | {
+        renamedDuplicateOperationIds?: number;
+        validation?: 'enabled' | 'skipped';
+      }
+    | undefined;
+  expect(stats?.validation).toBe('skipped');
+  expect(stats?.renamedDuplicateOperationIds).toBe(2);
+
+  const samples = meta.samples as
+    | {
+        duplicateOperationIds?: Array<{
+          from: string;
+          to: string;
+          path: string;
+          method: string;
+        }>;
+      }
+    | undefined;
+  expect(samples?.duplicateOperationIds).toHaveLength(1);
 });

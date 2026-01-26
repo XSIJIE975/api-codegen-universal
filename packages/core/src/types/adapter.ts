@@ -4,6 +4,7 @@
  */
 
 import type { StandardOutput } from './standard.js';
+import type { LogLevel, Logger } from '../logging/index.js';
 
 /**
  * 适配器基础接口
@@ -39,5 +40,22 @@ export interface IAdapter<TOptions = AdapterOptions, TSource = unknown> {
  * 允许包含任意键值对以支持扩展配置
  */
 export interface AdapterOptions {
+  /**
+   * 日志等级。默认：'error'
+   *
+   * 说明：默认仅输出 error，避免兼容性修复过程中输出过多日志。
+   * 如需看到 warnings summary，请显式设置为 'warn' 或更高。
+   */
+  logLevel?: LogLevel;
+  /**
+   * 自定义 logger（可选）。
+   * 默认采用 `console.<level>(message, meta)` 的输出格式（Format A）。
+   */
+  logger?: Logger;
+  /**
+   * warnings summary 中最多保留的 samples 数量。默认：10
+   * 用于避免单次解析产生过大的日志 payload。
+   */
+  logSampleLimit?: number;
   [key: string]: unknown;
 }

@@ -33,8 +33,19 @@ export interface ApifoxConfig {
 /** Apifox API 版本类型 */
 export type ApiFoxVersion = '2024-03-28' | '2025-09-01';
 
-/** 适配器选项，继承自 OpenAPI 的选项 */
-export type ApifoxAdapterOptions = OpenAPIOptions;
+/**
+ * 适配器选项
+ * 在 OpenAPIOptions 的基础上增加 ApifoxAdapter 专属行为控制。
+ */
+export interface ApifoxAdapterOptions extends OpenAPIOptions {
+  /**
+   * 是否对修复后的 OpenAPI 文档进行 swagger-parser 校验。
+   *
+   * 默认开启：true
+   * 关闭后可提升性能，但可能让部分非标数据进入后续处理。
+   */
+  validateOpenApi?: boolean;
+}
 
 /**
  * Apifox 导出 OpenAPI/Swagger 格式数据选项
