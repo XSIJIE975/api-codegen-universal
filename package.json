@@ -4,8 +4,8 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "rstest",
-    "lint": "eslint \"{packages}/**/*.ts\"",
-    "lint:fix": "eslint \"{packages}/**/*.ts\" --fix",
+    "lint": "eslint \"packages/**/*.ts\"",
+    "lint:fix": "eslint \"packages/**/*.ts\" --fix",
     "format": "prettier --write .",
     "prepare": "husky",
     "commitlint": "commitlint --edit",
