@@ -6,13 +6,10 @@
 import type { CategoryInfo } from '@api-codegen-universal/core';
 import type { PathClassificationOptions } from '../types';
 
-/**
- * 路径分类器
- */
 export class PathClassifier {
-  private outputPrefix: string;
-  private commonPrefix: string;
-  private maxDepth: number;
+  private readonly outputPrefix: string;
+  private readonly commonPrefix: string;
+  private readonly maxDepth: number;
 
   constructor(options: PathClassificationOptions = {}) {
     this.outputPrefix = options.outputPrefix || 'api';
@@ -24,18 +21,13 @@ export class PathClassifier {
    * 对单个路径进行分类
    */
   classify(path: string): CategoryInfo {
-    // 1. 移除公共前缀
     const normalizedPath = this.removePrefix(path);
-
-    // 2. 提取路径段(忽略参数)
     const segments = this.extractSegments(normalizedPath);
 
-    // 3. 检查是否能分类
     if (segments.length === 0) {
       return this.createUnclassified();
     }
 
-    // 4. 生成分类信息
     return {
       segments,
       depth: segments.length,
@@ -46,6 +38,7 @@ export class PathClassifier {
 
   /**
    * 批量分类多个路径
+   * @deprecated 此方法简单遍历调用 classify()，建议在调用方自行实现批量处理
    */
   classifyBatch(paths: string[]): Map<string, CategoryInfo> {
     const result = new Map<string, CategoryInfo>();
@@ -55,9 +48,6 @@ export class PathClassifier {
     return result;
   }
 
-  /**
-   * 移除公共前缀
-   */
   private removePrefix(path: string): string {
     if (!this.commonPrefix) return path;
     if (path.startsWith(this.commonPrefix)) {
@@ -66,35 +56,21 @@ export class PathClassifier {
     return path;
   }
 
-  /**
-   * 提取路径段(忽略参数)
-   */
   private extractSegments(path: string): string[] {
     return path
       .split('/')
       .filter((segment) => {
-        // 过滤空字符串
         if (!segment) return false;
-        // 过滤路径参数 {id}
         if (segment.startsWith('{') && segment.endsWith('}')) return false;
         return true;
       })
-      .slice(0, this.maxDepth); // 限制深度
+      .slice(0, this.maxDepth);
   }
 
-  /**
-   * 生成文件路径
-   */
   private generateFilePath(segments: string[]): string {
-    if (segments.length === 0) {
-      return `${this.outputPrefix}/unclassified.ts`;
-    }
     return `${this.outputPrefix}/${segments.join('/')}/index.ts`;
   }
 
-  /**
-   * 创建未分类信息
-   */
   private createUnclassified(): CategoryInfo {
     return {
       segments: [],
