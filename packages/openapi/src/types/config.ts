@@ -21,6 +21,21 @@ export interface OpenAPIDocument {
 }
 
 /**
+ * Apifox 注入的泛型元数据。
+ *
+ * 结构示例：
+ * - 原始 schema key：`PageVO«ApplyListVO»`
+ * - 注入的元数据：`{ baseType: 'PageVO', generics: ['ApplyListVO'] }`
+ *
+ * 该元数据由 ApifoxAdapter.fixGenericsNames 注入，
+ * 由 OpenAPIAdapter.parse 读取并用于泛型基类合成。
+ */
+export interface ApifoxGenericMeta {
+  baseType: string;
+  generics: string[];
+}
+
+/**
  * 输入源类型
  */
 export type InputSource = string | URL | OpenAPI3 | Buffer | Readable;
@@ -84,10 +99,24 @@ export interface OpenAPIOptions extends AdapterOptions {
 
   /** 自定义类型转换函数 */
   transform?: OpenAPITSOptions['transform'];
+
+  /**
+   * 调试选项
+   */
+  debug?: {
+    /**
+     * 跳过元数据敏感信息清理
+     * 默认情况下，metadata.options 会经过 sanitizeOptions 清理敏感字段（如 token、apiKey 等）。
+     * 设置为 true 可保留完整选项，便于调试。
+     * @default false
+     */
+    skipMetadataSanitization?: boolean;
+  };
 }
 
 /**
  * Apifox 解析选项(预留)
+ * @deprecated 请使用 ApifoxAdapterOptions（来自 @api-codegen-universal/apifox）代替
  */
 export interface ApifoxOptions {
   /** API Token */
@@ -100,6 +129,7 @@ export interface ApifoxOptions {
 
 /**
  * 转换元数据
+ * @deprecated 此类型未被使用，将在未来版本移除
  */
 export interface TransformMetadata {
   /** Schema 名称 */

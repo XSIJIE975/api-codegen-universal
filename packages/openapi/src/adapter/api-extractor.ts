@@ -24,38 +24,24 @@ import {
 import { PathClassifier } from '../utils/path-classifier';
 import { ParameterExtractor } from './parameter-extractor';
 import { RequestResponseExtractor } from './request-response-extractor';
-import type { SchemaExtractor } from './schema-extractor';
-import type { InterfaceGenerator } from './interface-generator';
 
 export class ApiExtractor {
-  private pathClassifier: PathClassifier;
-  private parameterExtractor: ParameterExtractor;
-  private requestResponseExtractor: RequestResponseExtractor;
-  private schemaExtractor?: SchemaExtractor;
-  private interfaceGenerator?: InterfaceGenerator;
+  private readonly pathClassifier: PathClassifier;
+  private readonly parameterExtractor: ParameterExtractor;
+  private readonly requestResponseExtractor: RequestResponseExtractor;
 
   constructor(
     pathClassifier: PathClassifier,
     parameterExtractor: ParameterExtractor,
     requestResponseExtractor: RequestResponseExtractor,
-    schemaExtractor?: SchemaExtractor,
-    interfaceGenerator?: InterfaceGenerator,
   ) {
     this.pathClassifier = pathClassifier;
     this.parameterExtractor = parameterExtractor;
     this.requestResponseExtractor = requestResponseExtractor;
-    this.schemaExtractor = schemaExtractor;
-    this.interfaceGenerator = interfaceGenerator;
   }
 
   /**
    * 提取所有 API 定义
-   *
-   * @param pathsNode paths 接口节点
-   * @param operationsNode operations 接口节点
-   * @param apis API 定义数组(输出)
-   * @param schemas Schema 定义集合(用于引用)
-   * @param interfaces 接口代码集合(用于引用)
    */
   extractAPIs(
     pathsNode: ts.InterfaceDeclaration,
@@ -64,125 +50,92 @@ export class ApiExtractor {
     schemas: Record<string, SchemaDefinition>,
     interfaces: Record<string, string>,
   ): void {
-    // 1. 构建 operations 的映射表 (OperationId -> TypeLiteralNode)
-    // openapi-typescript 生成的 AST 中，paths 下的方法通常引用 operations 接口中的定义
-    const operationsMap = new Map<string, ts.TypeLiteralNode>();
+    // 构建 operations 映射表
+    const operationsMap = this.buildOperationsMap(operationsNode);
 
-    if (operationsNode) {
-      for (const member of operationsNode.members) {
-        if (ts.isPropertySignature(member) && member.name && member.type) {
-          const operationId = (member.name as ts.Identifier).text;
-          if (ts.isTypeLiteralNode(member.type)) {
-            operationsMap.set(operationId, member.type);
-          }
-        }
-      }
-    }
-
-    // 2. 遍历 paths,结合 operations 生成 API
+    // 遍历 paths
     for (const pathMember of pathsNode.members) {
       if (
-        ts.isPropertySignature(pathMember) &&
-        pathMember.name &&
-        pathMember.type
-      ) {
-        // 提取 path (可能是 StringLiteral)
-        const path = extractStringFromNode(pathMember.name);
+        !ts.isPropertySignature(pathMember) ||
+        !pathMember.name ||
+        !pathMember.type
+      )
+        continue;
 
-        if (path && ts.isTypeLiteralNode(pathMember.type)) {
-          // 遍历该 path 下的 HTTP 方法
-          for (const methodMember of pathMember.type.members) {
-            if (
-              ts.isPropertySignature(methodMember) &&
-              methodMember.name &&
-              methodMember.type
-            ) {
-              const methodName = extractStringFromNode(methodMember.name);
-              if (!methodName) continue;
+      const path = extractStringFromNode(pathMember.name);
+      if (!path || !ts.isTypeLiteralNode(pathMember.type)) continue;
 
-              const method = methodName.toUpperCase();
+      for (const methodMember of pathMember.type.members) {
+        if (
+          !ts.isPropertySignature(methodMember) ||
+          !methodMember.name ||
+          !methodMember.type
+        )
+          continue;
 
-              // 忽略 parameters 字段和其他非 HTTP 方法字段
-              if (
-                [
-                  'PARAMETERS',
-                  '$REF',
-                  'SUMMARY',
-                  'DESCRIPTION',
-                  'SERVERS',
-                ].includes(method)
-              ) {
-                continue;
-              }
+        const methodName = extractStringFromNode(methodMember.name);
+        if (!methodName) continue;
 
-              // 提取 operationId 引用
-              // 例如: operations["getUsers"]
-              const operationIdRef = extractOperationIdReference(
-                methodMember.type,
-              );
+        const method = methodName.toUpperCase();
 
-              let operationNode: ts.TypeLiteralNode | undefined;
-              let operationId = operationIdRef;
+        // 忽略非 HTTP 方法字段
+        if (isNonHttpMethodField(method)) continue;
 
-              // 尝试从 operationsMap 中查找详细定义
-              if (operationIdRef && operationsMap.has(operationIdRef)) {
-                operationNode = operationsMap.get(operationIdRef)!;
-              } else if (ts.isTypeLiteralNode(methodMember.type)) {
-                // 如果是内联定义
-                operationNode = methodMember.type;
-              }
+        const operationIdRef = extractOperationIdReference(methodMember.type);
 
-              if (operationNode) {
-                // 如果没有 operationId，根据 path 和 method 生成一个
-                if (!operationId) {
-                  operationId = this.generateOperationId(path, method);
-                }
+        let operationNode: ts.TypeLiteralNode | undefined;
+        let operationId = operationIdRef;
 
-                // 提取 JSDoc 信息 (注释、标签等)
-                const jsDocComment = extractJSDocComment(methodMember);
-                const jsDocInfo = jsDocComment
-                  ? parseJSDoc(jsDocComment)
-                  : undefined;
-
-                // 构建 ApiDefinition
-                const api = this.buildApiDefinition(
-                  path,
-                  method,
-                  operationId,
-                  operationNode,
-                  schemas,
-                  interfaces,
-                  jsDocInfo,
-                );
-
-                apis.push(api);
-              }
-            }
-          }
+        if (operationIdRef && operationsMap.has(operationIdRef)) {
+          operationNode = operationsMap.get(operationIdRef)!;
+        } else if (ts.isTypeLiteralNode(methodMember.type)) {
+          operationNode = methodMember.type;
         }
+
+        if (!operationNode) continue;
+
+        if (!operationId) {
+          operationId = generateOperationId(path, method);
+        }
+
+        const jsDocComment = extractJSDocComment(methodMember);
+        const jsDocInfo = jsDocComment ? parseJSDoc(jsDocComment) : undefined;
+
+        const api = this.buildApiDefinition(
+          path,
+          method,
+          operationId,
+          operationNode,
+          schemas,
+          interfaces,
+          jsDocInfo,
+        );
+
+        apis.push(api);
       }
     }
   }
 
   /**
-   * 生成 OperationId
-   * 规则: method + PathParts (PascalCase)
-   * 例如: GET /users/{id} -> getUsersById
+   * 构建 operations 映射表 (OperationId -> TypeLiteralNode)
    */
-  private generateOperationId(path: string, method: string): string {
-    const parts = path.split('/').filter((p) => p);
-    const pathStr = parts
-      .map((p) => {
-        if (p.startsWith('{') && p.endsWith('}')) {
-          const paramName = p.slice(1, -1);
-          return (
-            'By' + (paramName.charAt(0).toUpperCase() + paramName.slice(1))
-          );
-        }
-        return p.charAt(0).toUpperCase() + p.slice(1);
-      })
-      .join('');
-    return method.toLowerCase() + pathStr;
+  private buildOperationsMap(
+    operationsNode: ts.InterfaceDeclaration | undefined,
+  ): Map<string, ts.TypeLiteralNode> {
+    const map = new Map<string, ts.TypeLiteralNode>();
+    if (!operationsNode) return map;
+
+    for (const member of operationsNode.members) {
+      if (
+        ts.isPropertySignature(member) &&
+        member.name &&
+        member.type &&
+        ts.isTypeLiteralNode(member.type)
+      ) {
+        map.set((member.name as ts.Identifier).text, member.type);
+      }
+    }
+    return map;
   }
 
   /**
@@ -197,10 +150,8 @@ export class ApiExtractor {
     interfaces: Record<string, string>,
     jsDocInfo?: JSDocInfo,
   ): ApiDefinition {
-    // 分类路径 (用于决定生成文件的位置)
     const category = this.pathClassifier.classify(path);
 
-    // 基础 API 定义
     const api: ApiDefinition = {
       path,
       method: method as ApiDefinition['method'],
@@ -213,43 +164,69 @@ export class ApiExtractor {
       responses: {},
     };
 
-    // 解析 operation 内容 (parameters, requestBody, responses)
     for (const member of operationNode.members) {
-      if (ts.isPropertySignature(member) && member.name) {
-        const propName = (member.name as ts.Identifier).text;
+      if (!ts.isPropertySignature(member) || !member.name) continue;
+      const propName = (member.name as ts.Identifier).text;
 
-        if (
-          propName === 'parameters' &&
-          member.type &&
-          ts.isTypeLiteralNode(member.type)
-        ) {
-          // 提取 parameters (query/path/header/cookie)
-          api.parameters = this.parameterExtractor.extractParameters(
-            operationId,
-            member.type,
-            schemas,
-            interfaces,
-          );
-        } else if (propName === 'requestBody' && member.type) {
-          // 提取 requestBody
-          api.requestBody = this.requestResponseExtractor.extractRequestBody(
-            member.type,
-            operationId,
-          );
-        } else if (propName === 'responses' && member.type) {
-          // 提取 responses
-          api.responses = this.requestResponseExtractor.extractResponses(
-            member.type,
-            operationId,
-            schemas,
-            interfaces,
-            this.schemaExtractor,
-            this.interfaceGenerator,
-          );
-        }
+      if (
+        propName === 'parameters' &&
+        member.type &&
+        ts.isTypeLiteralNode(member.type)
+      ) {
+        api.parameters = this.parameterExtractor.extractParameters(
+          operationId,
+          member.type,
+          schemas,
+          interfaces,
+        );
+      } else if (propName === 'requestBody' && member.type) {
+        api.requestBody = this.requestResponseExtractor.extractRequestBody(
+          member.type,
+          operationId,
+        );
+      } else if (propName === 'responses' && member.type) {
+        api.responses = this.requestResponseExtractor.extractResponses(
+          member.type,
+          operationId,
+        );
       }
     }
 
     return api;
   }
+}
+
+// ===================================================================================
+// 辅助函数
+// ===================================================================================
+
+const NON_HTTP_METHOD_FIELDS = new Set([
+  'PARAMETERS',
+  '$REF',
+  'SUMMARY',
+  'DESCRIPTION',
+  'SERVERS',
+]);
+
+function isNonHttpMethodField(method: string): boolean {
+  return NON_HTTP_METHOD_FIELDS.has(method);
+}
+
+/**
+ * 生成 OperationId
+ * 规则: method + PathParts (PascalCase)
+ * 例如: GET /users/{id} -> getUsersById
+ */
+function generateOperationId(path: string, method: string): string {
+  const parts = path.split('/').filter((p) => p);
+  const pathStr = parts
+    .map((p) => {
+      if (p.startsWith('{') && p.endsWith('}')) {
+        const paramName = p.slice(1, -1);
+        return 'By' + (paramName.charAt(0).toUpperCase() + paramName.slice(1));
+      }
+      return p.charAt(0).toUpperCase() + p.slice(1);
+    })
+    .join('');
+  return method.toLowerCase() + pathStr;
 }

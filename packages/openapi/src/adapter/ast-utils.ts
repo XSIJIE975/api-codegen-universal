@@ -1,43 +1,37 @@
 /**
  * AST 工具函数
  * 提供 TypeScript AST 相关的通用操作
- * 用于解析、提取和转换 AST 节点信息
  */
 
 import ts from 'typescript';
+import {
+  javaGenericsToTsAngles,
+  componentsSchemaRegex,
+  arrayTypeRegex,
+} from '../utils/type-ref-utils';
+
+// Re-export shared regex for backward compatibility
+export { componentsSchemaRegex, arrayTypeRegex } from '../utils/type-ref-utils';
 
 /**
  * 从节点提取字符串值
  * 支持 StringLiteral, Identifier, NumericLiteral
- *
- * @param node 属性名节点
- * @returns 提取的字符串值，如果无法提取则返回 null
  */
 export function extractStringFromNode(node: ts.PropertyName): string | null {
-  if (ts.isStringLiteral(node)) {
-    return node.text;
-  }
-  if (ts.isIdentifier(node)) {
-    return node.text;
-  }
-  if (ts.isNumericLiteral(node)) {
-    return node.text;
-  }
+  if (ts.isStringLiteral(node)) return node.text;
+  if (ts.isIdentifier(node)) return node.text;
+  if (ts.isNumericLiteral(node)) return node.text;
   return null;
 }
 
 /**
  * 提取 operations 引用
  * 例如: operations["AuthController_register"]
- *
- * @param typeNode 类型节点
- * @returns operationId 字符串，如果不是引用则返回 null
  */
 export function extractOperationIdReference(
   typeNode: ts.TypeNode,
 ): string | null {
   if (ts.isIndexedAccessTypeNode(typeNode)) {
-    // typeNode.indexType 应该是字符串字面量
     if (
       ts.isLiteralTypeNode(typeNode.indexType) &&
       ts.isStringLiteral(typeNode.indexType.literal)
@@ -51,47 +45,46 @@ export function extractOperationIdReference(
 /**
  * 提取 schema 引用
  * 例如: components["schemas"]["UserDto"]
- *
- * @param typeNode 类型节点
- * @returns Schema 名称，如果不是引用则返回 undefined
  */
 export function extractSchemaReference(
   typeNode: ts.TypeNode,
 ): string | undefined {
-  if (ts.isIndexedAccessTypeNode(typeNode)) {
-    // components["schemas"]["XXX"]
-    const objectType = typeNode.objectType;
+  if (!ts.isIndexedAccessTypeNode(typeNode)) return undefined;
 
-    if (ts.isIndexedAccessTypeNode(objectType)) {
-      // 提取最终的 schema 名称
-      if (
-        ts.isLiteralTypeNode(typeNode.indexType) &&
-        ts.isStringLiteral(typeNode.indexType.literal)
-      ) {
-        let ref = typeNode.indexType.literal.text;
-        // 如果 ref 是 URL 编码的，尝试解码
-        if (ref.includes('%')) {
-          try {
-            ref = decodeURIComponent(ref);
-          } catch {
-            // ignore
-          }
-        }
-        // 处理泛型符号 (Java 风格的泛型 « »)
-        ref = ref.replace(/«/g, '<').replace(/»/g, '>');
-        return ref;
+  const objectType = typeNode.objectType;
+  if (!ts.isIndexedAccessTypeNode(objectType)) return undefined;
+
+  if (
+    ts.isLiteralTypeNode(typeNode.indexType) &&
+    ts.isStringLiteral(typeNode.indexType.literal)
+  ) {
+    let ref = typeNode.indexType.literal.text;
+
+    // URL 解码
+    if (ref.includes('%')) {
+      try {
+        ref = decodeURIComponent(ref);
+      } catch {
+        // ignore
       }
     }
+
+    // 处理 Java 风格泛型符号
+    ref = javaGenericsToTsAngles(ref);
+    return ref;
   }
 
   return undefined;
 }
 
-/**
- * 将 TypeNode 转换为类型字符串
- */
-// 缓存 printer 和 sourceFile 以提高性能
+// ===================================================================================
+// Printer 缓存
+// ===================================================================================
+
+/** 共享 printer 实例，避免重复创建 */
 export const sharedPrinter = ts.createPrinter();
+
+/** 共享 sourceFile 实例，供 printer 使用 */
 export const sharedSourceFile = ts.createSourceFile(
   'temp.ts',
   '',
@@ -100,34 +93,29 @@ export const sharedSourceFile = ts.createSourceFile(
   ts.ScriptKind.TS,
 );
 
-// 缓存正则表达式 - 不使用全局标志避免 lastIndex 问题
-const componentsSchemaRegex = /components\["schemas"\]\["([^"]+)"\]/g;
-const arrayTypeRegex = /Array<(.+)>/g;
+// ===================================================================================
+// 类型字符串转换
+// ===================================================================================
 
 /**
  * 将 TypeNode 转换为类型字符串
  * 并简化 components["schemas"] 引用
- *
- * @param typeNode 类型节点
- * @param nameConverter 名称转换函数(可选)
- * @returns 类型字符串
  */
 export function typeNodeToString(
   typeNode: ts.TypeNode,
   nameConverter?: (name: string) => string,
 ): string {
-  // 打印类型节点
   let typeStr = sharedPrinter.printNode(
     ts.EmitHint.Unspecified,
     typeNode,
     sharedSourceFile,
   );
 
-  // 处理 components["schemas"]["XXX"] 格式,提取出类型名
-  // 注意：如果 XXX 包含 < >，这里也会正确提取
-  typeStr = typeStr.replace(componentsSchemaRegex, (_match, p1) => {
-    return nameConverter ? nameConverter(p1) : p1;
-  });
+  // 处理 components["schemas"]["XXX"] 格式
+  typeStr = typeStr.replace(
+    componentsSchemaRegex,
+    (_match: string, p1: string) => (nameConverter ? nameConverter(p1) : p1),
+  );
 
   // 处理数组类型
   typeStr = typeStr.replace(arrayTypeRegex, '$1[]');
@@ -137,10 +125,6 @@ export function typeNodeToString(
 
 /**
  * 基础类型映射
- * 将 SyntaxKind 转换为对应的 TypeScript 类型字符串
- *
- * @param kind 语法类型
- * @returns 类型字符串
  */
 export function primitiveTypeToString(kind: ts.SyntaxKind): string {
   switch (kind) {
@@ -172,55 +156,45 @@ export function primitiveTypeToString(kind: ts.SyntaxKind): string {
 /**
  * 简化类型引用字符串
  * 将 components["schemas"]["X"] 简化为 X
- *
- * @example components["schemas"]["UserRole"] => UserRole
- * @param text 原始类型字符串
- * @param nameConverter 名称转换函数(可选)
- * @returns 简化后的类型字符串
  */
 export function simplifyTypeReference(
   text: string,
   nameConverter?: (name: string) => string,
 ): string {
-  // 复用 componentsSchemaRegex 以避免重复定义
-  return text.replace(componentsSchemaRegex, (_match, p1) => {
-    return nameConverter ? nameConverter(p1) : p1;
-  });
+  return text.replace(componentsSchemaRegex, (_match: string, p1: string) =>
+    nameConverter ? nameConverter(p1) : p1,
+  );
 }
+
+// ===================================================================================
+// JSDoc 处理
+// ===================================================================================
 
 /**
  * 提取 JSDoc 注释内容
- * 支持从 jsDoc 属性或合成前导注释中提取
- *
- * @param node AST 节点
- * @returns 注释内容字符串，如果没有注释则返回 undefined
  */
 export function extractJSDocComment(node: ts.Node): string | undefined {
-  // 1. 尝试获取 jsDoc 属性 (解析源码时产生)
+  // 1. 尝试获取 jsDoc 属性
   const jsDoc = (node as ts.Node & { jsDoc?: ts.JSDoc[] }).jsDoc;
   if (jsDoc && jsDoc.length > 0 && jsDoc[0]) {
     const comment = jsDoc[0].comment;
-    if (typeof comment === 'string') {
-      return comment;
-    }
-    // 处理 TypeScript 5.x 中的 JSDocComment 节点数组
+    if (typeof comment === 'string') return comment;
     if (Array.isArray(comment)) {
       return comment.map((c: ts.JSDocComment) => c.text).join('');
     }
   }
 
-  // 2. 尝试获取合成的前导注释 (构造 AST 时产生，如 openapi-typescript)
+  // 2. 尝试获取合成的前导注释
   const syntheticComments = ts.getSyntheticLeadingComments(node);
   if (syntheticComments && syntheticComments.length > 0) {
     return syntheticComments
-      .map((c) => {
-        // 去掉注释标记 /** */ 和 *
-        return c.text
+      .map((c) =>
+        c.text
           .replace(/^\s*\/\*\*/, '')
           .replace(/\*\/\s*$/, '')
           .replace(/^\s*\*\s?/gm, '')
-          .trim();
-      })
+          .trim(),
+      )
       .join('\n');
   }
 
@@ -228,22 +202,14 @@ export function extractJSDocComment(node: ts.Node): string | undefined {
 }
 
 export interface JSDocInfo {
-  /** 摘要 */
   summary?: string;
-  /** 详细描述 */
   description?: string;
-  /** 是否已废弃 */
   deprecated?: boolean;
-  /** 标签列表 */
   tags?: string[];
 }
 
 /**
  * 解析 JSDoc 注释内容
- * 提取 summary, description, deprecated, tags 等信息
- *
- * @param comment 原始注释字符串
- * @returns 解析后的 JSDoc 信息对象
  */
 export function parseJSDoc(comment: string): JSDocInfo {
   const info: JSDocInfo = {};
@@ -263,17 +229,13 @@ export function parseJSDoc(comment: string): JSDocInfo {
     if (line.startsWith('@description')) {
       currentSection = 'description';
       const descContent = line.replace('@description', '').trim();
-      if (descContent) {
-        descriptionParts.push(descContent);
-      }
+      if (descContent) descriptionParts.push(descContent);
       continue;
     }
-    // TODO: openapi-typescript 生成数据并无 tags 标签，后面尝试从原始文档中获取
+    // TODO: openapi-typescript 生成数据并无 tags 标签
     if (line.startsWith('@tags')) {
       const tagsContent = line.replace('@tags', '').trim();
-      if (tagsContent) {
-        info.tags = tagsContent.split(',').map((t) => t.trim());
-      }
+      if (tagsContent) info.tags = tagsContent.split(',').map((t) => t.trim());
       continue;
     }
 
@@ -284,12 +246,9 @@ export function parseJSDoc(comment: string): JSDocInfo {
     }
   }
 
-  if (summaryParts.length > 0) {
-    info.summary = summaryParts.join('\n');
-  }
-  if (descriptionParts.length > 0) {
+  if (summaryParts.length > 0) info.summary = summaryParts.join('\n');
+  if (descriptionParts.length > 0)
     info.description = descriptionParts.join('\n');
-  }
 
   return info;
 }
