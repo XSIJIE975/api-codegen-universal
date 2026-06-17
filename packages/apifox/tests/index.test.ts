@@ -367,3 +367,97 @@ test('ApifoxAdapter warnings summary should cap samples with logSampleLimit', as
     | undefined;
   expect(samples?.duplicateOperationIds).toHaveLength(1);
 });
+
+// ---------------------------------------------------------------------------
+// fetchTimeoutMs 选项透传测试
+//
+// 验证 parse({ fetchTimeoutMs }) → fetchOpenApiData(config, fetchTimeoutMs) → AbortSignal.timeout。
+// 必须调用 super.fetchOpenApiData 才能走到真实的 fetch + AbortSignal.timeout，
+// 因此 mock globalThis.fetch 返回成功响应，并 spy AbortSignal.timeout 捕获超时值。
+// ---------------------------------------------------------------------------
+
+/** 最小合法 OpenAPI 文档，供 mock fetch 返回 */
+const MINIMAL_OPENAPI = {
+  openapi: '3.0.0',
+  info: { title: 'Timeout Test', version: '1.0.0' },
+  paths: {},
+};
+
+/** 安装 fetch + AbortSignal.timeout 的 mock，返回捕获到的超时值数组 */
+function mockFetchAndTimeout(): {
+  timeoutCalls: number[];
+  restore: () => void;
+} {
+  const timeoutCalls: number[] = [];
+  // 用箭头函数包裹原始方法引用，避免 unbound-method 告警（mock 场景下故意解绑 this）
+  const originalTimeout = (ms: number) => AbortSignal.timeout(ms);
+  const originalFetch = globalThis.fetch;
+
+  AbortSignal.timeout = ((ms: number) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  }) as typeof AbortSignal.timeout;
+
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify(MINIMAL_OPENAPI), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })) as typeof fetch;
+
+  return {
+    timeoutCalls,
+    restore: () => {
+      AbortSignal.timeout = originalTimeout as typeof AbortSignal.timeout;
+      globalThis.fetch = originalFetch;
+    },
+  };
+}
+
+test('ApifoxAdapter should pass fetchTimeoutMs to AbortSignal.timeout', async () => {
+  // 调用 super 以走到真实 fetch + AbortSignal.timeout
+  class SpyAdapter extends ApifoxAdapter {
+    protected override async fetchOpenApiData(
+      config: { projectId: string | number; token: string },
+      fetchTimeoutMs?: number,
+    ) {
+      return super.fetchOpenApiData(config, fetchTimeoutMs);
+    }
+  }
+
+  const { timeoutCalls, restore } = mockFetchAndTimeout();
+  const adapter = new SpyAdapter();
+  try {
+    await adapter.parse(
+      { projectId: '123', token: 'abc' },
+      { fetchTimeoutMs: 5000, validateOpenApi: false },
+    );
+  } finally {
+    restore();
+  }
+
+  expect(timeoutCalls).toContain(5000);
+});
+
+test('ApifoxAdapter should default fetchTimeoutMs to 30000 when not provided', async () => {
+  class SpyAdapter extends ApifoxAdapter {
+    protected override async fetchOpenApiData(
+      config: { projectId: string | number; token: string },
+      fetchTimeoutMs?: number,
+    ) {
+      return super.fetchOpenApiData(config, fetchTimeoutMs);
+    }
+  }
+
+  const { timeoutCalls, restore } = mockFetchAndTimeout();
+  const adapter = new SpyAdapter();
+  try {
+    await adapter.parse(
+      { projectId: '123', token: 'abc' },
+      { validateOpenApi: false },
+    );
+  } finally {
+    restore();
+  }
+
+  expect(timeoutCalls).toContain(30_000);
+});
