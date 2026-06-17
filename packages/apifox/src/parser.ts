@@ -77,7 +77,10 @@ export class ApifoxAdapter
     });
 
     // 1. 获取数据
-    let openApiData = await this.fetchOpenApiData(source);
+    let openApiData = await this.fetchOpenApiData(
+      source,
+      options.fetchTimeoutMs,
+    );
 
     // 2. 修复兼容性
     openApiData = this.fixOpenApiCompatibility(openApiData, warnings);
@@ -91,15 +94,9 @@ export class ApifoxAdapter
         >[0];
 
         // swagger-parser 会修改输入对象，使用 structuredClone 避免影响原数据
+        // Apifox 返回的数据为纯 JSON（无循环引用 / 函数 / DOM 节点），structuredClone 必成功
         const rawForValidation = openApiData as SwaggerValidateInput;
-        let validationInput: SwaggerValidateInput;
-        try {
-          validationInput = structuredClone(rawForValidation);
-        } catch {
-          validationInput = JSON.parse(
-            JSON.stringify(rawForValidation),
-          ) as SwaggerValidateInput;
-        }
+        const validationInput = structuredClone(rawForValidation);
 
         await SwaggerParser.validate(validationInput);
       } catch (err: unknown) {
@@ -346,7 +343,10 @@ export class ApifoxAdapter
   /**
    * 请求 Apifox 开放 API 获取 OpenAPI 数据
    */
-  protected async fetchOpenApiData(config: ApifoxConfig): Promise<OpenAPIRaw> {
+  protected async fetchOpenApiData(
+    config: ApifoxConfig,
+    fetchTimeoutMs?: number,
+  ): Promise<OpenAPIRaw> {
     const baseUrl = 'https://api.apifox.com/v1';
     const url = `${baseUrl}/projects/${config.projectId}/export-openapi`;
 
@@ -372,7 +372,7 @@ export class ApifoxAdapter
     }
 
     const response = await fetch(url, {
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(fetchTimeoutMs ?? 30_000),
       method: 'POST',
       headers: {
         Authorization: `Bearer ${config.token}`,
