@@ -21,11 +21,4 @@ export default defineConfig({
       index: './src/index.ts',
     },
   },
-  // 将重型依赖标记为 external，避免打包进产物
-  externals: [
-    'typescript',
-    '@redocly/openapi-core',
-    'js-yaml',
-    'openapi-typescript',
-  ],
 });

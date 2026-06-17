@@ -319,9 +319,13 @@ export class SchemaExtractor {
       const isRequired = !member.questionToken;
       if (isRequired) required.push(propName);
 
-      const { description, example, format } =
-        this.extractJSDocMetadata(member);
-      let { enumValues } = this.extractJSDocMetadata(member);
+      const {
+        description,
+        example,
+        format,
+        enumValues: jsDocEnumValues,
+      } = this.extractJSDocMetadata(member);
+      let enumValues = jsDocEnumValues;
 
       if (!enumValues && ts.isUnionTypeNode(member.type)) {
         const extracted = this.extractEnumValues(member.type);

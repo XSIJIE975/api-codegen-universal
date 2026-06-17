@@ -36,18 +36,6 @@ export class PathClassifier {
     };
   }
 
-  /**
-   * 批量分类多个路径
-   * @deprecated 此方法简单遍历调用 classify()，建议在调用方自行实现批量处理
-   */
-  classifyBatch(paths: string[]): Map<string, CategoryInfo> {
-    const result = new Map<string, CategoryInfo>();
-    for (const path of paths) {
-      result.set(path, this.classify(path));
-    }
-    return result;
-  }
-
   private removePrefix(path: string): string {
     if (!this.commonPrefix) return path;
     if (path.startsWith(this.commonPrefix)) {

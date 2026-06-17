@@ -44,15 +44,6 @@ export class GenericDetector {
   }
 
   /**
-   * 检测是否为数组泛型
-   * @example 'UserDto[]' -> true
-   * @deprecated 此方法功能过于简单，建议使用 `detect()` 方法获取完整的泛型信息
-   */
-  isArrayGeneric(typeString: string): boolean {
-    return typeString.endsWith('[]');
-  }
-
-  /**
    * 提取基类类型名
    * 处理 components["schemas"]["TypeName"] 格式
    */

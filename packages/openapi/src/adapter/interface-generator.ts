@@ -18,7 +18,11 @@ import {
   sharedSourceFile,
 } from './ast-utils';
 import { NamingUtils } from '../utils/naming-utils';
-import { isTypeRefTo, normalizeGenericName } from '../utils/type-ref-utils';
+import {
+  isTypeRefTo,
+  normalizeGenericName,
+  wordBoundaryRegexGlobal,
+} from '../utils/type-ref-utils';
 import type { ApifoxGenericMeta } from '../types';
 
 export class InterfaceGenerator {
@@ -288,7 +292,7 @@ export class InterfaceGenerator {
   ): string {
     if (genericTargetType) {
       return simplifiedType.replace(
-        new RegExp(`\\b${escapeForRegex(genericTargetType)}\\b`, 'g'),
+        wordBoundaryRegexGlobal(genericTargetType),
         'T',
       );
     }
@@ -298,8 +302,4 @@ export class InterfaceGenerator {
     if (simplifiedType.includes('null |')) return 'null | T';
     return 'T';
   }
-}
-
-function escapeForRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

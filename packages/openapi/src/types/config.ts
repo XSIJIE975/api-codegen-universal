@@ -101,6 +101,12 @@ export interface OpenAPIOptions extends AdapterOptions {
   transform?: OpenAPITSOptions['transform'];
 
   /**
+   * 远程 URL 拉取超时时间（毫秒）
+   * @default 30000
+   */
+  fetchTimeoutMs?: number;
+
+  /**
    * 调试选项
    */
   debug?: {

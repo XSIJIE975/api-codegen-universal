@@ -65,11 +65,19 @@ export function wordBoundaryRegex(target: string): RegExp {
   return new RegExp(`\\b${escapeRegExp(target)}\\b`);
 }
 
+// 缓存已编译的全局正则，避免在循环（如 generateInterfaceFromLiteral 成员遍历）中重复 new RegExp
+const wordBoundaryGlobalCache = new Map<string, RegExp>();
+
 /**
  * 构造一个带单词边界和全局标志的正则，适用于 .replace() 全局替换。
+ * 结果会被缓存，相同 target 返回同一 RegExp 实例。
  */
 export function wordBoundaryRegexGlobal(target: string): RegExp {
-  return new RegExp(`\\b${escapeRegExp(target)}\\b`, 'g');
+  const cached = wordBoundaryGlobalCache.get(target);
+  if (cached) return cached;
+  const regex = new RegExp(`\\b${escapeRegExp(target)}\\b`, 'g');
+  wordBoundaryGlobalCache.set(target, regex);
+  return regex;
 }
 
 // ===================================================================================

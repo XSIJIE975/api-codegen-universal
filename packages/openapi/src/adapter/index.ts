@@ -132,7 +132,11 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     });
 
     // 2. 先加载原始文档（仅一次，后续传给 openapiTS 避免二次抓取）
-    const rawDocument = await loadRawDocument(source, logger);
+    const rawDocument = await loadRawDocument(
+      source,
+      logger,
+      options?.fetchTimeoutMs,
+    );
 
     // 3. 使用 openapi-typescript 生成 TypeScript AST
     //    如果成功加载了原始文档，直接传入对象（避免二次 fetch/parse）
@@ -394,9 +398,10 @@ function runExtraction(
 async function loadRawDocument(
   source: InputSource,
   logger: AdapterLogger,
+  fetchTimeoutMs?: number,
 ): Promise<OpenAPIDocument | null> {
   try {
-    const doc = await loadDocument(source);
+    const doc = await loadDocument(source, fetchTimeoutMs);
     if (!isValidOpenAPIDocument(doc)) {
       logger.warn(
         'Loaded document does not look like a valid OpenAPI object.',
@@ -430,11 +435,14 @@ function isValidOpenAPIDocument(doc: unknown): doc is OpenAPIDocument {
 /**
  * 根据输入源类型加载文档。
  */
-async function loadDocument(source: InputSource): Promise<unknown> {
+async function loadDocument(
+  source: InputSource,
+  fetchTimeoutMs?: number,
+): Promise<unknown> {
   // 1. URL 对象
   if (source instanceof URL) {
     if (source.protocol.startsWith('http')) {
-      return fetchWithTimeout(source);
+      return fetchWithTimeout(source, fetchTimeoutMs);
     }
     if (source.protocol === 'file:') {
       const { fileURLToPath } = await import('node:url');
@@ -450,7 +458,7 @@ async function loadDocument(source: InputSource): Promise<unknown> {
 
   // 3. 字符串 (URL, 文件路径, 或 内容)
   if (typeof source === 'string') {
-    return loadFromString(source);
+    return loadFromString(source, fetchTimeoutMs);
   }
 
   // 4. 对象 (已经是 JSON 对象，排除 Stream)
@@ -469,11 +477,22 @@ async function loadDocument(source: InputSource): Promise<unknown> {
 
 /**
  * 处理字符串输入（URL / 文件路径 / 内联内容）
+ *
+ * 判断顺序：
+ * 1. 显式 http(s):// URL → 远程拉取
+ * 2. 具有明显内联内容特征（多行 / 以 { 开头 / 含 openapi: 或 swagger: 关键字）→ 作为内容解析
+ * 3. 看起来像文件路径（含路径分隔符或常见文档扩展名）→ 作为文件读取
+ * 4. 以上皆不符合 → 最后一次尝试作为内容解析
+ *
+ * 第 3 步使用较强前置条件，避免对纯单词类输入（如 "users"）发起意外的磁盘 IO。
  */
-async function loadFromString(source: string): Promise<unknown> {
+async function loadFromString(
+  source: string,
+  fetchTimeoutMs?: number,
+): Promise<unknown> {
   // 1. 远程 URL
   if (/^https?:\/\//i.test(source)) {
-    return fetchWithTimeout(source);
+    return fetchWithTimeout(source, fetchTimeoutMs);
   }
 
   // 2. 显式的内容特征（多行, 或以 { 开头, 或包含 openapi/swagger 关键字）
@@ -490,16 +509,33 @@ async function loadFromString(source: string): Promise<unknown> {
     }
   }
 
-  // 3. 尝试作为文件路径读取
-  try {
-    return await readAndParseFile(source);
-  } catch (fileError) {
-    // 4. 文件读取失败，最后尝试一次作为内容解析（处理不明显的单行内容）
+  // 3. 文件路径前置检查：必须像真正的路径（含分隔符或以常见文档扩展名结尾）
+  const looksLikeFilePath =
+    source.length < 4096 &&
+    (source.includes('/') ||
+      source.includes('\\') ||
+      /\.(ya?ml|json)$/i.test(source));
+
+  if (looksLikeFilePath) {
     try {
-      return parseContent(source);
-    } catch {
-      throw fileError;
+      return await readAndParseFile(source);
+    } catch (fileError) {
+      // 4. 文件读取失败，最后尝试一次作为内容解析（处理不明显的单行内容）
+      try {
+        return parseContent(source);
+      } catch {
+        throw fileError;
+      }
     }
+  }
+
+  // 5. 完全不像路径，直接尝试作为内容解析
+  try {
+    return parseContent(source);
+  } catch {
+    throw new Error(
+      `Input string does not look like a URL, file path, or inline OpenAPI content: ${source.slice(0, 80)}`,
+    );
   }
 }
 
@@ -579,9 +615,7 @@ function buildMetadata(
   const metadata: Metadata = {
     generatedAt: new Date().toISOString(),
     source: typeof source === 'string' ? source : undefined,
-    options: skipSanitization
-      ? (options as Record<string, unknown> | undefined)
-      : sanitizeOptions(options as Record<string, unknown> | undefined),
+    options: skipSanitization ? options : sanitizeOptions(options),
   };
 
   if (rawDocument) {
