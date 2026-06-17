@@ -48,12 +48,16 @@ function isSensitiveKey(key: string): boolean {
   );
 }
 
+/** URL 协议前缀正则：仅对真正的绝对 URL 进入 new URL() 分支，避免对含 ? 的普通文本误构造 */
+const URL_PROTOCOL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
+
 /**
  * 清理字符串中的敏感信息（简单处理：移除 URL 查询参数中的敏感字段）
  */
 function sanitizeString(str: string): string {
   // 对于 URL 字符串，清理查询参数中的敏感信息
-  if (str.includes('?')) {
+  // 前置条件：必须含 ? 且以协议开头（如 http://、https://），避免对 "用户?管理员" 之类的文本误触发 new URL()
+  if (str.includes('?') && URL_PROTOCOL_RE.test(str)) {
     try {
       const url = new URL(str);
       const sensitiveParams = [
