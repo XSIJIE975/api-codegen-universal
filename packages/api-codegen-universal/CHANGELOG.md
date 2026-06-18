@@ -1,5 +1,20 @@
 # api-codegen-universal
 
+## 0.6.5
+
+### Patch Changes
+
+- Improve type safety, performance and maintainability
+  - Add `sanitizeOptions` to strip sensitive fields (token, apiKey, etc.) from metadata before logging
+  - Rewrite OpenAPI adapter to stateless `ParseContext` pattern, eliminating shared mutable state
+  - Extract shared `type-ref-utils` and `ast-utils` across adapters
+  - Add configurable fetch timeout via `AbortSignal.timeout` (default 30s) with validation
+  - Replace `JSON.parse/stringify` with `structuredClone`; replace random collision suffix with deterministic SHA-256
+  - Replace `any` in Apifox parser with recursive `OpenAPIRaw` type; improve generic name collision resolution
+  - Validate `x-apifox-generic` shape and YAML parse results; improve non-Error exception handling
+  - Restore CJS output via `bundle: true`; clean up unused dependencies
+  - Add 100+ new tests covering sanitize, logging, adapter, parser internals, generic collision and real-API integration
+
 ## 0.6.4
 
 ### Patch Changes
