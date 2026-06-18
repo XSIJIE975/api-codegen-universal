@@ -105,7 +105,7 @@ export function createAdapterLogger(
    * 约定：当调用方未传入 logger 时，也不会“静默”，而是使用默认 logger；
    * 是否输出由 logLevel 控制（默认 'error'）。
    */
-  const logLevel = (options?.logLevel ?? 'error') as LogLevel;
+  const logLevel: LogLevel = options?.logLevel ?? 'error';
   const sampleLimit =
     typeof options?.logSampleLimit === 'number' &&
     Number.isFinite(options.logSampleLimit) &&

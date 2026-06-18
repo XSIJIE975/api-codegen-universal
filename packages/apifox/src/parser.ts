@@ -3,7 +3,7 @@
  * 负责从 Apifox API 获取 OpenAPI 数据，并进行兼容性修复和转换
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { createHash } from 'node:crypto';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import type { IAdapter, StandardOutput } from '@api-codegen-universal/core';
 import {
@@ -14,12 +14,35 @@ import {
   InputSource,
   OpenAPIAdapter,
   type OpenAPIOptions,
+  type ApifoxGenericMeta,
 } from '@api-codegen-universal/openapi';
+import { normalizeGenericName } from '@api-codegen-universal/openapi';
 import type {
   ApifoxAdapterOptions,
   ApifoxConfig,
   ApifoxExportToOpenAPIOptions,
 } from './types';
+
+// ===================================================================================
+// 递归 OpenAPI 原始数据类型（替代 any）
+// ===================================================================================
+
+/**
+ * OpenAPI 文档的递归结构类型。
+ * 用于在兼容性修复阶段安全地遍历和修改文档，避免使用 any。
+ */
+export type OpenAPIRaw =
+  | { [key: string]: OpenAPIRaw }
+  | OpenAPIRaw[]
+  | string
+  | number
+  | boolean
+  | null;
+
+/**
+ * 带索引签名的 OpenAPI 对象（用于遍历时按 key 访问）
+ */
+type OpenAPIRawObject = { [key: string]: OpenAPIRaw };
 
 /**
  * Apifox 适配器类
@@ -28,38 +51,21 @@ import type {
 export class ApifoxAdapter
   implements IAdapter<ApifoxAdapterOptions, ApifoxConfig>
 {
-  // Note: warnings collector is per-parse invocation.
   /**
    * 验证配置有效性
-   * 检查是否包含必要的 projectId 和 token
-   *
-   * @param source Apifox 配置对象
-   * @returns 如果配置有效返回 true，否则返回 false
    */
+  // eslint-disable-next-line @typescript-eslint/require-await
   async validate(source: ApifoxConfig): Promise<boolean> {
     return !!(source && source.projectId && source.token);
   }
 
   /**
    * 解析主入口
-   * 1. 从 Apifox API 获取 OpenAPI 数据
-   * 2. 修复数据中的兼容性问题 (泛型命名、失效引用、非标字段)
-   * 3. 验证修复后的数据是否符合 OpenAPI 标准
-   * 4. 使用 OpenAPIAdapter 将其转换为标准输出格式
-   *
-   * @param source Apifox 配置对象
-   * @param options 适配器选项
-   * @returns 标准输出格式 (StandardOutput)
    */
   async parse(
     source: ApifoxConfig,
     options: ApifoxAdapterOptions = {},
   ): Promise<StandardOutput> {
-    /**
-     * 统一日志入口：
-     * - 默认 logLevel='error'（不输出 warn/info/debug）
-     * - 兼容性修复的“可预期告警”会以 warnings summary 形式汇总输出（Scheme A）
-     */
     const startAt = Date.now();
     const logger = createAdapterLogger(options, {
       adapter: 'apifox',
@@ -71,12 +77,15 @@ export class ApifoxAdapter
     });
 
     // 1. 获取数据
-    let openApiData = await this.fetchOpenApiData(source);
+    let openApiData = await this.fetchOpenApiData(
+      source,
+      options.fetchTimeoutMs,
+    );
 
     // 2. 修复兼容性
     openApiData = this.fixOpenApiCompatibility(openApiData, warnings);
 
-    // 3. 校验数据格式是否符合 OpenAPI 标准
+    // 3. 校验数据格式
     const shouldValidateOpenApi = options.validateOpenApi ?? true;
     if (shouldValidateOpenApi) {
       try {
@@ -84,37 +93,28 @@ export class ApifoxAdapter
           typeof SwaggerParser.validate
         >[0];
 
-        // swagger-parser 在校验过程中会修改输入对象，这里需要传入克隆副本。
-        // 优先使用 structuredClone (Node 20+) 避免 JSON stringify 带来的 CPU/内存峰值。
-        // 兜底：如果遇到不可克隆数据结构，再退回到 JSON 深拷贝。
+        // swagger-parser 会修改输入对象，使用 structuredClone 避免影响原数据
+        // Apifox 返回的数据为纯 JSON（无循环引用 / 函数 / DOM 节点），structuredClone 必成功
         const rawForValidation = openApiData as SwaggerValidateInput;
-        let validationInput: SwaggerValidateInput;
-        try {
-          validationInput = structuredClone(rawForValidation);
-        } catch {
-          validationInput = JSON.parse(
-            JSON.stringify(rawForValidation),
-          ) as SwaggerValidateInput;
-        }
+        const validationInput = structuredClone(rawForValidation);
 
         await SwaggerParser.validate(validationInput);
       } catch (err: unknown) {
         if (err instanceof Error) {
-          // 即使校验失败，也尝试继续处理，因为有些非关键错误可能不影响代码生成
-          // 但这里选择抛出错误以保证数据质量，可视情况调整策略
           throw new Error(
             `Invalid OpenAPI data received from Apifox: ${err.message}`,
           );
         }
+        throw new Error(
+          `Invalid OpenAPI data received from Apifox: ${String(err)}`,
+        );
       }
     } else {
-      // 这不是错误：调用方显式关闭了校验（通常用于性能或容忍非标文档）。
       warnings.inc('validationSkipped');
     }
 
     // 4. 转换为标准格式
     const openApiAdapter = new OpenAPIAdapter();
-
     const result = await openApiAdapter.parse(
       openApiData as InputSource,
       options as OpenAPIOptions,
@@ -135,107 +135,104 @@ export class ApifoxAdapter
   }
 
   /**
-   * 修复 Apifox 导出数据中不符合 OpenAPI 3.0/3.1 标准的地方
-   * 以及处理 Apifox 特有的泛型命名风格
-   *
-   * @param data 原始 OpenAPI 数据
-   * @returns 修复后的 OpenAPI 数据
-   */
-  /**
    * 修复 Apifox 导出数据中不符合 OpenAPI 标准的地方。
-   *
-   * 说明：这些修复属于“兼容性处理”，默认不会逐条输出 warn，
-   * 只会在 parse 末尾通过 warnings summary 汇总输出。
+   * 兼容性修复不逐条输出 warn，仅在 parse 末尾通过 warnings summary 汇总输出。
    */
   private fixOpenApiCompatibility(
-    data: any,
+    data: OpenAPIRaw,
     warnings?: ReturnType<typeof createWarningsCollector>,
-  ): any {
-    if (!data) return data;
+  ): OpenAPIRaw {
+    if (!data || typeof data !== 'object') return data;
 
-    // 修复泛型名称 (Java 风格的 « »)
-    // 注意：必须在 fixBrokenRefs 之前执行，因为 fixBrokenRefs 可能会因为编码不匹配误删泛型引用
+    // 修复泛型名称（必须在 fixBrokenRefs 之前）
     this.fixGenericsNames(data, warnings);
 
     // 修复失效的引用
     this.fixBrokenRefs(data, warnings);
 
-    // 修复 Apifox 导出中的 `type: null` (OpenAPI 3.0 不允许)
-    // OpenAPI 3.0 需要使用 `nullable: true` 来表达可为 null。
+    // 修复 type: null
     this.fixNullTypes(data, warnings);
 
-    // 修复重复 operationId（openapi-typescript / redocly 会报错）
-    // Apifox 导出的不同 path/method 有时会共用同一个 operationId。
+    // 修复重复 operationId
     this.fixDuplicateOperationIds(data, warnings);
 
-    // 1. 修复 Security Schemes 定义问题
-    // type: http 的 scheme 不允许包含 'name' 和 'in' 字段
-    if (data.components?.securitySchemes) {
-      Object.values(data.components.securitySchemes).forEach((scheme: any) => {
-        if (scheme.type === 'http') {
-          // 删除非标字段
-          Reflect.deleteProperty(scheme, 'name');
-          Reflect.deleteProperty(scheme, 'in');
-        }
-      });
-    }
+    // 修复 Security Schemes 定义问题
+    this.fixSecuritySchemes(data);
 
-    // 2. 修复 Paths 中的 Security 定义问题
-    // security 数组中的对象 key 只能是 Scheme Name，不能包含 x-apifox 等扩展字段
-    if (data.paths) {
-      Object.values(data.paths).forEach((pathItem: any) => {
-        // 遍历所有 HTTP 方法 (get, post, put, etc.)
-        [
-          'get',
-          'post',
-          'put',
-          'delete',
-          'patch',
-          'options',
-          'head',
-          'trace',
-        ].forEach((method) => {
-          if (pathItem[method] && pathItem[method].security) {
-            const security = pathItem[method].security;
-            if (Array.isArray(security)) {
-              security.forEach((secItem: any) => {
-                // 删除 secItem 中所有以 'x-' 开头的 key
-                Object.keys(secItem).forEach((key) => {
-                  if (key.toLowerCase().startsWith('x-')) {
-                    Reflect.deleteProperty(secItem, key);
-                  }
-                });
-              });
-            }
-          }
-        });
-      });
-    }
+    // 修复 Paths 中的 Security 扩展字段
+    this.fixPathsSecurityExtensions(data);
 
     return data;
   }
 
   /**
-   * 确保 OpenAPI 文档中所有 operationId 唯一。
-   *
-   * openapi-typescript 会对重复 operationId 报错：
-   *   Every operation must have a unique `operationId`.
-   *
-   * 修复策略：
-   * - 保留第一次出现的 operationId
-   * - 对后续重复的 operationId 进行重命名：`${operationId}_${METHOD}_${PATH_SLUG}`
-   * - 生成的新 operationId 再次检查，若仍冲突则追加递增序号
+   * 修复 Security Schemes 中 type: http 的 scheme 不允许包含 'name' 和 'in' 字段
+   */
+  private fixSecuritySchemes(data: OpenAPIRaw): void {
+    if (!isObject(data)) return;
+    const components = data.components;
+    if (!isObject(components)) return;
+    const securitySchemes = components.securitySchemes;
+    if (!isObject(securitySchemes)) return;
+
+    for (const scheme of Object.values(securitySchemes)) {
+      if (isObject(scheme) && scheme.type === 'http') {
+        delete (scheme as OpenAPIRawObject).name;
+        delete (scheme as OpenAPIRawObject).in;
+      }
+    }
+  }
+
+  /**
+   * 修复 Paths 中的 Security 扩展字段（以 x- 开头的 key）
+   */
+  private fixPathsSecurityExtensions(data: OpenAPIRaw): void {
+    if (!isObject(data)) return;
+    const paths = data.paths;
+    if (!isObject(paths)) return;
+
+    const httpMethods = [
+      'get',
+      'post',
+      'put',
+      'delete',
+      'patch',
+      'options',
+      'head',
+      'trace',
+    ];
+
+    for (const pathItem of Object.values(paths)) {
+      if (!isObject(pathItem)) continue;
+
+      for (const method of httpMethods) {
+        const op = (pathItem as OpenAPIRawObject)[method];
+        if (!isObject(op)) continue;
+        const security = op.security;
+        if (!Array.isArray(security)) continue;
+
+        for (const secItem of security) {
+          if (!isObject(secItem)) continue;
+          for (const key of Object.keys(secItem as OpenAPIRawObject)) {
+            if (key.toLowerCase().startsWith('x-')) {
+              delete (secItem as OpenAPIRawObject)[key];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 确保 operationId 唯一。重复的进行重命名。
    */
   private fixDuplicateOperationIds(
-    data: any,
+    data: OpenAPIRaw,
     warnings?: ReturnType<typeof createWarningsCollector>,
   ): void {
-    /**
-     * openapi-typescript / redocly 会对重复 operationId 报错。
-     * 这里做“确定性重命名”，并将变更记录到 warnings summary。
-     */
-    const paths = data?.paths;
-    if (!paths || typeof paths !== 'object') return;
+    if (!isObject(data)) return;
+    const paths = data.paths;
+    if (!isObject(paths)) return;
 
     const methods = [
       'get',
@@ -247,39 +244,32 @@ export class ApifoxAdapter
       'head',
       'trace',
     ];
-
     const seen = new Set<string>();
 
-    const slugifyPath = (p: string) => {
-      // /api/v1/roles/batch-delete -> api_v1_roles_batch_delete
-      return p
+    const slugifyPath = (p: string): string =>
+      p
         .replace(/^\//, '')
         .replace(/\{[^}]+\}/g, 'param')
         .replace(/[^a-zA-Z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .slice(0, 60);
-    };
 
     for (const [pathKey, pathItem] of Object.entries(paths)) {
-      if (!pathItem || typeof pathItem !== 'object') continue;
-
-      const item: any = pathItem;
+      if (!isObject(pathItem)) continue;
 
       for (const method of methods) {
-        const op = item[method];
-        if (!op || typeof op !== 'object') continue;
+        const op = (pathItem as OpenAPIRawObject)[method];
+        if (!isObject(op)) continue;
 
         const operationId = op.operationId;
-        if (!operationId || typeof operationId !== 'string') continue;
+        if (typeof operationId !== 'string') continue;
 
         if (!seen.has(operationId)) {
           seen.add(operationId);
           continue;
         }
 
-        const base = `${operationId}_${method.toUpperCase()}_${slugifyPath(
-          String(pathKey),
-        )}`;
+        const base = `${operationId}_${method.toUpperCase()}_${slugifyPath(String(pathKey))}`;
         let next = base;
         let i = 2;
         while (seen.has(next)) {
@@ -287,7 +277,7 @@ export class ApifoxAdapter
           i += 1;
         }
 
-        op.operationId = next;
+        (op as OpenAPIRawObject).operationId = next;
         seen.add(next);
 
         warnings?.addDuplicateOperationId({
@@ -301,25 +291,13 @@ export class ApifoxAdapter
   }
 
   /**
-   * 将 schema 中不合法的 `type: "null"` (或 type 包含 null) 修复为 OpenAPI 3.0 兼容形式。
-   *
-   * Apifox 在导出 OpenAPI 3.0.x 时，有时会生成：
-   *   { allOf: [{ $ref: ... }], type: "null" }
-   * 这会导致 swagger-parser 校验失败。
-   *
-   * 修复策略：
-   * - 当检测到 `type === "null"`：删除 type，并设置 `nullable: true`
-   * - 当检测到 `type` 是数组且包含 "null"：移除 "null"，并设置 `nullable: true`
+   * 修复 type: "null" 或 type 数组包含 null
    */
   private fixNullTypes(
-    data: any,
+    data: OpenAPIRaw,
     warnings?: ReturnType<typeof createWarningsCollector>,
   ): void {
-    /**
-     * Apifox 在导出 OpenAPI 3.0.x 时可能出现：type: null 或 type 数组包含 null。
-     * 该情况不符合 3.0 规范，需要转为 nullable 语义。
-     */
-    const visit = (node: any) => {
+    const visit = (node: OpenAPIRaw): void => {
       if (!node || typeof node !== 'object') return;
 
       if (Array.isArray(node)) {
@@ -327,30 +305,36 @@ export class ApifoxAdapter
         return;
       }
 
-      if ('type' in node) {
+      const obj = node as OpenAPIRawObject;
+
+      if ('type' in obj) {
         // Case 1: type: 'null'
-        if (node.type === 'null') {
-          Reflect.deleteProperty(node, 'type');
-          node.nullable = true;
+        if (obj.type === 'null') {
+          delete obj.type;
+          obj.nullable = true;
           warnings?.inc('fixedNullTypes');
         }
 
-        // Case 2: type: ['object', 'null'] (more JSON-schema like)
-        if (Array.isArray(node.type) && node.type.includes('null')) {
-          node.type = node.type.filter((t: unknown) => t !== 'null');
-          node.nullable = true;
-
+        // Case 2: type: ['object', 'null']
+        if (
+          Array.isArray(obj.type) &&
+          obj.type.includes('null' as OpenAPIRaw)
+        ) {
+          obj.type = obj.type.filter((t) => t !== 'null') as OpenAPIRaw;
+          obj.nullable = true;
           warnings?.inc('fixedNullTypes');
 
-          if (node.type.length === 1) {
-            node.type = node.type[0];
-          } else if (node.type.length === 0) {
-            Reflect.deleteProperty(node, 'type');
+          if (Array.isArray(obj.type)) {
+            if (obj.type.length === 1) {
+              obj.type = obj.type[0] as OpenAPIRaw;
+            } else if (obj.type.length === 0) {
+              delete obj.type;
+            }
           }
         }
       }
 
-      Object.values(node).forEach(visit);
+      Object.values(obj).forEach(visit);
     };
 
     visit(data);
@@ -358,26 +342,18 @@ export class ApifoxAdapter
 
   /**
    * 请求 Apifox 开放 API 获取 OpenAPI 数据
-   *
-   * @param config Apifox 配置
-   * @returns OpenAPI JSON 数据
    */
-  protected async fetchOpenApiData(config: ApifoxConfig): Promise<unknown> {
-    /**
-     * 注意：这里不主动记录网络错误日志，直接 throw。
-     * - 避免适配器默认“重复输出”（业务侧通常会 catch 并记录）
-     * - 如需记录，可通过调用方的 try/catch + logger 注入实现
-     */
+  protected async fetchOpenApiData(
+    config: ApifoxConfig,
+    fetchTimeoutMs?: number,
+  ): Promise<OpenAPIRaw> {
     const baseUrl = 'https://api.apifox.com/v1';
     const url = `${baseUrl}/projects/${config.projectId}/export-openapi`;
 
-    // 构建请求体
     const requestBody: ApifoxExportToOpenAPIOptions = {
       exportFormat: 'JSON',
       oasVersion: '3.0',
-      scope: {
-        type: 'ALL',
-      },
+      scope: { type: 'ALL' },
       options: {
         addFoldersToTags: false,
         includeApifoxExtensionProperties: false,
@@ -385,7 +361,6 @@ export class ApifoxAdapter
       ...config.exportOptions,
     };
 
-    // 合并用户配置
     if (config.exportOptions?.scope) {
       requestBody.scope = config.exportOptions.scope;
     }
@@ -396,7 +371,16 @@ export class ApifoxAdapter
       };
     }
 
+    // 验证 timeoutMs 是否为有效的正数
+    const timeoutMs = fetchTimeoutMs ?? 30_000;
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      throw new Error(
+        `fetchTimeoutMs must be a positive number, got ${timeoutMs}`,
+      );
+    }
+
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(timeoutMs),
       method: 'POST',
       headers: {
         Authorization: `Bearer ${config.token}`,
@@ -412,25 +396,18 @@ export class ApifoxAdapter
         `Apifox Export API Failed: [${response.status}] ${errorText}`,
       );
     }
-    return await response.json();
+
+    return (await response.json()) as OpenAPIRaw;
   }
 
   /**
-   * 递归检查并修复失效的引用 ($ref)
-   * 如果引用指向的路径不存在，则删除该引用并回退到普通对象
-   *
-   * @param data OpenAPI 数据
+   * 递归修复失效的引用 ($ref)
    */
   private fixBrokenRefs(
-    data: any,
+    data: OpenAPIRaw,
     warnings?: ReturnType<typeof createWarningsCollector>,
   ): void {
-    /**
-     * 递归修复失效引用：
-     * - 当 $ref 指向的路径不存在：删除 $ref 并回退为 object
-     * - 将变更记录到 warnings summary（带 sample ref）
-     */
-    const findAndFix = (obj: any) => {
+    const findAndFix = (obj: OpenAPIRaw): void => {
       if (!obj || typeof obj !== 'object') return;
 
       if (Array.isArray(obj)) {
@@ -438,21 +415,23 @@ export class ApifoxAdapter
         return;
       }
 
+      const objAsRecord = obj as OpenAPIRawObject;
+
       if (
-        obj.$ref &&
-        typeof obj.$ref === 'string' &&
-        obj.$ref.startsWith('#/')
+        typeof objAsRecord.$ref === 'string' &&
+        objAsRecord.$ref.startsWith('#/')
       ) {
-        if (!this.hasRef(data, obj.$ref)) {
-          const decodedRef = decodeURIComponent(obj.$ref);
+        const ref = objAsRecord.$ref;
+        if (!this.hasRef(data, ref)) {
+          const decodedRef = safeDecodeURIComponent(ref);
           warnings?.addBrokenRef(decodedRef);
-          Reflect.deleteProperty(obj, '$ref');
-          obj.type = 'object'; // Fallback to generic object
-          obj.description = `(Fixed broken reference: ${decodedRef})`;
+          delete objAsRecord.$ref;
+          objAsRecord.type = 'object';
+          objAsRecord.description = `(Fixed broken reference: ${decodedRef})`;
         }
       }
 
-      Object.values(obj).forEach(findAndFix);
+      Object.values(objAsRecord).forEach(findAndFix);
     };
 
     findAndFix(data);
@@ -460,39 +439,28 @@ export class ApifoxAdapter
 
   /**
    * 检查引用是否存在
-   * 解析 JSON Pointer 并在根对象中查找
-   *
-   * @param root 根对象
-   * @param ref 引用字符串 (例如 #/components/schemas/User)
-   * @returns 如果引用存在返回 true，否则返回 false
    */
-  private hasRef(root: any, ref: string): boolean {
+  private hasRef(root: OpenAPIRaw, ref: string): boolean {
     try {
       const path = ref.substring(2).split('/');
-      let current = root;
+      let current: OpenAPIRaw = root;
       for (const segment of path) {
         const decodedSegment = segment.replace(/~1/g, '/').replace(/~0/g, '~');
 
-        if (current && typeof current === 'object') {
-          if (decodedSegment in current) {
-            current = current[decodedSegment];
+        if (current && typeof current === 'object' && !Array.isArray(current)) {
+          const obj = current as OpenAPIRawObject;
+          if (decodedSegment in obj) {
+            current = obj[decodedSegment] as OpenAPIRaw;
             continue;
           }
-          // 尝试 URL 解码后查找
-          try {
-            const urlDecoded = decodeURIComponent(decodedSegment);
-            if (urlDecoded in current) {
-              current = current[urlDecoded];
-              continue;
-            }
-          } catch {
-            // ignore
+          const urlDecoded = safeDecodeURIComponent(decodedSegment);
+          if (urlDecoded in obj) {
+            current = obj[urlDecoded] as OpenAPIRaw;
+            continue;
           }
-
-          return false;
-        } else {
           return false;
         }
+        return false;
       }
       return true;
     } catch {
@@ -502,109 +470,98 @@ export class ApifoxAdapter
 
   /**
    * 修复泛型名称 (Java 风格的 « »)
-   *
-   * 策略：
-   * 1. 将特殊字符转换为下划线，生成安全的 Schema 名称，避免 openapi-typescript 解析为 unknown
-   *    例如: PageVO«ApplyListVO» -> PageVO_ApplyListVO
-   * 2. 在 Schema 中注入 x-apifox-generic 元数据，记录原始泛型结构
-   *    例如: { baseType: 'PageVO', generics: ['ApplyListVO'] }
-   *
-   * @param data OpenAPI 数据
    */
   private fixGenericsNames(
-    data: any,
+    data: OpenAPIRaw,
     warnings?: ReturnType<typeof createWarningsCollector>,
   ): void {
-    /**
-     * 修复 Apifox 导出中 Java 风格泛型命名（« »）。
-     *
-     * 目标：
-     * - schema key 变为可用的 TS identifier（否则 openapi-typescript 可能生成 unknown）
-     * - 更新整个文档中的所有 $ref
-     * - 注入 x-apifox-generic 元数据，供 openapi adapter 侧识别泛型信息
-     */
-    if (!data?.components?.schemas) return;
+    if (!isObject(data)) return;
+    const components = data.components;
+    if (!isObject(components)) return;
+    const schemas = components.schemas;
+    if (!isObject(schemas)) return;
 
+    const schemasObj = schemas as OpenAPIRawObject;
     const schemaMap = new Map<string, string>();
-    const schemas = data.components.schemas;
 
     // 1. 建立映射并重命名 Schema Key
-    Object.keys(schemas).forEach((key) => {
-      let decodedKey = key;
-      try {
-        decodedKey = decodeURIComponent(key);
-      } catch {
-        // ignore
+    const generatedNames = new Set<string>();
+    // 预先收集所有已存在的 schema 名称
+    for (const existingKey of Object.keys(schemasObj)) {
+      generatedNames.add(existingKey);
+    }
+
+    for (const key of Object.keys(schemasObj)) {
+      const decodedKey = safeDecodeURIComponent(key);
+
+      if (!decodedKey.includes('«') && !decodedKey.includes('»')) continue;
+
+      let newKeyName = normalizeGenericName(decodedKey);
+
+      // 如果目标名称已存在，生成消歧义的名称
+      // 优先使用哈希，如果哈希冲突则追加计数器
+      if (generatedNames.has(newKeyName) && newKeyName !== key) {
+        const hash = createHash('sha256')
+          .update(key)
+          .digest('hex')
+          .substring(0, 16); // 使用 16 位哈希（64 位）降低冲突概率
+        newKeyName = `${newKeyName}_${hash}`;
+
+        // 如果仍然冲突，追加计数器
+        let counter = 1;
+        while (generatedNames.has(newKeyName)) {
+          newKeyName = `${newKeyName}_${counter}`;
+          counter++;
+        }
       }
 
-      if (decodedKey.includes('«') || decodedKey.includes('»')) {
-        // 1. 生成 Safe Name (用于 TS 类型名)
-        // 替换策略：« -> _, » -> (空), , -> _
-        const newKeyName = decodedKey
-          .replace(/«/g, '_')
-          .replace(/»/g, '')
-          .replace(/,/g, '_')
-          .replace(/\s/g, ''); // 去除空格
+      const newRef = `#/components/schemas/${newKeyName}`;
 
-        const newRef = `#/components/schemas/${newKeyName}`;
-
-        // 2. 建立映射 (无论是否重命名，都要建立映射)
-        // 映射原始 key
-        schemaMap.set(`#/components/schemas/${key}`, newRef);
-        // 映射解码后的 key
-        if (key !== decodedKey) {
-          schemaMap.set(`#/components/schemas/${decodedKey}`, newRef);
-        }
-        // 映射编码后的 key
-        const encodedKey = encodeURIComponent(key);
-        if (encodedKey !== key) {
-          schemaMap.set(`#/components/schemas/${encodedKey}`, newRef);
-        }
-        // 映射编码后的解码 key
-        const encodedDecodedKey = encodeURIComponent(decodedKey);
-        if (encodedDecodedKey !== key && encodedDecodedKey !== encodedKey) {
-          schemaMap.set(`#/components/schemas/${encodedDecodedKey}`, newRef);
-        }
-
-        // 3. 注入泛型元数据 (x-apifox-generic)
-        const match = decodedKey.match(/^(.+?)«(.+)»$/);
-        let meta = undefined;
-        if (match) {
-          const base = match[1];
-          const args = match[2];
-          const generics = args?.split(',').map((s) => s.trim());
-          meta = {
-            baseType: base,
-            generics: generics,
-          };
-        }
-
-        // 4. 重命名 Schema
-        if (!schemas[newKeyName]) {
-          schemas[newKeyName] = schemas[key];
-          delete schemas[key];
-          if (meta) {
-            schemas[newKeyName]['x-apifox-generic'] = meta;
-          }
-        } else {
-          // 如果目标已存在，也尝试注入元数据
-          if (meta && !schemas[newKeyName]['x-apifox-generic']) {
-            schemas[newKeyName]['x-apifox-generic'] = meta;
-          }
-          // 删除旧的 key，避免重复和 invalid identifier
-          if (key !== newKeyName) {
-            delete schemas[key];
-          }
-        }
-
-        warnings?.addRenamedSchema(decodedKey, newKeyName);
+      // 建立映射（原始、解码、编码 variants）
+      schemaMap.set(`#/components/schemas/${key}`, newRef);
+      if (key !== decodedKey) {
+        schemaMap.set(`#/components/schemas/${decodedKey}`, newRef);
       }
-    });
+      const encodedKey = encodeURIComponent(key);
+      if (encodedKey !== key) {
+        schemaMap.set(`#/components/schemas/${encodedKey}`, newRef);
+      }
+      const encodedDecodedKey = encodeURIComponent(decodedKey);
+      if (encodedDecodedKey !== key && encodedDecodedKey !== encodedKey) {
+        schemaMap.set(`#/components/schemas/${encodedDecodedKey}`, newRef);
+      }
+
+      // 注入泛型元数据
+      const match = decodedKey.match(/^(.+?)«(.+)»$/);
+      let meta: ApifoxGenericMeta | undefined;
+      if (match && match[1] && match[2]) {
+        meta = {
+          baseType: match[1],
+          generics: match[2].split(',').map((s) => s.trim()),
+        };
+      }
+
+      const currentSchema = schemasObj[key];
+      if (currentSchema) {
+        // 安全地移动 schema（不会覆盖已存在的同名 schema）
+        schemasObj[newKeyName] = currentSchema;
+        delete schemasObj[key];
+        // 更新生成的名称集合（删除旧名称，添加新名称）
+        generatedNames.delete(key);
+        generatedNames.add(newKeyName);
+        if (meta && isObject(schemasObj[newKeyName])) {
+          (schemasObj[newKeyName] as OpenAPIRawObject)['x-apifox-generic'] =
+            meta as unknown as OpenAPIRaw;
+        }
+      }
+
+      warnings?.addRenamedSchema(decodedKey, newKeyName);
+    }
 
     if (schemaMap.size === 0) return;
 
     // 2. 遍历整个对象更新引用
-    const updateRefs = (obj: any) => {
+    const updateRefs = (obj: OpenAPIRaw): void => {
       if (!obj || typeof obj !== 'object') return;
 
       if (Array.isArray(obj)) {
@@ -612,27 +569,38 @@ export class ApifoxAdapter
         return;
       }
 
-      if (obj.$ref && typeof obj.$ref === 'string') {
-        const ref = obj.$ref;
-        // 尝试直接匹配
+      const objAsRecord = obj as OpenAPIRawObject;
+      if (typeof objAsRecord.$ref === 'string') {
+        const ref = objAsRecord.$ref;
         if (schemaMap.has(ref)) {
-          obj.$ref = schemaMap.get(ref);
+          objAsRecord.$ref = schemaMap.get(ref) as OpenAPIRaw;
         } else {
-          // 尝试解码后匹配
-          try {
-            const decodedRef = decodeURIComponent(ref);
-            if (schemaMap.has(decodedRef)) {
-              obj.$ref = schemaMap.get(decodedRef);
-            }
-          } catch {
-            // ignore
+          const decodedRef = safeDecodeURIComponent(ref);
+          if (schemaMap.has(decodedRef)) {
+            objAsRecord.$ref = schemaMap.get(decodedRef) as OpenAPIRaw;
           }
         }
       }
 
-      Object.values(obj).forEach(updateRefs);
+      Object.values(objAsRecord).forEach(updateRefs);
     };
 
     updateRefs(data);
+  }
+}
+
+// ===================================================================================
+// 辅助函数
+// ===================================================================================
+
+function isObject(value: unknown): value is OpenAPIRawObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function safeDecodeURIComponent(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
   }
 }

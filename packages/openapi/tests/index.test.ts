@@ -188,3 +188,74 @@ test('OpenAPIAdapter should build metadata from raw document', async () => {
   expect(result.metadata?.description).toBe('desc');
   expect(result.metadata?.baseUrl).toBe('https://example.com');
 });
+
+// ---------------------------------------------------------------------------
+// fetchTimeoutMs 选项透传测试
+//
+// OpenAPIAdapter 对 URL 输入会走 fetchWithTimeout 分支。
+// 这里 mock globalThis.fetch + spy AbortSignal.timeout，
+// 验证 parse({ fetchTimeoutMs }) → loadRawDocument → fetchWithTimeout → AbortSignal.timeout。
+// ---------------------------------------------------------------------------
+
+/** 一个最小合法的 OpenAPI 文档 JSON 字符串，供 mock fetch 返回 */
+const REMOTE_OPENAPI_JSON = JSON.stringify({
+  openapi: '3.0.0',
+  info: { title: 'Remote API', version: '1.0.0' },
+  paths: {},
+});
+
+/** 安装 fetch + AbortSignal.timeout 的 mock，返回 (timeoutCalls) 以供断言 */
+function mockFetchAndTimeout(): {
+  timeoutCalls: number[];
+  restore: () => void;
+} {
+  const timeoutCalls: number[] = [];
+  // 用箭头函数包裹原始方法引用，避免 unbound-method 告警（mock 场景下故意解绑 this）
+  const originalTimeout = (ms: number) => AbortSignal.timeout(ms);
+  const originalFetch = globalThis.fetch;
+
+  AbortSignal.timeout = ((ms: number) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  }) as typeof AbortSignal.timeout;
+
+  globalThis.fetch = (async () =>
+    new Response(REMOTE_OPENAPI_JSON, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })) as typeof fetch;
+
+  return {
+    timeoutCalls,
+    restore: () => {
+      AbortSignal.timeout = originalTimeout as typeof AbortSignal.timeout;
+      globalThis.fetch = originalFetch;
+    },
+  };
+}
+
+test('OpenAPIAdapter should pass fetchTimeoutMs to AbortSignal.timeout for URL input', async () => {
+  const { timeoutCalls, restore } = mockFetchAndTimeout();
+  const adapter = new OpenAPIAdapter();
+  try {
+    await adapter.parse('https://example.com/openapi.json', {
+      fetchTimeoutMs: 5000,
+    });
+  } finally {
+    restore();
+  }
+
+  expect(timeoutCalls).toContain(5000);
+});
+
+test('OpenAPIAdapter should default fetchTimeoutMs to 30000 for URL input', async () => {
+  const { timeoutCalls, restore } = mockFetchAndTimeout();
+  const adapter = new OpenAPIAdapter();
+  try {
+    await adapter.parse('https://example.com/openapi.json');
+  } finally {
+    restore();
+  }
+
+  expect(timeoutCalls).toContain(30_000);
+});

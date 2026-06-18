@@ -18,36 +18,40 @@ import {
   sharedSourceFile,
 } from './ast-utils';
 import { NamingUtils } from '../utils/naming-utils';
+import {
+  isTypeRefTo,
+  normalizeGenericName,
+  wordBoundaryRegexGlobal,
+} from '../utils/type-ref-utils';
+import type { ApifoxGenericMeta } from '../types';
 
 export class InterfaceGenerator {
   /** 泛型基类集合 name -> fieldName */
-  private genericBaseTypes: Map<string, string>;
+  private readonly genericBaseTypes: Map<string, string>;
   /** 泛型信息映射 */
-  private genericInfoMap: Map<string, { baseType: string; generics: string[] }>;
+  private readonly genericInfoMap: Map<string, ApifoxGenericMeta>;
   /** 接口导出模式 */
-  private interfaceExportMode: 'export' | 'declare';
+  private readonly interfaceExportMode: 'export' | 'declare';
   /** 命名风格 */
-  private namingStyle: NamingStyle;
+  private readonly namingStyle: NamingStyle;
   /** 缓存的注释匹配正则 */
   private readonly commentRegex = /^(\s*\/\*\*[\s\S]*?\*\/)/;
 
   constructor(
     genericBaseTypes: Map<string, string>,
     interfaceExportMode: 'export' | 'declare' = 'export',
-    genericInfoMap?: Map<string, { baseType: string; generics: string[] }>,
+    genericInfoMap?: Map<string, ApifoxGenericMeta>,
     namingStyle: NamingStyle = 'PascalCase',
   ) {
     this.genericBaseTypes = genericBaseTypes;
     this.interfaceExportMode = interfaceExportMode;
-    this.genericInfoMap = genericInfoMap || new Map();
+    this.genericInfoMap =
+      genericInfoMap || new Map<string, ApifoxGenericMeta>();
     this.namingStyle = namingStyle;
   }
 
   /**
    * 从 components 节点生成所有接口代码
-   *
-   * @param componentsNode components 接口节点
-   * @param interfaces 接口代码集合(输出)
    */
   generateInterfaceCode(
     componentsNode: ts.InterfaceDeclaration,
@@ -55,133 +59,120 @@ export class InterfaceGenerator {
   ): void {
     const generatedBaseTypes = new Set<string>();
 
-    // 找到 schemas 属性
     for (const member of componentsNode.members) {
-      if (ts.isPropertySignature(member) && member.name) {
-        const propName = (member.name as ts.Identifier).text;
+      if (!ts.isPropertySignature(member) || !member.name) continue;
+      const propName = (member.name as ts.Identifier).text;
 
+      if (
+        propName !== 'schemas' ||
+        !member.type ||
+        !ts.isTypeLiteralNode(member.type)
+      )
+        continue;
+
+      for (const schemaMember of member.type.members) {
         if (
-          propName === 'schemas' &&
-          member.type &&
-          ts.isTypeLiteralNode(member.type)
-        ) {
-          // 遍历所有 schema
-          for (const schemaMember of member.type.members) {
-            if (
-              ts.isPropertySignature(schemaMember) &&
-              schemaMember.name &&
-              schemaMember.type
-            ) {
-              const schemaName = extractStringFromNode(schemaMember.name);
+          !ts.isPropertySignature(schemaMember) ||
+          !schemaMember.name ||
+          !schemaMember.type
+        )
+          continue;
 
-              if (schemaName) {
-                const originalName = schemaName;
-                const convertedName = NamingUtils.convert(
-                  originalName,
-                  this.namingStyle,
-                );
+        const schemaName = extractStringFromNode(schemaMember.name);
+        if (!schemaName) continue;
 
-                // 检查泛型信息
-                if (this.genericInfoMap.has(originalName)) {
-                  const info = this.genericInfoMap.get(originalName)!;
-                  const convertedBaseType = NamingUtils.convert(
-                    info.baseType,
-                    this.namingStyle,
-                  );
+        const originalName = schemaName;
+        const convertedName = NamingUtils.convert(
+          originalName,
+          this.namingStyle,
+        );
 
-                  // 1. 生成泛型基类接口 (如果尚未生成)
-                  if (!generatedBaseTypes.has(convertedBaseType)) {
-                    // 查找泛型字段
-                    const genericArg = info.generics[0] || 'T';
-                    // 规范化 genericArg 以匹配 AST 中的引用
-                    const normalizedGenericArg = genericArg
-                      .replace(/«/g, '_')
-                      .replace(/»/g, '')
-                      .replace(/,/g, '_')
-                      .replace(/\s/g, '');
-
-                    // 转换目标类型名称，以便在 generateInterfaceString 中正确匹配
-                    const convertedGenericArg = NamingUtils.convert(
-                      normalizedGenericArg,
-                      this.namingStyle,
-                    );
-
-                    const genericField = this.findGenericField(
-                      schemaMember.type,
-                      genericArg,
-                    );
-
-                    const baseInterfaceCode = this.generateInterfaceString(
-                      convertedBaseType,
-                      schemaMember.type,
-                      true, // isGeneric
-                      genericField,
-                      convertedGenericArg, // 传入转换后的目标类型
-                    );
-                    interfaces[convertedBaseType] = baseInterfaceCode;
-                    generatedBaseTypes.add(convertedBaseType);
-                  }
-
-                  // 2. 生成具体类型的别名
-                  // export type Generic_SomeDataType = Generic<Type>;
-                  const args = info.generics.map((g) => {
-                    const normalized = g
-                      .replace(/«/g, '_')
-                      .replace(/»/g, '')
-                      .replace(/,/g, '_')
-                      .replace(/\s/g, '');
-                    return NamingUtils.convert(normalized, this.namingStyle);
-                  });
-
-                  const exportKeyword =
-                    this.interfaceExportMode === 'export'
-                      ? 'export '
-                      : 'declare ';
-                  const aliasCode = `${exportKeyword}type ${convertedName} = ${convertedBaseType}<${args.join(', ')}>;`;
-                  interfaces[convertedName] = aliasCode;
-                } else {
-                  // 常规生成
-                  // 生成接口代码 - 优化: 只查找一次 Map
-                  const genericField = this.genericBaseTypes.get(originalName);
-                  const interfaceCode = this.generateInterfaceString(
-                    convertedName,
-                    schemaMember.type,
-                    genericField !== undefined,
-                    genericField,
-                  );
-                  interfaces[convertedName] = interfaceCode;
-                }
-              }
-            }
-          }
+        const info = this.genericInfoMap.get(originalName);
+        if (info) {
+          this.generateGenericInterface(
+            convertedName,
+            info,
+            schemaMember.type,
+            interfaces,
+            generatedBaseTypes,
+          );
+        } else {
+          const genericField = this.genericBaseTypes.get(originalName);
+          const interfaceCode = this.generateInterfaceString(
+            convertedName,
+            schemaMember.type,
+            genericField !== undefined,
+            genericField,
+          );
+          interfaces[convertedName] = interfaceCode;
         }
       }
     }
   }
 
   /**
+   * 生成泛型接口及其具体类型别名
+   */
+  private generateGenericInterface(
+    convertedName: string,
+    info: ApifoxGenericMeta,
+    typeNode: ts.TypeNode,
+    interfaces: Record<string, string>,
+    generatedBaseTypes: Set<string>,
+  ): void {
+    const convertedBaseType = NamingUtils.convert(
+      info.baseType,
+      this.namingStyle,
+    );
+
+    // 1. 生成泛型基类接口（如果尚未生成）
+    if (!generatedBaseTypes.has(convertedBaseType)) {
+      const genericArg = info.generics[0] || 'T';
+      const normalizedGenericArg = normalizeGenericName(genericArg);
+      const convertedGenericArg = NamingUtils.convert(
+        normalizedGenericArg,
+        this.namingStyle,
+      );
+
+      const genericField = this.findGenericField(
+        typeNode,
+        normalizedGenericArg,
+      );
+      const baseInterfaceCode = this.generateInterfaceString(
+        convertedBaseType,
+        typeNode,
+        true,
+        genericField,
+        convertedGenericArg,
+      );
+      interfaces[convertedBaseType] = baseInterfaceCode;
+      generatedBaseTypes.add(convertedBaseType);
+    }
+
+    // 2. 生成具体类型的别名
+    const args = info.generics.map((g) =>
+      NamingUtils.convert(normalizeGenericName(g), this.namingStyle),
+    );
+
+    const exportKeyword =
+      this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
+    interfaces[convertedName] =
+      `${exportKeyword}type ${convertedName} = ${convertedBaseType}<${args.join(', ')}>;`;
+  }
+
+  /**
    * 查找泛型字段名
-   * 在类型定义中查找引用了 targetType 的属性名
    */
   private findGenericField(
     typeNode: ts.TypeNode,
     targetType: string,
   ): string | undefined {
-    // 规范化目标类型名以匹配 AST 中的引用名
-    const normalizedTarget = targetType
-      .replace(/«/g, '_')
-      .replace(/»/g, '')
-      .replace(/,/g, '_')
-      .replace(/\s/g, '');
+    if (!ts.isTypeLiteralNode(typeNode)) return undefined;
 
-    if (ts.isTypeLiteralNode(typeNode)) {
-      for (const member of typeNode.members) {
-        if (ts.isPropertySignature(member) && member.name && member.type) {
-          const propName = (member.name as ts.Identifier).text;
-          if (this.isTypeRefTo(member.type, normalizedTarget)) {
-            return propName;
-          }
-        }
+    for (const member of typeNode.members) {
+      if (ts.isPropertySignature(member) && member.name && member.type) {
+        const propName = (member.name as ts.Identifier).text;
+        if (this.isTypeNodeRefTo(member.type, targetType)) return propName;
       }
     }
     return undefined;
@@ -190,57 +181,18 @@ export class InterfaceGenerator {
   /**
    * 检查 TypeNode 是否引用了目标类型
    */
-  private isTypeRefTo(typeNode: ts.TypeNode, target: string): boolean {
+  private isTypeNodeRefTo(typeNode: ts.TypeNode, target: string): boolean {
     const typeStr = sharedPrinter.printNode(
       ts.EmitHint.Unspecified,
       typeNode,
       sharedSourceFile,
     );
     const simple = simplifyTypeReference(typeStr);
-
-    // 移除空白字符
-    const cleanType = simple.replace(/\s/g, '');
-    const cleanTarget = target.replace(/\s/g, '');
-
-    // 1. 精确匹配
-    if (cleanType === cleanTarget) return true;
-
-    // 2. 数组匹配
-    if (cleanType === `${cleanTarget}[]`) return true;
-
-    // 3. 联合类型匹配 (e.g. "Type|null", "Type[]|null")
-    if (cleanType.includes('|')) {
-      const parts = cleanType.split('|');
-      return parts.some((part) => {
-        // 去除可能的括号
-        const p = part.replace(/^\(|\)$/g, '');
-        return (
-          p === cleanTarget ||
-          p === `${cleanTarget}[]` ||
-          p.endsWith(`/${cleanTarget}`) ||
-          p.endsWith(`/${cleanTarget}[]`)
-        );
-      });
-    }
-
-    // 4. 包含匹配 (最宽松，用于处理复杂情况)
-    // 确保 targetName 是作为一个完整的单词出现
-    const regex = new RegExp(`\\b${this.escapeRegExp(target)}\\b`);
-    return regex.test(simple);
-  }
-
-  private escapeRegExp(string: string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return isTypeRefTo(simple, target);
   }
 
   /**
    * 生成单个接口的代码字符串
-   *
-   * @param name 接口名称
-   * @param typeNode 类型节点
-   * @param isGeneric 是否为泛型接口
-   * @param genericField 泛型字段名(如果 isGeneric 为 true)
-   * @param genericTargetType 泛型目标类型(用于替换为 T)
    */
   public generateInterfaceString(
     name: string,
@@ -249,97 +201,105 @@ export class InterfaceGenerator {
     genericField?: string,
     genericTargetType?: string,
   ): string {
-    // 如果是对象字面量，生成 interface
     if (ts.isTypeLiteralNode(typeNode)) {
-      const lines: string[] = [];
-
-      // 接口声明行 - 根据配置选择 export 或 declare
-      const exportKeyword =
-        this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
-      const genericPart = isGeneric ? '<T = any>' : '';
-      lines.push(`${exportKeyword}interface ${name}${genericPart} {`);
-
-      // 遍历所有属性
-      for (const member of typeNode.members) {
-        if (ts.isPropertySignature(member) && member.name && member.type) {
-          // 打印整个成员节点(包括注释)
-          let memberText = sharedPrinter.printNode(
-            ts.EmitHint.Unspecified,
-            member,
-            sharedSourceFile,
-          );
-
-          // 应用类型引用简化和名称转换
-          memberText = simplifyTypeReference(memberText, (name) =>
-            NamingUtils.convert(name, this.namingStyle),
-          );
-
-          const propName = (member.name as ts.Identifier).text;
-
-          if (isGeneric && genericField && propName === genericField) {
-            // 提取注释
-            const commentMatch = memberText.match(this.commentRegex);
-            const comment = commentMatch ? commentMatch[1] + '\n' : '';
-
-            // 获取原始类型字符串
-            const typeText = sharedPrinter.printNode(
-              ts.EmitHint.Unspecified,
-              member.type,
-              sharedSourceFile,
-            );
-            const simplifiedType = simplifyTypeReference(typeText, (name) =>
-              NamingUtils.convert(name, this.namingStyle),
-            );
-
-            let newType = 'T';
-            if (genericTargetType) {
-              // 智能替换: 找到目标类型并替换为 T
-              // 注意：genericTargetType 应该是转换后的名称吗？
-              // genericTargetType 是从 genericArg 转换来的，如果 genericArg 是原始名称，那么这里也需要转换
-              // 但是在 generateInterfaceCode 中，我们传递的是 normalizedGenericArg
-              // 如果 normalizedGenericArg 是原始名称，那么这里匹配可能会失败，因为 simplifiedType 已经是转换后的了
-
-              // 让我们假设 genericTargetType 已经是转换后的名称（在调用处处理）
-              const regex = new RegExp(
-                `\\b${this.escapeRegExp(genericTargetType)}\\b`,
-                'g',
-              );
-              newType = simplifiedType.replace(regex, 'T');
-            } else {
-              // 如果没有目标类型（通过 GenericDetector 检测到的），直接替换为 T
-              // 但保留 null/undefined 信息
-              if (simplifiedType.includes('| null')) {
-                newType = 'T | null';
-              } else if (simplifiedType.includes('null |')) {
-                newType = 'null | T';
-              }
-            }
-
-            const isOptional = !!member.questionToken;
-            const optionalMark = isOptional ? '?' : '';
-            lines.push(`${comment}  ${propName}${optionalMark}: ${newType};`);
-          } else {
-            lines.push(`  ${simplifyTypeReference(memberText)}`);
-          }
-        }
-      }
-
-      lines.push('}');
-      return lines.join('\n');
+      return this.generateInterfaceFromLiteral(
+        name,
+        typeNode,
+        isGeneric,
+        genericField,
+        genericTargetType,
+      );
     }
 
-    // 对于其他类型(如 Union, Intersection, Array 等)，生成 type alias
+    // 对于其他类型，生成 type alias
     const exportKeyword =
       this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
     const genericPart = isGeneric ? '<T = any>' : '';
-
-    // 使用 printer 打印类型定义
     const typeText = sharedPrinter.printNode(
       ts.EmitHint.Unspecified,
       typeNode,
       sharedSourceFile,
     );
-
     return `${exportKeyword}type ${name}${genericPart} = ${simplifyTypeReference(typeText)};`;
+  }
+
+  /**
+   * 从 TypeLiteral 生成 interface 代码
+   */
+  private generateInterfaceFromLiteral(
+    name: string,
+    typeNode: ts.TypeLiteralNode,
+    isGeneric: boolean,
+    genericField?: string,
+    genericTargetType?: string,
+  ): string {
+    const lines: string[] = [];
+    const exportKeyword =
+      this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
+    const genericPart = isGeneric ? '<T = any>' : '';
+    lines.push(`${exportKeyword}interface ${name}${genericPart} {`);
+
+    for (const member of typeNode.members) {
+      if (!ts.isPropertySignature(member) || !member.name || !member.type)
+        continue;
+
+      let memberText = sharedPrinter.printNode(
+        ts.EmitHint.Unspecified,
+        member,
+        sharedSourceFile,
+      );
+      memberText = simplifyTypeReference(memberText, (n) =>
+        NamingUtils.convert(n, this.namingStyle),
+      );
+
+      const propName = (member.name as ts.Identifier).text;
+
+      if (isGeneric && genericField && propName === genericField) {
+        const commentMatch = memberText.match(this.commentRegex);
+        const comment = commentMatch ? commentMatch[1] + '\n' : '';
+
+        const typeText = sharedPrinter.printNode(
+          ts.EmitHint.Unspecified,
+          member.type,
+          sharedSourceFile,
+        );
+        const simplifiedType = simplifyTypeReference(typeText, (n) =>
+          NamingUtils.convert(n, this.namingStyle),
+        );
+
+        const newType = this.replaceGenericTypeParam(
+          simplifiedType,
+          genericTargetType,
+        );
+        const isOptional = !!member.questionToken;
+        const optionalMark = isOptional ? '?' : '';
+        lines.push(`${comment}  ${propName}${optionalMark}: ${newType};`);
+      } else {
+        lines.push(`  ${simplifyTypeReference(memberText)}`);
+      }
+    }
+
+    lines.push('}');
+    return lines.join('\n');
+  }
+
+  /**
+   * 将泛型目标类型替换为 T
+   */
+  private replaceGenericTypeParam(
+    simplifiedType: string,
+    genericTargetType?: string,
+  ): string {
+    if (genericTargetType) {
+      return simplifiedType.replace(
+        wordBoundaryRegexGlobal(genericTargetType),
+        'T',
+      );
+    }
+
+    // 没有目标类型时，保留 null/undefined 信息
+    if (simplifiedType.includes('| null')) return 'T | null';
+    if (simplifiedType.includes('null |')) return 'null | T';
+    return 'T';
   }
 }

@@ -13,6 +13,7 @@ export default defineConfig({
     {
       format: 'cjs',
       syntax: ['node 20'],
+      bundle: true,
     },
   ],
   source: {
