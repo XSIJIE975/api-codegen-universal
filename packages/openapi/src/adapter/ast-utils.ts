@@ -252,3 +252,48 @@ export function parseJSDoc(comment: string): JSDocInfo {
 
   return info;
 }
+
+// ===================================================================================
+// 共享的 HTTP 方法过滤逻辑
+// ===================================================================================
+
+/**
+ * 非 HTTP 方法的字段名集合
+ * 这些字段在 operations 节点中表示元数据，不是实际的 HTTP 方法
+ */
+export const NON_HTTP_METHOD_FIELDS = new Set([
+  'PARAMETERS',
+  '$REF',
+  'SUMMARY',
+  'DESCRIPTION',
+  'SERVERS',
+]);
+
+/**
+ * 判断字段名是否为非 HTTP 方法字段
+ */
+export function isNonHttpMethodField(name: string): boolean {
+  return NON_HTTP_METHOD_FIELDS.has(name.toUpperCase());
+}
+
+/**
+ * 构建 operations 映射表 (OperationId -> TypeLiteralNode)
+ */
+export function buildOperationsMap(
+  operationsNode: ts.InterfaceDeclaration | undefined,
+): Map<string, ts.TypeLiteralNode> {
+  const map = new Map<string, ts.TypeLiteralNode>();
+  if (!operationsNode) return map;
+
+  for (const member of operationsNode.members) {
+    if (
+      ts.isPropertySignature(member) &&
+      member.name &&
+      member.type &&
+      ts.isTypeLiteralNode(member.type)
+    ) {
+      map.set((member.name as ts.Identifier).text, member.type);
+    }
+  }
+  return map;
+}

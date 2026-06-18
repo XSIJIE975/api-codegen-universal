@@ -250,7 +250,8 @@ function preprocessGenericInfo(
     if (
       meta &&
       typeof meta.baseType === 'string' &&
-      Array.isArray(meta.generics)
+      Array.isArray(meta.generics) &&
+      meta.generics.every((g) => typeof g === 'string')
     ) {
       ctx.genericInfoMap.set(key, meta);
     }
@@ -546,6 +547,13 @@ async function fetchWithTimeout(
   url: string | URL,
   timeoutMs: number = DEFAULT_FETCH_TIMEOUT_MS,
 ): Promise<unknown> {
+  // 验证 timeoutMs 是否为有效的正数
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error(
+      `fetchTimeoutMs must be a positive number, got ${timeoutMs}`,
+    );
+  }
+
   const response = await fetch(url, {
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -588,8 +596,9 @@ function parseContent(text: string): unknown {
 
   // YAML 可能返回 string / number / null 等非对象值，必须校验
   if (typeof yamlResult !== 'object' || yamlResult === null) {
+    const preview = text.length > 80 ? `${text.slice(0, 80)}...` : text;
     throw new Error(
-      `Failed to parse content as JSON or YAML object (got ${typeof yamlResult}).`,
+      `Failed to parse content as JSON or YAML object (got ${typeof yamlResult}). Input preview: ${JSON.stringify(preview)}`,
     );
   }
 

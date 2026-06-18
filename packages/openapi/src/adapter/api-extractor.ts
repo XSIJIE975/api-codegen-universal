@@ -20,6 +20,8 @@ import {
   extractJSDocComment,
   parseJSDoc,
   type JSDocInfo,
+  isNonHttpMethodField,
+  buildOperationsMap,
 } from './ast-utils';
 import { PathClassifier } from '../utils/path-classifier';
 import { ParameterExtractor } from './parameter-extractor';
@@ -122,20 +124,7 @@ export class ApiExtractor {
   private buildOperationsMap(
     operationsNode: ts.InterfaceDeclaration | undefined,
   ): Map<string, ts.TypeLiteralNode> {
-    const map = new Map<string, ts.TypeLiteralNode>();
-    if (!operationsNode) return map;
-
-    for (const member of operationsNode.members) {
-      if (
-        ts.isPropertySignature(member) &&
-        member.name &&
-        member.type &&
-        ts.isTypeLiteralNode(member.type)
-      ) {
-        map.set((member.name as ts.Identifier).text, member.type);
-      }
-    }
-    return map;
+    return buildOperationsMap(operationsNode);
   }
 
   /**
@@ -199,18 +188,6 @@ export class ApiExtractor {
 // ===================================================================================
 // 辅助函数
 // ===================================================================================
-
-const NON_HTTP_METHOD_FIELDS = new Set([
-  'PARAMETERS',
-  '$REF',
-  'SUMMARY',
-  'DESCRIPTION',
-  'SERVERS',
-]);
-
-function isNonHttpMethodField(method: string): boolean {
-  return NON_HTTP_METHOD_FIELDS.has(method);
-}
 
 /**
  * 生成 OperationId

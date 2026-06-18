@@ -371,8 +371,16 @@ export class ApifoxAdapter
       };
     }
 
+    // 验证 timeoutMs 是否为有效的正数
+    const timeoutMs = fetchTimeoutMs ?? 30_000;
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      throw new Error(
+        `fetchTimeoutMs must be a positive number, got ${timeoutMs}`,
+      );
+    }
+
     const response = await fetch(url, {
-      signal: AbortSignal.timeout(fetchTimeoutMs ?? 30_000),
+      signal: AbortSignal.timeout(timeoutMs),
       method: 'POST',
       headers: {
         Authorization: `Bearer ${config.token}`,

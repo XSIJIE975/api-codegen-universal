@@ -51,6 +51,29 @@ function isSensitiveKey(key: string): boolean {
 /** URL 协议前缀正则：仅对真正的绝对 URL 进入 new URL() 分支，避免对含 ? 的普通文本误构造 */
 const URL_PROTOCOL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 
+/** URL 查询参数中的敏感参数名列表 */
+const URL_SENSITIVE_PARAMS = [
+  'token',
+  'apikey',
+  'api_key',
+  'secret',
+  'password',
+  'credential',
+];
+
+/**
+ * 清理 URL 对象中的敏感查询参数（原地修改）
+ */
+function redactSensitiveUrlParams(url: URL): void {
+  // 大小写不敏感地匹配参数名
+  for (const [key] of url.searchParams.entries()) {
+    const lowerKey = key.toLowerCase();
+    if (URL_SENSITIVE_PARAMS.some((param) => lowerKey.includes(param))) {
+      url.searchParams.set(key, '[REDACTED]');
+    }
+  }
+}
+
 /**
  * 清理字符串中的敏感信息（简单处理：移除 URL 查询参数中的敏感字段）
  */
@@ -60,21 +83,7 @@ function sanitizeString(str: string): string {
   if (str.includes('?') && URL_PROTOCOL_RE.test(str)) {
     try {
       const url = new URL(str);
-      const sensitiveParams = [
-        'token',
-        'apikey',
-        'api_key',
-        'secret',
-        'password',
-        'credential',
-      ];
-      // 大小写不敏感地匹配参数名
-      for (const [key] of url.searchParams.entries()) {
-        const lowerKey = key.toLowerCase();
-        if (sensitiveParams.some((param) => lowerKey.includes(param))) {
-          url.searchParams.set(key, '[REDACTED]');
-        }
-      }
+      redactSensitiveUrlParams(url);
       return url.toString();
     } catch {
       // 如果不是有效 URL，返回原字符串
@@ -128,22 +137,8 @@ function sanitizeValue(value: unknown, visited: WeakSet<object>): unknown {
     }
     // 处理 URL 对象 - 清理敏感查询参数后转为字符串
     if (value instanceof URL) {
-      const sensitiveParams = [
-        'token',
-        'apikey',
-        'api_key',
-        'secret',
-        'password',
-        'credential',
-      ];
       const sanitizedUrl = new URL(value.toString());
-      // 大小写不敏感地匹配参数名
-      for (const [key] of sanitizedUrl.searchParams.entries()) {
-        const lowerKey = key.toLowerCase();
-        if (sensitiveParams.some((param) => lowerKey.includes(param))) {
-          sanitizedUrl.searchParams.set(key, '[REDACTED]');
-        }
-      }
+      redactSensitiveUrlParams(sanitizedUrl);
       return sanitizedUrl.toString();
     }
     // 处理 RegExp 对象 - 转为字符串表示
@@ -163,6 +158,10 @@ function sanitizeValue(value: unknown, visited: WeakSet<object>): unknown {
   // 处理字符串 - 清理可能的敏感信息
   if (typeof value === 'string') {
     return sanitizeString(value);
+  }
+  // 处理函数 - 替换为占位符，避免序列化问题
+  if (typeof value === 'function') {
+    return '[Function]';
   }
   return value;
 }

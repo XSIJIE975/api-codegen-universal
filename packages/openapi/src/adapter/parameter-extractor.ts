@@ -13,6 +13,8 @@ import type {
 import {
   extractOperationIdReference,
   extractStringFromNode,
+  isNonHttpMethodField,
+  buildOperationsMap,
 } from './ast-utils';
 import { NamingUtils } from '../utils/naming-utils';
 import type { SchemaExtractor } from './schema-extractor';
@@ -175,41 +177,6 @@ export class ParameterExtractor {
 
     return hasParameters ? parametersMap : undefined;
   }
-}
-
-// ===================================================================================
-// 辅助函数
-// ===================================================================================
-
-const NON_HTTP_METHOD_FIELDS = new Set([
-  'PARAMETERS',
-  '$REF',
-  'SUMMARY',
-  'DESCRIPTION',
-  'SERVERS',
-]);
-
-function isNonHttpMethodField(name: string): boolean {
-  return NON_HTTP_METHOD_FIELDS.has(name.toUpperCase());
-}
-
-function buildOperationsMap(
-  operationsNode: ts.InterfaceDeclaration | undefined,
-): Map<string, ts.TypeLiteralNode> {
-  const map = new Map<string, ts.TypeLiteralNode>();
-  if (!operationsNode) return map;
-
-  for (const member of operationsNode.members) {
-    if (
-      ts.isPropertySignature(member) &&
-      member.name &&
-      member.type &&
-      ts.isTypeLiteralNode(member.type)
-    ) {
-      map.set((member.name as ts.Identifier).text, member.type);
-    }
-  }
-  return map;
 }
 
 /**
