@@ -23,6 +23,7 @@ import type {
   Metadata,
   NamingStyle,
   AdapterLogger,
+  WarningsCollector,
 } from '@api-codegen-universal/core';
 import type {
   InputSource,
@@ -65,6 +66,9 @@ interface ParseContext {
 
   // ---- 日志 ----
   logger: AdapterLogger;
+
+  /** 可选的 warnings 收集器（由调用方透传，如 ApifoxAdapter），用于汇总自动修复 */
+  warnings?: WarningsCollector;
 }
 
 // ===================================================================================
@@ -229,6 +233,7 @@ function buildParseContext(
     interfaces: {},
     apis: [],
     logger,
+    warnings: options?.warnings,
   };
 }
 
@@ -359,9 +364,12 @@ function runExtraction(
         ctx.apis,
         ctx.schemas,
         ctx.interfaces,
+        ctx.warnings,
       );
     } else {
-      // 即使不生成 APIs，也需要提取参数接口
+      // 即使不生成 APIs，也需要提取参数接口。
+      // 注意：该路径的兜底 id（temp_${path}_…）含完整 path，不参与
+      // extractAPIs 的 operationId 归一化消歧。
       parameterExtractor.extractParametersOnly(
         pathsNode,
         operationsNode,

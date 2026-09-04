@@ -13,7 +13,6 @@ import {
 import {
   InputSource,
   OpenAPIAdapter,
-  type OpenAPIOptions,
   type ApifoxGenericMeta,
 } from '@api-codegen-universal/openapi';
 import { normalizeGenericName } from '@api-codegen-universal/openapi';
@@ -114,11 +113,13 @@ export class ApifoxAdapter
     }
 
     // 4. 转换为标准格式
+    // 透传 warnings collector：OpenAPI 适配器内部的自动修复
+    // （如 operationId 归一化消歧）会记录到同一份 warnings 汇总中
     const openApiAdapter = new OpenAPIAdapter();
-    const result = await openApiAdapter.parse(
-      openApiData as InputSource,
-      options as OpenAPIOptions,
-    );
+    const result = await openApiAdapter.parse(openApiData as InputSource, {
+      ...options,
+      warnings,
+    });
 
     // 补充元数据
     if (result.metadata) {

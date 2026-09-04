@@ -239,6 +239,9 @@ export interface WarningsSummaryMeta {
   };
 }
 
+/** warnings 收集器的类型（由 createWarningsCollector 创建），供适配器间透传使用 */
+export type WarningsCollector = ReturnType<typeof createWarningsCollector>;
+
 export function createWarningsCollector(params: {
   logger: AdapterLogger;
   /** Event code, e.g. 'APIFOX_WARNINGS_SUMMARY' */

@@ -1,6 +1,10 @@
 import { Readable } from 'node:stream';
 import type { OpenAPI3, OpenAPITSOptions } from 'openapi-typescript';
-import type { AdapterOptions, NamingStyle } from '@api-codegen-universal/core';
+import type {
+  AdapterOptions,
+  NamingStyle,
+  WarningsCollector,
+} from '@api-codegen-universal/core';
 
 /**
  * 简化的 OpenAPI 文档结构接口，用于元数据提取
@@ -96,6 +100,13 @@ export interface OpenAPIOptions extends AdapterOptions {
 
   /** 代码生成配置 */
   codeGeneration?: CodeGenerationOptions;
+
+  /**
+   * warnings 收集器（可选）。
+   * 传入后，适配器内部的自动修复（如 operationId 冲突消歧）会记录到该收集器，
+   * 由调用方（如 ApifoxAdapter）统一汇总输出。不传则静默处理。
+   */
+  warnings?: WarningsCollector;
 
   /** 自定义类型转换函数 */
   transform?: OpenAPITSOptions['transform'];

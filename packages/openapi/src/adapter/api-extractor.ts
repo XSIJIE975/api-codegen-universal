@@ -13,6 +13,7 @@ import ts from 'typescript';
 import type {
   ApiDefinition,
   SchemaDefinition,
+  WarningsCollector,
 } from '@api-codegen-universal/core';
 import {
   extractStringFromNode,
@@ -24,8 +25,18 @@ import {
   buildOperationsMap,
 } from './ast-utils';
 import { PathClassifier } from '../utils/path-classifier';
+import { resolveOperationIdCollisions } from '../utils/operation-id-utils';
 import { ParameterExtractor } from './parameter-extractor';
 import { RequestResponseExtractor } from './request-response-extractor';
+
+/** 阶段一收集的操作信息（尚未构建 ApiDefinition） */
+interface PendingOperation {
+  path: string;
+  method: string;
+  operationId: string;
+  operationNode: ts.TypeLiteralNode;
+  jsDocInfo?: JSDocInfo;
+}
 
 export class ApiExtractor {
   private readonly pathClassifier: PathClassifier;
@@ -44,6 +55,12 @@ export class ApiExtractor {
 
   /**
    * 提取所有 API 定义
+   *
+   * 分三个阶段：
+   * 1. 遍历 paths/methods 收集操作信息（此时不构建 ApiDefinition）；
+   * 2. 以归一化形式对 operationId 消歧——参数/请求体/响应的类型名均由
+   *    operationId 派生，必须先消歧再提取，否则类型名与 id 失同步；
+   * 3. 用消歧后的 operationId 构建 ApiDefinition。
    */
   extractAPIs(
     pathsNode: ts.InterfaceDeclaration,
@@ -51,11 +68,14 @@ export class ApiExtractor {
     apis: ApiDefinition[],
     schemas: Record<string, SchemaDefinition>,
     interfaces: Record<string, string>,
+    warnings?: WarningsCollector,
   ): void {
     // 构建 operations 映射表
     const operationsMap = this.buildOperationsMap(operationsNode);
 
-    // 遍历 paths
+    // ---- 阶段一：收集操作信息 ----
+    const pendingOperations: PendingOperation[] = [];
+
     for (const pathMember of pathsNode.members) {
       if (
         !ts.isPropertySignature(pathMember) ||
@@ -103,18 +123,32 @@ export class ApiExtractor {
         const jsDocComment = extractJSDocComment(methodMember);
         const jsDocInfo = jsDocComment ? parseJSDoc(jsDocComment) : undefined;
 
-        const api = this.buildApiDefinition(
+        pendingOperations.push({
           path,
           method,
           operationId,
           operationNode,
+          jsDocInfo,
+        });
+      }
+    }
+
+    // ---- 阶段二：operationId 归一化消歧 ----
+    resolveOperationIdCollisions(pendingOperations, warnings);
+
+    // ---- 阶段三：构建 ApiDefinition ----
+    for (const op of pendingOperations) {
+      apis.push(
+        this.buildApiDefinition(
+          op.path,
+          op.method,
+          op.operationId,
+          op.operationNode,
           schemas,
           interfaces,
-          jsDocInfo,
-        );
-
-        apis.push(api);
-      }
+          op.jsDocInfo,
+        ),
+      );
     }
   }
 
@@ -191,19 +225,29 @@ export class ApiExtractor {
 
 /**
  * 生成 OperationId
- * 规则: method + PathParts (PascalCase)
+ * 规则: method + PathWords (各段按 -/_ 拆词后 PascalCase)
  * 例如: GET /users/{id} -> getUsersById
+ *       POST /service/hiagent-convert-file-to-jsonl -> postServiceHiagentConvertFileToJsonl
+ *
+ * 分词规则与 NamingUtils.convert 一致（按 `_-` 拆分），
+ * 避免同一 id 在不同层的命名变换下产生不同结果。
+ * 剩余的归一化冲突由 resolveOperationIdCollisions 统一消歧。
  */
 function generateOperationId(path: string, method: string): string {
-  const parts = path.split('/').filter((p) => p);
-  const pathStr = parts
-    .map((p) => {
+  const words = path
+    .split('/')
+    .filter((p) => p)
+    .flatMap((p) => {
       if (p.startsWith('{') && p.endsWith('}')) {
         const paramName = p.slice(1, -1);
-        return 'By' + (paramName.charAt(0).toUpperCase() + paramName.slice(1));
+        return [
+          'By' + (paramName.charAt(0).toUpperCase() + paramName.slice(1)),
+        ];
       }
-      return p.charAt(0).toUpperCase() + p.slice(1);
-    })
-    .join('');
-  return method.toLowerCase() + pathStr;
+      return p
+        .split(/[_-]+/)
+        .filter((w) => w)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1));
+    });
+  return method.toLowerCase() + words.join('');
 }

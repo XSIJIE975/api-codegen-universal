@@ -6,3 +6,4 @@ export * from './path-classifier';
 export * from './generic-detector';
 export * from './naming-utils';
 export * from './type-ref-utils';
+export * from './operation-id-utils';
