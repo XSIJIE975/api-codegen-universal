@@ -442,3 +442,63 @@ describe('OpenAPIAdapter - Schema/Interface Structure', () => {
     }
   });
 });
+
+// ===================================================================================
+// HTTP 方法完整性测试（trace 等 OpenAPI 允许的方法不应丢失）
+// ===================================================================================
+
+describe('OpenAPIAdapter - HttpMethod completeness', () => {
+  it('should extract TRACE operations with a valid HttpMethod value', async () => {
+    const doc = {
+      openapi: '3.0.0',
+      info: { title: 'Trace API', version: '1.0.0' },
+      paths: {
+        '/debug': {
+          trace: {
+            operationId: 'traceDebug',
+            responses: { '200': { description: 'ok' } },
+          },
+        },
+      },
+    };
+
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    expect(result.apis.length).toBe(1);
+    const validMethods = [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'HEAD',
+      'OPTIONS',
+      'TRACE',
+    ];
+    expect(validMethods).toContain(result.apis[0]?.method);
+    expect(result.apis[0]?.method).toBe('TRACE');
+  });
+
+  it('should not treat x- extension fields on path items as operations', async () => {
+    const doc = {
+      openapi: '3.0.0',
+      info: { title: 'Ext API', version: '1.0.0' },
+      paths: {
+        '/users': {
+          'x-internal-note': 'hidden',
+          get: {
+            operationId: 'getUsers',
+            responses: { '200': { description: 'ok' } },
+          },
+        },
+      },
+    };
+
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    expect(result.apis.length).toBe(1);
+    expect(result.apis[0]?.operationId).toBe('getUsers');
+  });
+});

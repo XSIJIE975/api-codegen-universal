@@ -187,6 +187,8 @@ export interface ApiDefinition {
 
 /**
  * HTTP 方法枚举
+ *
+ * 与 OpenAPI 3.0 Path Item 固定字段保持一致（含 TRACE）。
  */
 export type HttpMethod =
   | 'GET'
@@ -195,7 +197,8 @@ export type HttpMethod =
   | 'DELETE'
   | 'PATCH'
   | 'HEAD'
-  | 'OPTIONS';
+  | 'OPTIONS'
+  | 'TRACE';
 
 /**
  * 参数定义(按位置分组)
