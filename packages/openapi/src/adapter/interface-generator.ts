@@ -12,6 +12,7 @@
 import ts from 'typescript';
 import type { NamingStyle } from '@api-codegen-universal/core';
 import {
+  decodeSchemaName,
   extractStringFromNode,
   simplifyTypeReference,
   sharedPrinter,
@@ -81,7 +82,8 @@ export class InterfaceGenerator {
         const schemaName = extractStringFromNode(schemaMember.name);
         if (!schemaName) continue;
 
-        const originalName = schemaName;
+        // 与 SchemaExtractor 使用同一解码逻辑，保证 schemas/interfaces 键一致
+        const originalName = decodeSchemaName(schemaName);
         const convertedName = NamingUtils.convert(
           originalName,
           this.namingStyle,

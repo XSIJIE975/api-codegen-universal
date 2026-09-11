@@ -15,6 +15,7 @@ import type {
   NamingStyle,
 } from '@api-codegen-universal/core';
 import {
+  decodeSchemaName,
   extractStringFromNode,
   sharedPrinter,
   sharedSourceFile,
@@ -74,17 +75,10 @@ export class SchemaExtractor {
           )
             continue;
 
-          let schemaName = extractStringFromNode(schemaMember.name);
-          if (!schemaName) continue;
+          const schemaNameRaw = extractStringFromNode(schemaMember.name);
+          if (!schemaNameRaw) continue;
 
-          // URL 解码
-          if (schemaName.includes('%')) {
-            try {
-              schemaName = decodeURIComponent(schemaName);
-            } catch {
-              // ignore
-            }
-          }
+          const schemaName = decodeSchemaName(schemaNameRaw);
 
           const originalName = schemaName;
           const convertedName = NamingUtils.convert(

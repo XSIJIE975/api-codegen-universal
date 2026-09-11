@@ -25,6 +25,23 @@ export function extractStringFromNode(node: ts.PropertyName): string | null {
 }
 
 /**
+ * 解码 schema 名称中的 URL 编码。
+ *
+ * openapi-typescript 会把 components.schemas 中的特殊字符 key 编码后输出
+ * （如中文/空格名 → %XX 形式）。schemas 提取与 interfaces 生成必须使用
+ * 同一解码逻辑，否则两个输出集合的键会对不上（下游按 ref 查找时 miss）。
+ */
+export function decodeSchemaName(name: string): string {
+  if (!name.includes('%')) return name;
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    // 无效编码序列，保持原样
+    return name;
+  }
+}
+
+/**
  * 提取 operations 引用
  * 例如: operations["AuthController_register"]
  */

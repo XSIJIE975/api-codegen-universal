@@ -550,3 +550,66 @@ describe('OpenAPIAdapter - requestBody required flag', () => {
     expect(result.apis[0]?.requestBody?.required).toBe(false);
   });
 });
+
+// ===================================================================================
+// URL 编码 schema 名的一致性测试（schemas 与 interfaces 键必须一致）
+//
+// 场景：上游工具（如部分版本的 Apifox 导出）会预先对 schema 名做 URL 编码，
+// 文档键字面为 `User%20Dto`；$ref 需要双编码（%2520）才能通过
+// openapi-typescript 内部的引用解析。此时 AST 键为字面 `User%20Dto`，
+// schemas 与 interfaces 必须使用同一解码逻辑派生输出键。
+// ===================================================================================
+
+describe('OpenAPIAdapter - URL-encoded schema name consistency', () => {
+  const doc = {
+    openapi: '3.0.0',
+    info: { title: 'Encoded Names', version: '1.0.0' },
+    paths: {
+      '/profiles': {
+        get: {
+          operationId: 'getProfile',
+          responses: {
+            '200': {
+              description: 'ok',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/User%2520Dto' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        'User%20Dto': {
+          type: 'object',
+          properties: { id: { type: 'integer' } },
+        },
+      },
+    },
+  };
+
+  it('should produce identical keys in schemas and interfaces for URL-encoded names', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const schemaKeys = Object.keys(result.schemas).sort();
+    const interfaceKeys = Object.keys(result.interfaces).sort();
+    expect(schemaKeys).toEqual(interfaceKeys);
+    expect(schemaKeys).toContain('User Dto');
+  });
+
+  it('should resolve a response $ref to the same key as the schema/interface maps', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const ref =
+      result.apis[0]?.responses['200']?.content?.['application/json']?.schema
+        ?.ref;
+    expect(ref).toBeDefined();
+    expect(result.schemas[ref!]).toBeDefined();
+    expect(result.interfaces[ref!]).toBeDefined();
+  });
+});
