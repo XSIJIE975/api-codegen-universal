@@ -1,4 +1,4 @@
-import { test, expect } from '@rstest/core';
+import { test, expect, describe, it } from '@rstest/core';
 import { NamingUtils } from '../src/utils/naming-utils';
 import { GenericDetector } from '../src/utils/generic-detector';
 import { PathClassifier } from '../src/utils/path-classifier';
@@ -9,6 +9,7 @@ import {
   isTypeRefTo,
   wordBoundaryRegex,
 } from '../src/utils/type-ref-utils';
+import { resolveSchemaNameCollisions } from '../src/utils/schema-name-utils';
 
 // ===================================================================================
 // NamingUtils 测试
@@ -268,4 +269,48 @@ test('PathClassifier.classify: commonPrefix matching full path yields unclassifi
   const classifier = new PathClassifier({ commonPrefix: '/api/v1' });
   const result = classifier.classify('/api/v1');
   expect(result.isUnclassified).toBe(true);
+});
+
+// ===================================================================================
+// Schema 名称冲突消歧测试
+// ===================================================================================
+
+describe('resolveSchemaNameCollisions', () => {
+  it('keeps distinct names untouched', () => {
+    const map = resolveSchemaNameCollisions(
+      ['User', 'OrderDetail'],
+      'PascalCase',
+    );
+    expect(map.get('User')).toBe('User');
+    expect(map.get('OrderDetail')).toBe('OrderDetail');
+  });
+
+  it('disambiguates names that collapse after conversion (document order)', () => {
+    const map = resolveSchemaNameCollisions(
+      ['user_profile', 'userProfile'],
+      'PascalCase',
+    );
+    expect(map.get('user_profile')).toBe('UserProfile');
+    expect(map.get('userProfile')).toBe('UserProfile2');
+  });
+
+  it('handles a three-way collision with existing numbered siblings', () => {
+    // UserProfile2 已被第三个 schema 占用，第二个冲突者应跳到 UserProfile3
+    const map = resolveSchemaNameCollisions(
+      ['user_profile', 'userProfile', 'UserProfile2'],
+      'PascalCase',
+    );
+    expect(map.get('user_profile')).toBe('UserProfile');
+    expect(map.get('userProfile')).toBe('UserProfile3');
+    expect(map.get('UserProfile2')).toBe('UserProfile2');
+  });
+
+  it('supports snake_case collisions too', () => {
+    const map = resolveSchemaNameCollisions(
+      ['UserProfile', 'userProfile'],
+      'snake_case',
+    );
+    expect(map.get('UserProfile')).toBe('user_profile');
+    expect(map.get('userProfile')).toBe('user_profile2');
+  });
 });

@@ -57,6 +57,11 @@ export class RequestResponseExtractor {
   private readonly generatedSchemaNames = new Set<string>();
   /** TypeNode 内容到 schema 名称的映射缓存 */
   private readonly typeNodeToSchemaNameCache = new Map<string, string>();
+  /**
+   * 组件 schema 名称映射（原始名 -> 消歧后的输出名），由适配器预计算。
+   * 响应引用组件 schema 时须走同一映射，保证与 schemas/interfaces 键一致。
+   */
+  private readonly schemaNameMap?: Map<string, string>;
 
   constructor(
     genericDetector: GenericDetector,
@@ -68,6 +73,7 @@ export class RequestResponseExtractor {
     schemas: Record<string, SchemaDefinition>,
     interfaceGenerator: InterfaceGenerator,
     interfaces: Record<string, string>,
+    schemaNameMap?: Map<string, string>,
   ) {
     this.genericDetector = genericDetector;
     this.genericBaseTypes = genericBaseTypes;
@@ -78,6 +84,7 @@ export class RequestResponseExtractor {
     this.schemas = schemas;
     this.interfaceGenerator = interfaceGenerator;
     this.interfaces = interfaces;
+    this.schemaNameMap = schemaNameMap;
   }
 
   /**
@@ -185,7 +192,11 @@ export class RequestResponseExtractor {
         const baseType = NamingUtils.convert(info.baseType, this.namingStyle);
         return `${baseType}<${args.join(', ')}>`;
       }
-      return NamingUtils.convert(ref, this.namingStyle);
+      // 组件 schema 可能因命名冲突被消歧，引用须走同一映射
+      return (
+        this.schemaNameMap?.get(ref) ??
+        NamingUtils.convert(ref, this.namingStyle)
+      );
     }
 
     // 处理联合类型 A | B

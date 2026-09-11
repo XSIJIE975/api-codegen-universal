@@ -35,6 +35,11 @@ export class InterfaceGenerator {
   private readonly interfaceExportMode: 'export' | 'declare';
   /** 命名风格 */
   private readonly namingStyle: NamingStyle;
+  /**
+   * 组件 schema 名称映射（原始名 -> 消歧后的输出名），与 SchemaExtractor
+   * 共享，保证 schemas/interfaces 键一致且不互相覆盖。
+   */
+  private readonly schemaNameMap?: Map<string, string>;
   /** 缓存的注释匹配正则 */
   private readonly commentRegex = /^(\s*\/\*\*[\s\S]*?\*\/)/;
 
@@ -43,12 +48,14 @@ export class InterfaceGenerator {
     interfaceExportMode: 'export' | 'declare' = 'export',
     genericInfoMap?: Map<string, ApifoxGenericMeta>,
     namingStyle: NamingStyle = 'PascalCase',
+    schemaNameMap?: Map<string, string>,
   ) {
     this.genericBaseTypes = genericBaseTypes;
     this.interfaceExportMode = interfaceExportMode;
     this.genericInfoMap =
       genericInfoMap || new Map<string, ApifoxGenericMeta>();
     this.namingStyle = namingStyle;
+    this.schemaNameMap = schemaNameMap;
   }
 
   /**
@@ -82,12 +89,11 @@ export class InterfaceGenerator {
         const schemaName = extractStringFromNode(schemaMember.name);
         if (!schemaName) continue;
 
-        // 与 SchemaExtractor 使用同一解码逻辑，保证 schemas/interfaces 键一致
+        // 与 SchemaExtractor 使用同一解码 + 消歧逻辑，保证键一致
         const originalName = decodeSchemaName(schemaName);
-        const convertedName = NamingUtils.convert(
-          originalName,
-          this.namingStyle,
-        );
+        const convertedName =
+          this.schemaNameMap?.get(originalName) ??
+          NamingUtils.convert(originalName, this.namingStyle);
 
         const info = this.genericInfoMap.get(originalName);
         if (info) {

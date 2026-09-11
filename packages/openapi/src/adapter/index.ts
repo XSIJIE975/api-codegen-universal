@@ -31,7 +31,9 @@ import type {
   OpenAPIDocument,
   ApifoxGenericMeta,
 } from '../types';
+import { extractStringFromNode, decodeSchemaName } from './ast-utils';
 import { PathClassifier, GenericDetector } from '../utils';
+import { resolveComponentSchemaNames } from '../utils/schema-name-utils';
 import { SchemaExtractor } from './schema-extractor';
 import { InterfaceGenerator } from './interface-generator';
 import { ParameterExtractor } from './parameter-extractor';
@@ -156,16 +158,27 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     // 5. 预处理泛型信息（从 x-apifox-generic 元数据中提取）
     preprocessGenericInfo(rawDocument, ctx);
 
-    // 6. 构建提取器（每次 parse 独立实例，无共享状态）
-    const extractors = buildExtractors(ctx);
-
-    // 7. 查找关键 AST 节点
+    // 6. 查找关键 AST 节点（schema 名称消歧依赖 components 节点，须先执行）
     const nodes = findKeyNodes(ast);
 
-    // 8. 执行提取
+    // 7. 预计算组件 schema 名称映射（归一化冲突消歧），
+    //    由 schema 提取 / interface 生成 / 响应引用解析三处共享
+    const schemaNameMap =
+      nodes.componentsNode && ctx.shouldGenerateSchemas
+        ? collectComponentSchemaNames(
+            nodes.componentsNode,
+            ctx.namingStyle,
+            ctx.warnings,
+          )
+        : undefined;
+
+    // 8. 构建提取器（每次 parse 独立实例，无共享状态）
+    const extractors = buildExtractors(ctx, schemaNameMap);
+
+    // 9. 执行提取
     runExtraction(nodes, extractors, ctx);
 
-    // 9. 返回标准格式
+    // 10. 返回标准格式
     return {
       schemas: ctx.schemas,
       interfaces: ctx.interfaces,
@@ -267,19 +280,56 @@ function preprocessGenericInfo(
 // 纯函数：构建提取器
 // ===================================================================================
 
-function buildExtractors(ctx: ParseContext): Extractors {
+/**
+ * 从 components 节点收集 schema 原始名并计算冲突消歧映射。
+ */
+function collectComponentSchemaNames(
+  componentsNode: ts.InterfaceDeclaration,
+  namingStyle: NamingStyle,
+  warnings?: WarningsCollector,
+): Map<string, string> {
+  const names: string[] = [];
+
+  for (const member of componentsNode.members) {
+    if (!ts.isPropertySignature(member) || !member.name) continue;
+    const propName = (member.name as ts.Identifier).text;
+    if (
+      propName !== 'schemas' ||
+      !member.type ||
+      !ts.isTypeLiteralNode(member.type)
+    ) {
+      continue;
+    }
+
+    for (const schemaMember of member.type.members) {
+      if (!ts.isPropertySignature(schemaMember) || !schemaMember.name) continue;
+      const raw = extractStringFromNode(schemaMember.name);
+      if (!raw) continue;
+      names.push(decodeSchemaName(raw));
+    }
+  }
+
+  return resolveComponentSchemaNames(names, namingStyle, warnings);
+}
+
+function buildExtractors(
+  ctx: ParseContext,
+  schemaNameMap?: Map<string, string>,
+): Extractors {
   const pathClassifier = new PathClassifier(ctx.pathClassification);
   const genericDetector = new GenericDetector();
 
   const schemaExtractor = new SchemaExtractor(
     ctx.genericBaseTypes,
     ctx.namingStyle,
+    schemaNameMap,
   );
   const interfaceGenerator = new InterfaceGenerator(
     ctx.genericBaseTypes,
     ctx.interfaceExportMode,
     ctx.genericInfoMap,
     ctx.namingStyle,
+    schemaNameMap,
   );
   const requestResponseExtractor = new RequestResponseExtractor(
     genericDetector,
@@ -291,6 +341,7 @@ function buildExtractors(ctx: ParseContext): Extractors {
     ctx.schemas,
     interfaceGenerator,
     ctx.interfaces,
+    schemaNameMap,
   );
   const parameterExtractor = new ParameterExtractor(
     ctx.namingStyle,

@@ -34,6 +34,11 @@ export class SchemaExtractor {
   private readonly genericBaseTypes: Map<string, string>;
   /** 命名风格 */
   private readonly namingStyle: NamingStyle;
+  /**
+   * 组件 schema 名称映射（原始名 -> 消歧后的输出名），由适配器预计算。
+   * 保证命名风格转换坍缩的两个 schema 不会静默互相覆盖。
+   */
+  private readonly schemaNameMap?: Map<string, string>;
   /** 缓存的正则表达式 */
   private readonly descRegex = /^\*\s*@description\s+(.+)$/;
   private readonly exampleRegex = /^\*\s*@example\s*(.*)$/;
@@ -45,9 +50,11 @@ export class SchemaExtractor {
   constructor(
     genericBaseTypes: Map<string, string>,
     namingStyle: NamingStyle = 'PascalCase',
+    schemaNameMap?: Map<string, string>,
   ) {
     this.genericBaseTypes = genericBaseTypes;
     this.namingStyle = namingStyle;
+    this.schemaNameMap = schemaNameMap;
   }
 
   /**
@@ -81,10 +88,9 @@ export class SchemaExtractor {
           const schemaName = decodeSchemaName(schemaNameRaw);
 
           const originalName = schemaName;
-          const convertedName = NamingUtils.convert(
-            originalName,
-            this.namingStyle,
-          );
+          const convertedName =
+            this.schemaNameMap?.get(originalName) ??
+            NamingUtils.convert(originalName, this.namingStyle);
 
           const schema = this.typeNodeToSchema(
             convertedName,

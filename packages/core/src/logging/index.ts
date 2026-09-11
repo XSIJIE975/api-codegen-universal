@@ -141,6 +141,7 @@ export type WarningType =
   | 'fixedBrokenRefs'
   | 'fixedNullTypes'
   | 'renamedDuplicateOperationIds'
+  | 'renamedCollidingSchemas'
   | 'validationSkipped';
 
 export interface WarningsSummaryMeta {
@@ -199,6 +200,13 @@ export interface WarningsSummaryMeta {
      */
     renamedDuplicateOperationIds?: number;
     /**
+     * 归一化后名称冲突的 schema 重命名次数。
+     *
+     * 两个不同的 schema 名（如 `user_profile` 与 `userProfile`）经命名风格
+     * 转换后可能坍缩为同一个输出名，后续者会追加数字后缀消歧。
+     */
+    renamedCollidingSchemas?: number;
+    /**
      * 是否启用了 swagger-parser 校验。
      *
      * - enabled: 进行了校验
@@ -222,6 +230,12 @@ export interface WarningsSummaryMeta {
      * 仅保留部分样本，数量受 `logSampleLimit` 限制。
      */
     renamedSchemas?: Array<{ from: string; to: string }>;
+    /**
+     * 名称冲突消歧样本列表（from：原 schema 名；to：消歧后的输出名）。
+     *
+     * 仅保留部分样本，数量受 `logSampleLimit` 限制。
+     */
+    collidingSchemas?: Array<{ from: string; to: string }>;
     /**
      * operationId 重命名样本列表。
      *
@@ -263,6 +277,8 @@ export function createWarningsCollector(params: {
     path: string;
     method: string;
   }) => void;
+  /** 记录一次名称冲突 schema 消歧（带 sample） */
+  addCollidingSchema: (from: string, to: string) => void;
   /**
    * 输出 warnings summary（Scheme A：仅在末尾输出一次汇总）。
    *
@@ -297,6 +313,7 @@ export function createWarningsCollector(params: {
     (stats.fixedBrokenRefs ?? 0) +
     (stats.fixedNullTypes ?? 0) +
     (stats.renamedDuplicateOperationIds ?? 0) +
+    (stats.renamedCollidingSchemas ?? 0) +
     (stats.validation === 'skipped' ? 1 : 0);
 
   return {
@@ -315,6 +332,9 @@ export function createWarningsCollector(params: {
       } else if (type === 'renamedDuplicateOperationIds') {
         stats.renamedDuplicateOperationIds =
           (stats.renamedDuplicateOperationIds ?? 0) + 1;
+      } else if (type === 'renamedCollidingSchemas') {
+        stats.renamedCollidingSchemas =
+          (stats.renamedCollidingSchemas ?? 0) + 1;
       }
     },
     addRenamedSchema: (from, to) => {
@@ -335,6 +355,13 @@ export function createWarningsCollector(params: {
         samples.duplicateOperationIds,
         p,
       );
+    },
+    addCollidingSchema: (from, to) => {
+      stats.renamedCollidingSchemas = (stats.renamedCollidingSchemas ?? 0) + 1;
+      samples.collidingSchemas = ensureLimitPush(samples.collidingSchemas, {
+        from,
+        to,
+      });
     },
     flush: ({ durationMs, validation }) => {
       stats.validation = validation;

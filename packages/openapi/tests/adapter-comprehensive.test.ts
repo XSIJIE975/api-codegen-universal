@@ -613,3 +613,73 @@ describe('OpenAPIAdapter - URL-encoded schema name consistency', () => {
     expect(result.interfaces[ref!]).toBeDefined();
   });
 });
+
+// ===================================================================================
+// Schema 名称归一化冲突消歧测试（此前会静默互相覆盖）
+// ===================================================================================
+
+describe('OpenAPIAdapter - schema name collision disambiguation', () => {
+  const doc = {
+    openapi: '3.0.0',
+    info: { title: 'Collisions', version: '1.0.0' },
+    paths: {
+      '/profiles': {
+        get: {
+          operationId: 'getProfile',
+          responses: {
+            '200': {
+              description: 'ok',
+              content: {
+                'application/json': {
+                  // 引用冲突组中的第二个 schema
+                  schema: { $ref: '#/components/schemas/userProfile' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        user_profile: {
+          type: 'object',
+          properties: { from_snake: { type: 'string' } },
+        },
+        userProfile: {
+          type: 'object',
+          properties: { from_camel: { type: 'string' } },
+        },
+      },
+    },
+  };
+
+  it('should keep both colliding schemas instead of overwriting', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    // 文档顺序：user_profile 保留 UserProfile，userProfile 消歧为 UserProfile2
+    expect(result.schemas['UserProfile']?.properties?.from_snake).toBeDefined();
+    expect(
+      result.schemas['UserProfile2']?.properties?.from_camel,
+    ).toBeDefined();
+  });
+
+  it('should generate interface code for both colliding schemas', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    expect(result.interfaces['UserProfile']).toContain('from_snake');
+    expect(result.interfaces['UserProfile2']).toContain('from_camel');
+  });
+
+  it('should resolve response refs to the disambiguated name', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const ref =
+      result.apis[0]?.responses['200']?.content?.['application/json']?.schema
+        ?.ref;
+    expect(ref).toBe('UserProfile2');
+  });
+});
