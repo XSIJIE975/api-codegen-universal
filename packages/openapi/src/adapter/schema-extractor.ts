@@ -199,7 +199,9 @@ export class SchemaExtractor {
     for (const text of commentTexts) {
       const lines = text.split('\n');
       let collectingExample = false;
+      let collectingDescription = false;
       let exampleLines: string[] = [];
+      const descriptionParts: string[] = [];
 
       for (const line of lines) {
         const trimmedLine = line.trim();
@@ -215,11 +217,27 @@ export class SchemaExtractor {
           }
         }
 
-        // @description 标签
+        // 如果正在收集 description 续行：
+        // 遇到下一个 @ 标签 / 注释结束 / 非 * 行则停止，否则累积
+        if (collectingDescription) {
+          if (
+            trimmedLine.startsWith('* @') ||
+            trimmedLine === '*/' ||
+            !trimmedLine.startsWith('*')
+          ) {
+            collectingDescription = false;
+          } else {
+            descriptionParts.push(trimmedLine.replace(/^\*\s*/, ''));
+            continue;
+          }
+        }
+
+        // @description 标签（含后续多行）
         if (!collectingExample) {
           const descMatch = trimmedLine.match(this.descRegex);
           if (descMatch && descMatch[1]) {
-            description = descMatch[1].trim();
+            descriptionParts.push(descMatch[1].trim());
+            collectingDescription = true;
             continue;
           }
         }
@@ -250,16 +268,16 @@ export class SchemaExtractor {
           if (enumMatch) continue;
         }
 
-        // 普通注释内容
+        // 普通注释内容（无标签时的首行作为 description）
         if (
           !collectingExample &&
-          !description &&
+          descriptionParts.length === 0 &&
           trimmedLine.startsWith('*') &&
           !trimmedLine.startsWith('* @')
         ) {
           const plainMatch = trimmedLine.match(this.plainRegex);
           if (plainMatch && plainMatch[1]) {
-            description = plainMatch[1].trim();
+            descriptionParts.push(plainMatch[1].trim());
           }
         }
       }
@@ -267,6 +285,10 @@ export class SchemaExtractor {
       // 处理注释结束时仍在收集的 example
       if (collectingExample && exampleLines.length > 0) {
         example = parseExampleLines(exampleLines);
+      }
+
+      if (descriptionParts.length > 0) {
+        description = descriptionParts.join('\n');
       }
     }
 

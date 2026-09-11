@@ -52,8 +52,6 @@ export class RequestResponseExtractor {
   private readonly interfaceGenerator: InterfaceGenerator;
   /** 接口代码集合（共享累加器） */
   private readonly interfaces: Record<string, string>;
-  /** 缓存的正则表达式，用于提取 JSDoc 中的 @description */
-  private readonly descriptionRegex = /\*\s*@description\s+(.+?)\s*$/;
   /** 已生成的 schema 名称集合，用于避免重复 */
   private readonly generatedSchemaNames = new Set<string>();
   /** TypeNode 内容到 schema 名称的映射缓存 */
@@ -365,15 +363,41 @@ export class RequestResponseExtractor {
   }
 
   /**
-   * 提取单个 status 的描述（从合成前导注释中的 @description）
+   * 提取单个 status 的描述（从合成前导注释中的 @description，含多行续行）
    */
   private extractStatusDescription(
     member: ts.PropertySignature,
   ): string | undefined {
     const commentTexts = getSyntheticLeadingCommentTexts(member);
+
     for (const text of commentTexts) {
-      const match = text.match(this.descriptionRegex);
-      if (match && match[1]) return match[1].trim();
+      const parts: string[] = [];
+      let collectingDescription = false;
+
+      for (const line of text.split('\n')) {
+        const trimmedLine = line.trim();
+
+        if (collectingDescription) {
+          if (
+            trimmedLine.startsWith('* @') ||
+            trimmedLine === '*/' ||
+            !trimmedLine.startsWith('*')
+          ) {
+            collectingDescription = false;
+          } else {
+            parts.push(trimmedLine.replace(/^\*\s*/, ''));
+            continue;
+          }
+        }
+
+        const match = trimmedLine.match(/^\*\s*@description\s+(.+)$/);
+        if (match && match[1]) {
+          parts.push(match[1].trim());
+          collectingDescription = true;
+        }
+      }
+
+      if (parts.length > 0) return parts.join('\n');
     }
     return undefined;
   }

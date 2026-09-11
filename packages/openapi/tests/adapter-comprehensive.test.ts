@@ -750,3 +750,59 @@ describe('OpenAPIAdapter - rawType preservation for non-structural types', () =>
     expect(list?.rawType).toBe('A[]');
   });
 });
+
+// ===================================================================================
+// 多行 description 保留测试（此前只取第一行）
+// ===================================================================================
+
+describe('OpenAPIAdapter - multi-line descriptions', () => {
+  const doc = {
+    openapi: '3.0.0',
+    info: { title: 'Multiline', version: '1.0.0' },
+    paths: {
+      '/x': {
+        get: {
+          operationId: 'getX',
+          responses: {
+            '200': {
+              description: 'status line1\nstatus line2',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/Foo' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        Foo: {
+          type: 'object',
+          properties: {
+            a: { type: 'string', description: 'prop line1\nprop line2' },
+          },
+        },
+      },
+    },
+  };
+
+  it('should keep all lines of a property description', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const propA = result.schemas['Foo']?.properties?.a;
+    expect(propA?.description).toContain('prop line1');
+    expect(propA?.description).toContain('prop line2');
+  });
+
+  it('should keep all lines of a response status description', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const desc = result.apis[0]?.responses['200']?.description;
+    expect(desc).toContain('status line1');
+    expect(desc).toContain('status line2');
+  });
+});
