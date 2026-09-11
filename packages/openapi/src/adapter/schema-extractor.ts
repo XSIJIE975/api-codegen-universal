@@ -16,6 +16,7 @@ import type {
 } from '@api-codegen-universal/core';
 import {
   decodeSchemaName,
+  getSyntheticLeadingCommentTexts,
   extractStringFromNode,
   sharedPrinter,
   sharedSourceFile,
@@ -190,20 +191,13 @@ export class SchemaExtractor {
     let format: string | undefined;
     let enumValues: (string | number)[] | undefined;
 
-    const nodeWithEmit = node as ts.Node & {
-      emitNode?: {
-        leadingComments?: Array<{ kind: number; text: string }>;
-      };
-    };
-
-    if (!nodeWithEmit.emitNode?.leadingComments) {
+    const commentTexts = getSyntheticLeadingCommentTexts(node);
+    if (commentTexts.length === 0) {
       return { description, example, format, enumValues };
     }
 
-    for (const comment of nodeWithEmit.emitNode.leadingComments) {
-      if (!comment.text) continue;
-
-      const lines = comment.text.split('\n');
+    for (const text of commentTexts) {
+      const lines = text.split('\n');
       let collectingExample = false;
       let exampleLines: string[] = [];
 

@@ -19,6 +19,7 @@ import type {
 import {
   extractStringFromNode,
   extractSchemaReference,
+  getSyntheticLeadingCommentTexts,
   sharedPrinter,
   sharedSourceFile,
 } from './ast-utils';
@@ -364,21 +365,14 @@ export class RequestResponseExtractor {
   }
 
   /**
-   * 提取单个 status 的描述（从 emitNode.leadingComments 中的 @description）
+   * 提取单个 status 的描述（从合成前导注释中的 @description）
    */
   private extractStatusDescription(
     member: ts.PropertySignature,
   ): string | undefined {
-    const memberWithEmit = member as ts.Node & {
-      emitNode?: {
-        leadingComments?: Array<{ kind: number; text: string }>;
-      };
-    };
-    if (!memberWithEmit.emitNode?.leadingComments) return undefined;
-
-    for (const comment of memberWithEmit.emitNode.leadingComments) {
-      if (!comment.text) continue;
-      const match = comment.text.match(this.descriptionRegex);
+    const commentTexts = getSyntheticLeadingCommentTexts(member);
+    for (const text of commentTexts) {
+      const match = text.match(this.descriptionRegex);
       if (match && match[1]) return match[1].trim();
     }
     return undefined;

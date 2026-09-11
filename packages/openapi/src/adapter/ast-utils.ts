@@ -188,6 +188,17 @@ export function simplifyTypeReference(
 // ===================================================================================
 
 /**
+ * 提取节点上合成前导注释的文本列表。
+ *
+ * 统一通过官方 API ts.getSyntheticLeadingComments 读取，
+ * 避免直接依赖 TypeScript 内部结构（node.emitNode），降低 TS 升级风险。
+ */
+export function getSyntheticLeadingCommentTexts(node: ts.Node): string[] {
+  const comments = ts.getSyntheticLeadingComments(node) ?? [];
+  return comments.map((c) => c.text).filter((text): text is string => !!text);
+}
+
+/**
  * 提取 JSDoc 注释内容
  */
 export function extractJSDocComment(node: ts.Node): string | undefined {
