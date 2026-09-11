@@ -38,10 +38,12 @@ export class PathClassifier {
 
   private removePrefix(path: string): string {
     if (!this.commonPrefix) return path;
-    if (path.startsWith(this.commonPrefix)) {
-      return path.slice(this.commonPrefix.length);
-    }
-    return path;
+    if (!path.startsWith(this.commonPrefix)) return path;
+    // 只允许在路径段边界处剥离前缀：前缀后必须紧跟 '/' 或到达字符串结尾，
+    // 避免 commonPrefix='/api' 误剥 '/apis/users' 得到 's/users'。
+    const rest = path.slice(this.commonPrefix.length);
+    if (rest !== '' && !rest.startsWith('/')) return path;
+    return rest;
   }
 
   private extractSegments(path: string): string[] {

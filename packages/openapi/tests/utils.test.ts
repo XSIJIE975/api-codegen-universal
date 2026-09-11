@@ -255,3 +255,17 @@ test('PathClassifier.classify: commonPrefix not matching leaves path intact', ()
   const result = classifier.classify('/other/users');
   expect(result.segments).toEqual(['other', 'users']);
 });
+
+test('PathClassifier.classify: commonPrefix only strips at segment boundary', () => {
+  // '/api' 不应剥掉 '/apis/users' 的前 4 个字符（否则得到 's/users'）
+  const classifier = new PathClassifier({ commonPrefix: '/api' });
+  const result = classifier.classify('/apis/users');
+  expect(result.segments).toEqual(['apis', 'users']);
+  expect(result.filePath).toBe('api/apis/users/index.ts');
+});
+
+test('PathClassifier.classify: commonPrefix matching full path yields unclassified', () => {
+  const classifier = new PathClassifier({ commonPrefix: '/api/v1' });
+  const result = classifier.classify('/api/v1');
+  expect(result.isUnclassified).toBe(true);
+});
