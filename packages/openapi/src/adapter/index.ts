@@ -191,12 +191,31 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
    * 验证输入源
    * 检查是否为有效的 OpenAPI 文档
    *
+   * 对 URL / 文件路径输入会先经 loadDocument 加载（fetch 受
+   * fetchTimeoutMs 约束，默认 30s），避免验证阶段无超时等待。
+   * Stream 输入无法二次读取，仍直接交给 openapiTS 消费。
+   *
    * @param source 输入源
+   * @param options 可选配置（fetchTimeoutMs / transform）
    * @returns 是否有效
    */
-  async validate(source: InputSource): Promise<boolean> {
+  async validate(
+    source: InputSource,
+    options?: OpenAPIOptions,
+  ): Promise<boolean> {
     try {
-      await openapiTS(source);
+      const isStream =
+        typeof source === 'object' &&
+        source !== null &&
+        ('read' in source || 'getReader' in source);
+
+      if (isStream) {
+        await openapiTS(source);
+        return true;
+      }
+
+      const doc = await loadDocument(source, options?.fetchTimeoutMs);
+      await openapiTS(doc as InputSource, { transform: options?.transform });
       return true;
     } catch {
       return false;

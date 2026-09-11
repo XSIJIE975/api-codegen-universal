@@ -292,3 +292,31 @@ test('OpenAPIAdapter should default fetchTimeoutMs to 30000 for URL input', asyn
 
   expect(timeoutCalls).toContain(30_000);
 });
+
+test('OpenAPIAdapter.validate should pass fetchTimeoutMs to AbortSignal.timeout for URL input', async () => {
+  const { timeoutCalls, restore } = mockFetchAndTimeout();
+  const adapter = new OpenAPIAdapter();
+  try {
+    const ok = await adapter.validate('https://example.com/openapi.json', {
+      fetchTimeoutMs: 2500,
+    });
+    expect(ok).toBe(true);
+  } finally {
+    restore();
+  }
+
+  expect(timeoutCalls).toContain(2500);
+});
+
+test('OpenAPIAdapter.validate should return false when fetch fails', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response('nope', { status: 500 })) as typeof fetch;
+  const adapter = new OpenAPIAdapter();
+  try {
+    const ok = await adapter.validate('https://example.com/openapi.json');
+    expect(ok).toBe(false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
