@@ -71,6 +71,11 @@ const wordBoundaryGlobalCache = new Map<string, RegExp>();
 /**
  * 构造一个带单词边界和全局标志的正则，适用于 .replace() 全局替换。
  * 结果会被缓存，相同 target 返回同一 RegExp 实例。
+ *
+ * 注意：返回的是共享缓存实例且带 `g` 标志——正则的 `lastIndex` 会在
+ * .test() / .exec() 之间残留，导致间歇性匹配失败。因此**只可用于
+ * .replace()**（每次调用自动重置 lastIndex）；如需 .test()，请使用
+ * wordBoundaryRegex（无 g 标志，无状态）。
  */
 export function wordBoundaryRegexGlobal(target: string): RegExp {
   const cached = wordBoundaryGlobalCache.get(target);
