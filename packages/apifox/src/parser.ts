@@ -351,26 +351,7 @@ export class ApifoxAdapter
     const baseUrl = 'https://api.apifox.com/v1';
     const url = `${baseUrl}/projects/${config.projectId}/export-openapi`;
 
-    const requestBody: ApifoxExportToOpenAPIOptions = {
-      exportFormat: 'JSON',
-      oasVersion: '3.0',
-      scope: { type: 'ALL' },
-      options: {
-        addFoldersToTags: false,
-        includeApifoxExtensionProperties: false,
-      },
-      ...config.exportOptions,
-    };
-
-    if (config.exportOptions?.scope) {
-      requestBody.scope = config.exportOptions.scope;
-    }
-    if (config.exportOptions?.options) {
-      requestBody.options = {
-        ...requestBody.options,
-        ...config.exportOptions.options,
-      };
-    }
+    const requestBody = buildExportRequestBody(config.exportOptions);
 
     // 验证 timeoutMs 是否为有效的正数
     const timeoutMs = fetchTimeoutMs ?? 30_000;
@@ -593,6 +574,30 @@ export class ApifoxAdapter
 // ===================================================================================
 // 辅助函数
 // ===================================================================================
+
+/**
+ * 构造 Apifox 导出 API 的请求体。
+ *
+ * 逐键回退默认值（而非展开整个 exportOptions），保证调用方显式传入
+ * `undefined` 的键不会覆盖默认配置。
+ * 导出为独立纯函数，便于单测（避免 mock 全局 fetch）。
+ */
+export function buildExportRequestBody(
+  exportOptions: Partial<ApifoxExportToOpenAPIOptions> | undefined,
+): ApifoxExportToOpenAPIOptions {
+  const exportOpts = exportOptions ?? {};
+
+  return {
+    exportFormat: exportOpts.exportFormat ?? 'JSON',
+    oasVersion: exportOpts.oasVersion ?? '3.0',
+    scope: exportOpts.scope ?? { type: 'ALL' },
+    options: {
+      addFoldersToTags: false,
+      includeApifoxExtensionProperties: false,
+      ...exportOpts.options,
+    },
+  };
+}
 
 function isObject(value: unknown): value is OpenAPIRawObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

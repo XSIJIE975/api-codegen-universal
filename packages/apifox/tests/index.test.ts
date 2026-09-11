@@ -1,5 +1,6 @@
 import { test, expect } from '@rstest/core';
 import { ApifoxAdapter } from '../src';
+import { buildExportRequestBody } from '../src/parser';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -460,4 +461,42 @@ test('ApifoxAdapter should default fetchTimeoutMs to 30000 when not provided', a
   }
 
   expect(timeoutCalls).toContain(30_000);
+});
+
+test('buildExportRequestBody: explicit undefined exportOptions keys must not override defaults', () => {
+  const body = buildExportRequestBody({
+    scope: undefined,
+    oasVersion: '3.1',
+  } as never);
+  expect(body.scope).toEqual({ type: 'ALL' });
+  expect(body.oasVersion).toBe('3.1');
+  expect(body.options).toEqual({
+    addFoldersToTags: false,
+    includeApifoxExtensionProperties: false,
+  });
+});
+
+test('buildExportRequestBody: explicit scope and options are merged over defaults', () => {
+  const body = buildExportRequestBody({
+    scope: { type: 'SELECTED_TAGS', selectedTags: ['a'] },
+    options: { addFoldersToTags: true },
+  });
+  expect(body.scope).toEqual({ type: 'SELECTED_TAGS', selectedTags: ['a'] });
+  expect(body.options).toEqual({
+    addFoldersToTags: true,
+    includeApifoxExtensionProperties: false,
+  });
+});
+
+test('buildExportRequestBody: empty options yield full defaults', () => {
+  const body = buildExportRequestBody(undefined);
+  expect(body).toEqual({
+    exportFormat: 'JSON',
+    oasVersion: '3.0',
+    scope: { type: 'ALL' },
+    options: {
+      addFoldersToTags: false,
+      includeApifoxExtensionProperties: false,
+    },
+  });
 });
