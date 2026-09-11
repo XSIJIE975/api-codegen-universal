@@ -14,9 +14,8 @@ import type { NamingStyle } from '@api-codegen-universal/core';
 import {
   decodeSchemaName,
   extractStringFromNode,
+  printNodeCached,
   simplifyTypeReference,
-  sharedPrinter,
-  sharedSourceFile,
 } from './ast-utils';
 import { NamingUtils } from '../utils/naming-utils';
 import {
@@ -190,11 +189,7 @@ export class InterfaceGenerator {
    * 检查 TypeNode 是否引用了目标类型
    */
   private isTypeNodeRefTo(typeNode: ts.TypeNode, target: string): boolean {
-    const typeStr = sharedPrinter.printNode(
-      ts.EmitHint.Unspecified,
-      typeNode,
-      sharedSourceFile,
-    );
+    const typeStr = printNodeCached(typeNode);
     const simple = simplifyTypeReference(typeStr);
     return isTypeRefTo(simple, target);
   }
@@ -223,11 +218,7 @@ export class InterfaceGenerator {
     const exportKeyword =
       this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
     const genericPart = isGeneric ? '<T = any>' : '';
-    const typeText = sharedPrinter.printNode(
-      ts.EmitHint.Unspecified,
-      typeNode,
-      sharedSourceFile,
-    );
+    const typeText = printNodeCached(typeNode);
     return `${exportKeyword}type ${name}${genericPart} = ${simplifyTypeReference(typeText)};`;
   }
 
@@ -251,11 +242,7 @@ export class InterfaceGenerator {
       if (!ts.isPropertySignature(member) || !member.name || !member.type)
         continue;
 
-      let memberText = sharedPrinter.printNode(
-        ts.EmitHint.Unspecified,
-        member,
-        sharedSourceFile,
-      );
+      let memberText = printNodeCached(member);
       memberText = simplifyTypeReference(memberText, (n) =>
         NamingUtils.convert(n, this.namingStyle),
       );
@@ -266,11 +253,7 @@ export class InterfaceGenerator {
         const commentMatch = memberText.match(this.commentRegex);
         const comment = commentMatch ? commentMatch[1] + '\n' : '';
 
-        const typeText = sharedPrinter.printNode(
-          ts.EmitHint.Unspecified,
-          member.type,
-          sharedSourceFile,
-        );
+        const typeText = printNodeCached(member.type);
         const simplifiedType = simplifyTypeReference(typeText, (n) =>
           NamingUtils.convert(n, this.namingStyle),
         );

@@ -18,8 +18,7 @@ import {
   decodeSchemaName,
   getSyntheticLeadingCommentTexts,
   extractStringFromNode,
-  sharedPrinter,
-  sharedSourceFile,
+  printNodeCached,
   typeNodeToString,
 } from './ast-utils';
 import { NamingUtils } from '../utils/naming-utils';
@@ -481,9 +480,7 @@ export class SchemaExtractor {
     const enumValues: (string | number)[] = [];
 
     for (const t of node.types) {
-      const text = sharedPrinter
-        .printNode(ts.EmitHint.Unspecified, t, sharedSourceFile)
-        .trim();
+      const text = printNodeCached(t).trim();
 
       const stringMatch = text.match(this.stringLiteralRegex);
       if (stringMatch && typeof stringMatch[1] === 'string') {

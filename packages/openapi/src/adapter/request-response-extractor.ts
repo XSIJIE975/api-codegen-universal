@@ -21,8 +21,7 @@ import {
   extractStringFromNode,
   extractSchemaReference,
   getSyntheticLeadingCommentTexts,
-  sharedPrinter,
-  sharedSourceFile,
+  printNodeCached,
 } from './ast-utils';
 import { GenericDetector } from '../utils/generic-detector';
 import { NamingUtils } from '../utils/naming-utils';
@@ -217,11 +216,7 @@ export class RequestResponseExtractor {
    * 生成 TypeNode 的内容签名
    */
   private getTypeNodeSignature(typeNode: ts.TypeNode): string {
-    return sharedPrinter.printNode(
-      ts.EmitHint.Unspecified,
-      typeNode,
-      sharedSourceFile,
-    );
+    return printNodeCached(typeNode);
   }
 
   /**
@@ -258,9 +253,7 @@ export class RequestResponseExtractor {
       typeNode.members as readonly ts.TypeElement[],
     );
 
-    return sharedPrinter
-      .printNode(ts.EmitHint.Unspecified, interfaceDecl, sharedSourceFile)
-      .trim();
+    return printNodeCached(interfaceDecl).trim();
   }
 
   /**
@@ -498,11 +491,7 @@ export class RequestResponseExtractor {
     contentType?: string,
   ): SchemaReference | undefined {
     // 检测泛型模式
-    const typeText = sharedPrinter.printNode(
-      ts.EmitHint.Unspecified,
-      typeNode,
-      sharedSourceFile,
-    );
+    const typeText = printNodeCached(typeNode);
     const genericResult = this.genericDetector.detect(typeText);
 
     if (

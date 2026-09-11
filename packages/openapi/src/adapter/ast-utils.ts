@@ -110,6 +110,32 @@ export const sharedSourceFile = ts.createSourceFile(
   ts.ScriptKind.TS,
 );
 
+/**
+ * 同一节点的打印结果缓存。
+ *
+ * printNode 对同一节点（同一 printer/hint/sourceFile）输出确定，
+ * 而 schema 提取、interface 生成与泛型检测会对同一成员多次打印；
+ * WeakMap 以节点为键，不阻止垃圾回收。
+ */
+const printNodeCache = new WeakMap<ts.Node, string>();
+
+/**
+ * 打印节点（带缓存）。
+ * 等价于 sharedPrinter.printNode(Unspecified, node, sharedSourceFile)，
+ * 对同一节点重复调用直接命中缓存。
+ */
+export function printNodeCached(node: ts.Node): string {
+  const cached = printNodeCache.get(node);
+  if (cached !== undefined) return cached;
+  const text = sharedPrinter.printNode(
+    ts.EmitHint.Unspecified,
+    node,
+    sharedSourceFile,
+  );
+  printNodeCache.set(node, text);
+  return text;
+}
+
 // ===================================================================================
 // 类型字符串转换
 // ===================================================================================
@@ -122,11 +148,7 @@ export function typeNodeToString(
   typeNode: ts.TypeNode,
   nameConverter?: (name: string) => string,
 ): string {
-  let typeStr = sharedPrinter.printNode(
-    ts.EmitHint.Unspecified,
-    typeNode,
-    sharedSourceFile,
-  );
+  let typeStr = printNodeCached(typeNode);
 
   // 处理 components["schemas"]["XXX"] 格式
   typeStr = typeStr.replace(
