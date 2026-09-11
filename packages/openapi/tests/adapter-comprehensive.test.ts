@@ -806,3 +806,67 @@ describe('OpenAPIAdapter - multi-line descriptions', () => {
     expect(desc).toContain('status line2');
   });
 });
+
+// ===================================================================================
+// 响应头提取测试（此前 headers 被完全忽略）
+// ===================================================================================
+
+describe('OpenAPIAdapter - response headers extraction', () => {
+  const doc = {
+    openapi: '3.0.0',
+    info: { title: 'Headers', version: '1.0.0' },
+    paths: {
+      '/rate': {
+        get: {
+          operationId: 'getRate',
+          responses: {
+            '200': {
+              description: 'ok',
+              headers: {
+                'X-Rate-Limit': {
+                  description: 'Requests per hour',
+                  schema: { type: 'integer' },
+                },
+                'X-Optional-Header': {
+                  description: 'optional one',
+                  schema: { type: 'string' },
+                  required: false,
+                },
+              },
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: { n: { type: 'integer' } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  it('should extract response headers with schema refs', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const headers = result.apis[0]?.responses['200']?.headers;
+    expect(headers).toBeDefined();
+    expect(headers?.['X-Rate-Limit']).toBeDefined();
+    expect(headers?.['X-Rate-Limit']?.description).toBe('Requests per hour');
+    expect(headers?.['X-Rate-Limit']?.schema.ref).toBe('number');
+    // OpenAPI 规范中响应头没有 required 概念，openapi-typescript 一律编码为可选
+    expect(headers?.['X-Rate-Limit']?.required).toBe(false);
+  });
+
+  it('should treat all response headers as optional per the OpenAPI spec', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const headers = result.apis[0]?.responses['200']?.headers;
+    // required: false 声明为可选
+    expect(headers?.['X-Optional-Header']?.required).toBe(false);
+  });
+});

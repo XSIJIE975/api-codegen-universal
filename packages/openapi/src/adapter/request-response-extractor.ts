@@ -15,6 +15,7 @@ import type {
   SchemaReference,
   SchemaDefinition,
   NamingStyle,
+  HeaderDefinition,
 } from '@api-codegen-universal/core';
 import {
   extractStringFromNode,
@@ -332,7 +333,7 @@ export class RequestResponseExtractor {
 
   /**
    * 提取 responses 定义
-   * 处理状态码、描述、响应内容
+   * 处理状态码、描述、响应头、响应内容
    * 支持自动提取内联类型为独立 Schema
    */
   extractResponses(
@@ -350,16 +351,66 @@ export class RequestResponseExtractor {
         if (statusCode && ts.isTypeLiteralNode(member.type)) {
           const description = this.extractStatusDescription(member);
           const content = this.extractResponseContent(member.type, operationId);
+          const headers = this.extractResponseHeaders(member.type);
 
           responses[statusCode] = {
             description: description || `Response for status ${statusCode}`,
             content: Object.keys(content).length > 0 ? content : undefined,
+            headers: Object.keys(headers).length > 0 ? headers : undefined,
           };
         }
       }
     }
 
     return responses;
+  }
+
+  /**
+   * 提取响应头定义
+   *
+   * openapi-typescript 将每个响应头生成为 `headers` 下的属性：
+   * ```
+   * headers: {
+   *     /** @description ... *\/
+   *     "X-Rate-Limit"?: number;
+   * }
+   * ```
+   * - description 挂在属性注释上；
+   * - 头的 `required`（OpenAPI 默认 true）以可选属性标记的缺失编码；
+   * - `[name: string]: unknown` 索引签名不是真实响应头，跳过。
+   */
+  private extractResponseHeaders(
+    statusTypeLiteral: ts.TypeLiteralNode,
+  ): Record<string, HeaderDefinition> {
+    const headers: Record<string, HeaderDefinition> = {};
+
+    for (const respMember of statusTypeLiteral.members) {
+      if (!ts.isPropertySignature(respMember) || !respMember.name) continue;
+      const propName = (respMember.name as ts.Identifier).text;
+
+      if (propName !== 'headers' || !respMember.type) continue;
+      if (!ts.isTypeLiteralNode(respMember.type)) continue;
+
+      for (const headerMember of respMember.type.members) {
+        if (!ts.isPropertySignature(headerMember) || !headerMember.name)
+          continue;
+        const headerName = extractStringFromNode(headerMember.name);
+        if (!headerName || !headerMember.type) continue;
+
+        const ref = this.resolveSchemaRef(headerMember.type);
+        if (!ref) continue;
+
+        headers[headerName] = {
+          description: this.extractStatusDescription(headerMember),
+          schema: { type: 'ref', ref },
+          // OpenAPI 中 header 的 required 默认为 true，
+          // openapi-typescript 将非必填编码为可选属性标记
+          required: !headerMember.questionToken,
+        };
+      }
+    }
+
+    return headers;
   }
 
   /**
