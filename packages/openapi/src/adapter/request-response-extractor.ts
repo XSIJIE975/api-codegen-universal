@@ -254,10 +254,17 @@ export class RequestResponseExtractor {
 
   /**
    * 提取 requestBody 定义
+   *
+   * @param typeNode requestBody 的类型节点
+   * @param operationId 操作 ID（用于派生内联 schema 名称）
+   * @param required 请求体是否必填。openapi-typescript 将 `required: false`
+   *   （及规范默认的未指定）编码为属性可选标记（questionToken），
+   *   调用方应从 `!member.questionToken` 还原传入。
    */
   extractRequestBody(
     typeNode: ts.TypeNode,
     operationId?: string,
+    required = true,
   ): ApiDefinition['requestBody'] {
     if (!ts.isTypeLiteralNode(typeNode)) return undefined;
 
@@ -304,7 +311,7 @@ export class RequestResponseExtractor {
           }
 
           if (Object.keys(content).length > 0) {
-            return { content, required: true };
+            return { content, required };
           }
         }
       }

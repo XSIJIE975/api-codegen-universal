@@ -203,9 +203,12 @@ export class ApiExtractor {
           interfaces,
         );
       } else if (propName === 'requestBody' && member.type) {
+        // openapi-typescript 将 required: false（及规范默认的未指定）
+        // 编码为属性可选标记，此处从 questionToken 还原
         api.requestBody = this.requestResponseExtractor.extractRequestBody(
           member.type,
           operationId,
+          !member.questionToken,
         );
       } else if (propName === 'responses' && member.type) {
         api.responses = this.requestResponseExtractor.extractResponses(

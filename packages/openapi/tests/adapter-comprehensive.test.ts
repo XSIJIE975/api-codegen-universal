@@ -502,3 +502,51 @@ describe('OpenAPIAdapter - HttpMethod completeness', () => {
     expect(result.apis[0]?.operationId).toBe('getUsers');
   });
 });
+
+// ===================================================================================
+// requestBody.required 还原测试（此前被硬编码为 true）
+// ===================================================================================
+
+describe('OpenAPIAdapter - requestBody required flag', () => {
+  const buildDoc = (required: boolean | undefined) => ({
+    openapi: '3.0.0',
+    info: { title: 'ReqBody API', version: '1.0.0' },
+    paths: {
+      '/items': {
+        post: {
+          operationId: 'postItem',
+          requestBody: {
+            ...(required !== undefined ? { required } : {}),
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { a: { type: 'string' } },
+                },
+              },
+            },
+          },
+          responses: { '200': { description: 'ok' } },
+        },
+      },
+    },
+  });
+
+  it('should preserve required: true', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(buildDoc(true));
+    expect(result.apis[0]?.requestBody?.required).toBe(true);
+  });
+
+  it('should preserve required: false', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(buildDoc(false));
+    expect(result.apis[0]?.requestBody?.required).toBe(false);
+  });
+
+  it('should default to false when required is unspecified (per OpenAPI spec)', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(buildDoc(undefined));
+    expect(result.apis[0]?.requestBody?.required).toBe(false);
+  });
+});
