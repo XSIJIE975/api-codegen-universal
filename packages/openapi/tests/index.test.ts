@@ -320,3 +320,32 @@ test('OpenAPIAdapter.validate should return false when fetch fails', async () =>
     globalThis.fetch = originalFetch;
   }
 });
+
+test('OpenAPIAdapter should enrich operation tags from the raw document', async () => {
+  const openapiDoc = {
+    openapi: '3.0.0',
+    info: { title: 'Tagged API', version: '1.0.0' },
+    paths: {
+      '/users': {
+        get: {
+          operationId: 'getUsers',
+          tags: ['Users', 'Admin'],
+          responses: { '200': { description: 'ok' } },
+        },
+        post: {
+          operationId: 'createUser',
+          responses: { '201': { description: 'created' } },
+        },
+      },
+    },
+  };
+
+  const adapter = new OpenAPIAdapter();
+  const result = await adapter.parse(openapiDoc);
+
+  const getApi = result.apis.find((a) => a.operationId === 'getUsers');
+  const postApi = result.apis.find((a) => a.operationId === 'createUser');
+  expect(getApi?.tags).toEqual(['Users', 'Admin']);
+  // 无 tags 的操作不产生虚假标签
+  expect(postApi?.tags).toBeUndefined();
+});

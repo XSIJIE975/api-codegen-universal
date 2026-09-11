@@ -178,7 +178,10 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     // 9. 执行提取
     runExtraction(nodes, extractors, ctx);
 
-    // 10. 返回标准格式
+    // 10. 从原始文档补全 tags（openapi-typescript 的 AST 不含 tags 信息）
+    enrichTagsFromRawDocument(ctx.apis, rawDocument);
+
+    // 11. 返回标准格式
     return {
       schemas: ctx.schemas,
       interfaces: ctx.interfaces,
@@ -461,6 +464,37 @@ function runExtraction(
   // 提取 interfaces
   if (componentsNode && ctx.shouldGenerateInterfaces) {
     interfaceGenerator.generateInterfaceCode(componentsNode, ctx.interfaces);
+  }
+}
+
+// ===================================================================================
+// 纯函数：从原始文档补全 tags
+// ===================================================================================
+
+/**
+ * 从原始 OpenAPI 文档为每个操作补全 tags。
+ *
+ * openapi-typescript 生成的 AST 不包含 tags 信息（ast-utils 中 @tags
+ * 一直无法命中），而 parse() 已加载原始文档，按 path + method 匹配即可
+ * 无损还原。仅在 ApiDefinition 尚无标签时填充，不覆盖已有值。
+ */
+function enrichTagsFromRawDocument(
+  apis: ApiDefinition[],
+  rawDocument: OpenAPIDocument | null,
+): void {
+  if (!rawDocument) return;
+  const paths = rawDocument.paths as
+    | Record<string, Record<string, { tags?: unknown } | undefined> | undefined>
+    | undefined;
+  if (!paths) return;
+
+  for (const api of apis) {
+    if (api.tags && api.tags.length > 0) continue;
+    const operation = paths[api.path]?.[api.method.toLowerCase()];
+    const tags = operation?.tags;
+    if (Array.isArray(tags) && tags.every((t) => typeof t === 'string')) {
+      api.tags = tags;
+    }
   }
 }
 
