@@ -189,6 +189,39 @@ test('OpenAPIAdapter should build metadata from raw document', async () => {
   expect(result.metadata?.baseUrl).toBe('https://example.com');
 });
 
+test('OpenAPIAdapter should exclude the warnings collector from metadata.options', async () => {
+  const openapiDoc = {
+    openapi: '3.0.0',
+    info: { title: 'Warnings Leak', version: '1.0.0' },
+    paths: {},
+  };
+
+  // 模拟一个携带内部状态的 warnings 收集器（与真实收集器同为 plain object）
+  const fakeWarnings = {
+    inc: () => {},
+    addRenamedSchema: () => {},
+    addBrokenRef: () => {},
+    addDuplicateOperationId: () => {},
+    flush: () => {},
+    internalStats: { fixedBrokenRefs: 42 },
+    bigSampleArray: new Array(50).fill('sample'),
+  };
+
+  const adapter = new OpenAPIAdapter();
+  const result = await adapter.parse(openapiDoc, {
+    logLevel: 'warn',
+    warnings: fakeWarnings as never,
+  });
+
+  const optionsStr = JSON.stringify(result.metadata?.options ?? {});
+  // 收集器内部状态不得泄漏进 metadata
+  expect(optionsStr).not.toContain('internalStats');
+  expect(optionsStr).not.toContain('bigSampleArray');
+  expect(optionsStr).not.toContain('addRenamedSchema');
+  // 正常配置键应保留
+  expect(result.metadata?.options?.logLevel).toBe('warn');
+});
+
 // ---------------------------------------------------------------------------
 // fetchTimeoutMs 选项透传测试
 //

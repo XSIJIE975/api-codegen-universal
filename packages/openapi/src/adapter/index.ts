@@ -628,11 +628,14 @@ function buildMetadata(
   rawDocument?: OpenAPIDocument | null,
 ): Metadata | null {
   const skipSanitization = options?.debug?.skipMetadataSanitization === true;
+  const optionsForMetadata = skipSanitization
+    ? excludeRuntimePlumbing(options)
+    : sanitizeOptions(excludeRuntimePlumbing(options));
 
   const metadata: Metadata = {
     generatedAt: new Date().toISOString(),
     source: typeof source === 'string' ? source : undefined,
-    options: skipSanitization ? options : sanitizeOptions(options),
+    options: optionsForMetadata,
   };
 
   if (rawDocument) {
@@ -649,4 +652,25 @@ function buildMetadata(
     }
   }
   return metadata;
+}
+
+/**
+ * 属于运行时管线对象（而非用户配置）的选项键。
+ * 这些对象要么携带内部可变状态（如 warnings 收集器的 stats/samples），
+ * 要么是函数/依赖注入对象，序列化进 metadata 只会造成输出污染与体积膨胀。
+ */
+const RUNTIME_PLUMBING_OPTION_KEYS = ['warnings'] as const;
+
+/**
+ * 移除不应进入 metadata.options 的运行时管线键。
+ */
+function excludeRuntimePlumbing(
+  options: OpenAPIOptions | undefined,
+): OpenAPIOptions | undefined {
+  if (!options) return options;
+  const rest: Record<string, unknown> = { ...options };
+  for (const key of RUNTIME_PLUMBING_OPTION_KEYS) {
+    delete rest[key];
+  }
+  return rest as OpenAPIOptions;
 }
