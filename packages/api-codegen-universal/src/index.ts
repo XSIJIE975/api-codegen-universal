@@ -12,3 +12,6 @@ export * from '@api-codegen-universal/openapi';
 
 // 导出 Apifox 适配器
 export * from '@api-codegen-universal/apifox';
+
+// 导出文件落地工具
+export * from './emitter';
