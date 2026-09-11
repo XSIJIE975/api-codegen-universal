@@ -683,3 +683,70 @@ describe('OpenAPIAdapter - schema name collision disambiguation', () => {
     expect(ref).toBe('UserProfile2');
   });
 });
+
+// ===================================================================================
+// 交叉/联合类型信息保留测试（rawType）
+// ===================================================================================
+
+describe('OpenAPIAdapter - rawType preservation for non-structural types', () => {
+  const doc = {
+    openapi: '3.0.0',
+    info: { title: 'RawTypes', version: '1.0.0' },
+    paths: {},
+    components: {
+      schemas: {
+        // 交叉了两个数组分支：无法结构化表达
+        Combo: {
+          allOf: [
+            { type: 'array', items: { $ref: '#/components/schemas/A' } },
+            { type: 'array', items: { $ref: '#/components/schemas/B' } },
+          ],
+        },
+        // 非字面量联合：oneOf 两个 $ref
+        Either: {
+          oneOf: [
+            { $ref: '#/components/schemas/A' },
+            { $ref: '#/components/schemas/B' },
+          ],
+        },
+        // 顶层数组
+        UserList: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/A' },
+        },
+        A: { type: 'string' },
+        B: { type: 'number' },
+      },
+    },
+  };
+
+  it('should keep rawType for intersections with unmergeable members', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const combo = result.schemas['Combo'];
+    expect(combo).toBeDefined();
+    expect(combo?.rawType).toBeDefined();
+    expect(combo?.rawType).toContain('A[]');
+    expect(combo?.rawType).toContain('B[]');
+  });
+
+  it('should keep rawType for non-literal unions', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const either = result.schemas['Either'];
+    expect(either).toBeDefined();
+    expect(either?.rawType).toContain('A');
+    expect(either?.rawType).toContain('B');
+  });
+
+  it('should keep rawType for top-level array schemas', async () => {
+    const adapter = new OpenAPIAdapter();
+    const result = await adapter.parse(doc);
+
+    const list = result.schemas['UserList'];
+    expect(list?.type).toBe('array');
+    expect(list?.rawType).toBe('A[]');
+  });
+});

@@ -84,6 +84,14 @@ export interface SchemaDefinition {
   default?: unknown;
   /** 是否废弃 */
   deprecated?: boolean;
+  /**
+   * 原始类型文本。
+   *
+   * 当 schema 无法被结构化表达（如交叉了两个数组的 `A[] & B[]`、
+   * 非字面量联合类型等）时，type/properties 会退化为空 object；
+   * 此字段保留原始类型字符串，避免类型信息静默丢失。
+   */
+  rawType?: string;
 }
 
 /**

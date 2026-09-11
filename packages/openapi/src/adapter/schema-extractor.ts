@@ -361,7 +361,12 @@ export class SchemaExtractor {
       schema.type = 'enum';
       schema.enum = extracted;
     } else {
+      // 非字面量联合（如 User | Order）无法结构化表达，
+      // 保留原始类型文本避免信息丢失
       schema.type = 'object';
+      schema.rawType = typeNodeToString(typeNode, (n) =>
+        NamingUtils.convert(n, this.namingStyle),
+      );
     }
   }
 
@@ -372,6 +377,7 @@ export class SchemaExtractor {
   ): void {
     schema.type = 'object';
     const extendsList = new Set<string>();
+    let hasDroppedMembers = false;
 
     for (const t of typeNode.types) {
       if (ts.isTypeLiteralNode(t)) {
@@ -387,10 +393,19 @@ export class SchemaExtractor {
           NamingUtils.convert(n, this.namingStyle),
         );
         if (isValidExtendsRef(refName)) extendsList.add(refName);
+        else hasDroppedMembers = true;
       }
     }
 
     if (extendsList.size > 0) schema.extends = Array.from(extendsList);
+
+    // 有成员既不能合并也不能作为 extends 保留（如数组分支）时，
+    // 记录完整原始类型文本
+    if (hasDroppedMembers) {
+      schema.rawType = typeNodeToString(typeNode, (n) =>
+        NamingUtils.convert(n, this.namingStyle),
+      );
+    }
   }
 
   private extractFromOtherType(
@@ -401,6 +416,7 @@ export class SchemaExtractor {
 
     if (typeStr.endsWith('[]')) {
       schema.type = 'array';
+      schema.rawType = typeStr;
     } else if (['string', 'number', 'boolean'].includes(typeStr)) {
       schema.type = 'primitive';
     } else if (isValidExtendsRef(typeStr)) {
@@ -408,6 +424,7 @@ export class SchemaExtractor {
       schema.extends = [typeStr];
     } else {
       schema.type = 'object';
+      schema.rawType = typeStr;
     }
   }
 
