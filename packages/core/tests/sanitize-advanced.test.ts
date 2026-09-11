@@ -338,6 +338,43 @@ describe('sanitizeOptions - Circular Reference Detection', () => {
     const arr = result?.arr as Record<string, unknown>[];
     expect(arr[0]).toEqual({ '[circular]': true });
   });
+
+  it('should allow shared (DAG) references without false circular detection', () => {
+    // 同一对象被引用两次（菱形/共享引用）不是循环，不应输出 [circular]
+    const sharedLogger = { level: 'warn', name: 'main' };
+    const input = {
+      logger: sharedLogger,
+      nested: { sameLogger: sharedLogger },
+    };
+
+    const result = sanitizeOptions(input);
+
+    expect(result?.logger).toEqual({ level: 'warn', name: 'main' });
+    const nested = result?.nested as Record<string, unknown>;
+    expect(nested?.sameLogger).toEqual({ level: 'warn', name: 'main' });
+  });
+
+  it('should allow repeated shared references inside arrays', () => {
+    const shared = { value: 1 };
+    const input = { a: shared, list: [shared, shared] };
+
+    const result = sanitizeOptions(input);
+
+    expect(result?.a).toEqual({ value: 1 });
+    expect(result?.list).toEqual([{ value: 1 }, { value: 1 }]);
+  });
+
+  it('should still detect a true cycle that also contains shared references', () => {
+    const shared = { tag: 'shared' };
+    const input: Record<string, unknown> = { shared, copy: shared };
+    input.self = input;
+
+    const result = sanitizeOptions(input);
+
+    expect(result?.shared).toEqual({ tag: 'shared' });
+    expect(result?.copy).toEqual({ tag: 'shared' });
+    expect(result?.self).toEqual({ '[circular]': true });
+  });
 });
 
 // ===================================================================================

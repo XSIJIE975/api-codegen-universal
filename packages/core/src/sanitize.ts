@@ -104,31 +104,35 @@ export function sanitizeOptions(
   input: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   if (!input) return undefined;
-  const visited = new WeakSet<object>();
-  return sanitizeObject(input, visited);
+  // stack 记录当前递归路径上的对象（进入时加入、返回时移除），
+  // 因此真正的循环引用会被检测为 [circular]，
+  // 而被多次引用的共享对象（DAG）不会被误判。
+  const stack = new WeakSet<object>();
+  return sanitizeObject(input, stack);
 }
 
 function sanitizeObject(
   input: Record<string, unknown>,
-  visited: WeakSet<object>,
+  stack: WeakSet<object>,
 ): Record<string, unknown> {
-  // 检测循环引用
-  if (visited.has(input)) {
+  // 检测循环引用（仅当前递归路径上的环）
+  if (stack.has(input)) {
     return { '[circular]': true };
   }
-  visited.add(input);
+  stack.add(input);
 
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
     if (isSensitiveKey(key)) continue;
-    out[key] = sanitizeValue(value, visited);
+    out[key] = sanitizeValue(value, stack);
   }
+  stack.delete(input);
   return out;
 }
 
-function sanitizeValue(value: unknown, visited: WeakSet<object>): unknown {
+function sanitizeValue(value: unknown, stack: WeakSet<object>): unknown {
   if (Array.isArray(value)) {
-    return value.map((item) => sanitizeValue(item, visited));
+    return value.map((item) => sanitizeValue(item, stack));
   }
   if (value && typeof value === 'object') {
     // 处理 Date 对象 - 转为 ISO 字符串
@@ -150,7 +154,7 @@ function sanitizeValue(value: unknown, visited: WeakSet<object>): unknown {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const proto: object | null = Object.getPrototypeOf(value);
     if (proto === Object.prototype || proto === null) {
-      return sanitizeObject(value as Record<string, unknown>, visited);
+      return sanitizeObject(value as Record<string, unknown>, stack);
     }
     // 非普通对象（Map、Set、类实例等）替换为占位符
     return `[${value.constructor?.name || 'Object'}]`;
