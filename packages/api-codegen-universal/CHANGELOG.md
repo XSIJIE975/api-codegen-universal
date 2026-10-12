@@ -1,5 +1,31 @@
 # api-codegen-universal
 
+## 0.8.0
+
+### Minor Changes
+
+- [`72bc582`](https://github.com/XSIJIE975/api-codegen-universal/commit/72bc582b174d9b96bb8832b3b78211ac7c03acba) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - Fix a batch of verified bugs, add the `emitStandardOutput` file emitter, and cache `printNode` output:
+
+  **Bug fixes**
+  - **openapi**: schema names that collapse after naming-style conversion (e.g. `user_profile` vs `userProfile`) no longer silently overwrite each other; a collision-free name map is shared by schema extraction, interface generation and response refs, and renames are reported via a new `renamedCollidingSchemas` warnings counter.
+  - **openapi**: URL-encoded schema keys are now decoded consistently, so `schemas` and `interfaces` no longer disagree for pre-encoded documents (e.g. `User%20Dto`).
+  - **openapi**: `requestBody.required` is restored from the AST instead of being hardcoded to `true`; unspecified request bodies now correctly default to `false` per the OpenAPI spec.
+  - **openapi**: `commonPrefix` is only stripped at path segment boundaries, fixing `commonPrefix: '/api'` mangling `/apis/users` into `s/users`.
+  - **openapi**: `TRACE` is added to the `HttpMethod` union, matching OpenAPI 3.0 path-item fields.
+  - **openapi**: non-structural unions/intersections (e.g. `A[] & B[]`) now keep their original type text in a new `SchemaDefinition.rawType` field instead of degrading to an empty object.
+  - **openapi**: multi-line `@description` content is preserved for schema properties and response statuses (previously only the first line was kept).
+  - **openapi**: response headers are now extracted into `responses[status].headers`.
+  - **openapi**: operation `tags` are restored from the raw document (the AST path drops them).
+  - **openapi**: `validate()` applies `fetchTimeoutMs` for URL inputs instead of waiting indefinitely.
+  - **openapi**: the warnings collector and other runtime plumbing keys are excluded from `metadata.options`, and synthetic comments are read through the official `ts.getSyntheticLeadingComments` API.
+  - **core**: `sanitizeOptions` no longer reports shared (DAG) object references as `[circular]`; true cycles are still detected.
+  - **apifox**: explicitly-`undefined` `exportOptions` keys no longer override request defaults (e.g. `scope`).
+
+  **New features**
+  - **emitter**: new `emitStandardOutput(output, { outDir, modelsDir?, barrel?, header? })` writes the standard output to disk — single-category interfaces land in their API category file, shared/orphan ones in `models/shared.ts`; cross-file type imports and an optional barrel `index.ts` are generated automatically. Emitted output passes `tsc --strict`.
+  - **perf**: `printNode` output is cached per AST node (WeakMap), removing repeated printing across schema extraction, interface generation and generic detection.
+  - docs: `CONTEXT.md` glossary and `docs/plans/ROADMAP.md` with the prioritized backlog (request-client generation, Swagger 2.0 adapter, Zod emission, CLI/config, watch mode).
+
 ## 0.7.0
 
 ### Minor Changes
