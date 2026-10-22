@@ -87,6 +87,21 @@ export interface CodeGenerationOptions {
   /** 接口导出模式(默认 'export') */
   interfaceExportMode?: InterfaceExportMode;
 
+  /**
+   * 类型声明名统一前缀(默认 undefined，不添加前缀)。
+   *
+   * 用于多个项目都输出全局 `declare` 声明时做类型隔离：
+   * 所有生成的类型声明名（组件 schema、参数接口、内联请求/响应 schema、
+   * 匿名哈希 schema、泛型基类）都会统一加前缀，
+   * 因此 `interfaces` / `schemas` 注册表、`$ref` 互引
+   * 以及下游按声明名拆分的 `.d.ts` 文件名都会自然带前缀。
+   *
+   * 前缀需为合法的 TypeScript 标识符片段（如 `Demo`）。
+   *
+   * @example 'Demo' -> `PageDTO` 输出为 `DemoPageDTO`
+   */
+  typeNamePrefix?: string;
+
   /** 输出控制 */
   output?: OutputControlOptions;
 }

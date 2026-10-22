@@ -78,6 +78,11 @@ await adapter.parse(source, {
     // 接口导出模式: 'export' (默认) | 'declare' (用于 .d.ts 文件)
     interfaceExportMode: 'export',
 
+    // 类型声明名统一项目前缀（默认: undefined，不添加）
+    // 多个项目同时输出全局 declare 声明时用于隔离同名类型：
+    // 'Demo' => PageDTO 输出为 DemoPageDTO（引用与拆分后的文件名同步）
+    typeNamePrefix: 'Demo',
+
     // 输出控制: 开关特定部分的生成
     output: {
       schemas: true, // 生成结构化的 Schema 定义
@@ -97,6 +102,30 @@ await adapter.parse(source, {
   },
 });
 ```
+
+### 类型声明名前缀（typeNamePrefix）
+
+多个项目都以 `interfaceExportMode: 'declare'` 输出到全局 `.d.ts` 时，同名 schema
+（如 `PageDTO`、`IdDTO`）会在全局作用域合并/冲突。通过 `codeGeneration.typeNamePrefix`
+为每个项目统一加前缀即可隔离：
+
+```typescript
+await adapter.parse(source, {
+  codeGeneration: {
+    interfaceExportMode: 'declare',
+    typeNamePrefix: 'Demo',
+  },
+});
+```
+
+- 前缀在名称进入生成管线时统一注入，因此 `interfaces` / `schemas` 的键、
+  `$ref` 互引、泛型组合名以及下游 `{TypeName}.d.ts` 文件名都会自然带前缀。
+- 覆盖所有自动生成的声明名：组件 schema，以及由 operationId 派生的参数接口、
+  内联请求/响应 schema 和匿名哈希 schema。
+- 输入名已带前缀时保持原样并通过 `console.warn` 告警，避免 `DemoDemoPageDTO`
+  这类双重前缀。
+- 这是类型名层面的重命名，不做文本替换：`Number(x)` 这类运行时值调用不受影响；
+  若确实存在名为 `Number` 的 schema，会生成 `DemoNumber` 并同步更新其所有类型引用。
 
 ### 日志（logLevel / logger / logSampleLimit）
 

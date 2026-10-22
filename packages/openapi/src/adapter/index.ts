@@ -34,6 +34,10 @@ import type {
 import { extractStringFromNode, decodeSchemaName } from './ast-utils';
 import { PathClassifier, GenericDetector } from '../utils';
 import { resolveComponentSchemaNames } from '../utils/schema-name-utils';
+import {
+  applyTypeNamePrefix,
+  hasTypeNamePrefix,
+} from '../utils/type-name-prefix';
 import { SchemaExtractor } from './schema-extractor';
 import { InterfaceGenerator } from './interface-generator';
 import { ParameterExtractor } from './parameter-extractor';
@@ -48,6 +52,8 @@ interface ParseContext {
   // ---- 配置（不可变） ----
   namingStyle: NamingStyle;
   interfaceExportMode: 'export' | 'declare';
+  /** 类型声明名统一前缀（undefined = 不添加） */
+  typeNamePrefix: string | undefined;
   shouldGenerateSchemas: boolean;
   shouldGenerateInterfaces: boolean;
   shouldGenerateApis: boolean;
@@ -162,12 +168,16 @@ export class OpenAPIAdapter implements IAdapter<OpenAPIOptions, InputSource> {
     const nodes = findKeyNodes(ast);
 
     // 7. 预计算组件 schema 名称映射（归一化冲突消歧），
-    //    由 schema 提取 / interface 生成 / 响应引用解析三处共享
+    //    由 schema 提取 / interface 生成 / 响应引用解析三处共享。
+    //    组件 schema 的 typeNamePrefix 在此注入：映射键使用加前缀后的原始名。
+    //    （参数接口/内联 schema 等自动生成名在各自生成点加前缀。）
     const schemaNameMap =
-      nodes.componentsNode && ctx.shouldGenerateSchemas
+      nodes.componentsNode &&
+      (ctx.shouldGenerateSchemas || !!ctx.typeNamePrefix)
         ? collectComponentSchemaNames(
             nodes.componentsNode,
             ctx.namingStyle,
+            ctx.typeNamePrefix,
             ctx.warnings,
           )
         : undefined;
@@ -254,6 +264,7 @@ function buildParseContext(
   return {
     namingStyle: codeGenOpts.parameterNamingStyle || 'PascalCase',
     interfaceExportMode: codeGenOpts.interfaceExportMode || 'export',
+    typeNamePrefix: codeGenOpts.typeNamePrefix || undefined,
     shouldGenerateSchemas: outputOpts.schemas !== false,
     shouldGenerateInterfaces: outputOpts.interfaces !== false,
     shouldGenerateApis: outputOpts.apis !== false,
@@ -293,7 +304,13 @@ function preprocessGenericInfo(
       Array.isArray(meta.generics) &&
       meta.generics.every((g) => typeof g === 'string')
     ) {
-      ctx.genericInfoMap.set(key, meta);
+      // 启用前缀时：与 AST 侧保持一致，原始 key 解码后加前缀，
+      // 使 SchemaExtractor / InterfaceGenerator 能用前缀名命中泛型元数据。
+      // 未启用前缀时保留历史键，避免改变既有输出。
+      const mapKey = ctx.typeNamePrefix
+        ? applyTypeNamePrefix(decodeSchemaName(key), ctx.typeNamePrefix)
+        : key;
+      ctx.genericInfoMap.set(mapKey, meta);
     }
   }
 }
@@ -304,10 +321,16 @@ function preprocessGenericInfo(
 
 /**
  * 从 components 节点收集 schema 原始名并计算冲突消歧映射。
+ *
+ * 组件 schema 名在进入生成管线的此处加 `typeNamePrefix`：
+ * 映射键、注册表键与源自 schema 的 $ref 都以该名称为准。
+ * 参数接口、内联 schema 等 operationId/哈希派生名在各自生成点加前缀。
+ * 若输入名已带前缀（异常输入），跳过加前缀并告警，避免双重前缀。
  */
 function collectComponentSchemaNames(
   componentsNode: ts.InterfaceDeclaration,
   namingStyle: NamingStyle,
+  typeNamePrefix?: string,
   warnings?: WarningsCollector,
 ): Map<string, string> {
   const names: string[] = [];
@@ -327,7 +350,19 @@ function collectComponentSchemaNames(
       if (!ts.isPropertySignature(schemaMember) || !schemaMember.name) continue;
       const raw = extractStringFromNode(schemaMember.name);
       if (!raw) continue;
-      names.push(decodeSchemaName(raw));
+
+      const decodedName = decodeSchemaName(raw);
+      if (hasTypeNamePrefix(decodedName, typeNamePrefix)) {
+        console.warn(
+          `[openapi] Schema name "${decodedName}" already starts with typeNamePrefix "${typeNamePrefix}"; prefix skipped to avoid duplication.`,
+          {
+            code: 'OPENAPI_TYPE_NAME_PREFIX_SKIPPED',
+            schemaName: decodedName,
+            typeNamePrefix,
+          },
+        );
+      }
+      names.push(applyTypeNamePrefix(decodedName, typeNamePrefix));
     }
   }
 
@@ -345,6 +380,7 @@ function buildExtractors(
     ctx.genericBaseTypes,
     ctx.namingStyle,
     schemaNameMap,
+    ctx.typeNamePrefix,
   );
   const interfaceGenerator = new InterfaceGenerator(
     ctx.genericBaseTypes,
@@ -352,6 +388,7 @@ function buildExtractors(
     ctx.genericInfoMap,
     ctx.namingStyle,
     schemaNameMap,
+    ctx.typeNamePrefix,
   );
   const requestResponseExtractor = new RequestResponseExtractor(
     genericDetector,
@@ -364,6 +401,7 @@ function buildExtractors(
     interfaceGenerator,
     ctx.interfaces,
     schemaNameMap,
+    ctx.typeNamePrefix,
   );
   const parameterExtractor = new ParameterExtractor(
     ctx.namingStyle,
@@ -371,6 +409,7 @@ function buildExtractors(
     ctx.shouldGenerateInterfaces,
     schemaExtractor,
     interfaceGenerator,
+    ctx.typeNamePrefix,
   );
   const apiExtractor = new ApiExtractor(
     pathClassifier,

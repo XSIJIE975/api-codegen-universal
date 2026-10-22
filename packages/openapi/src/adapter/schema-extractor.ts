@@ -21,6 +21,12 @@ import {
   printNodeCached,
   typeNodeToString,
 } from './ast-utils';
+import {
+  applyTypeNamePrefix,
+  resolveComponentTypeName,
+  resolveGenericArgumentName,
+  resolveGenericBaseName,
+} from '../utils/type-name-prefix';
 import { NamingUtils } from '../utils/naming-utils';
 import {
   isTypeRefTo,
@@ -39,6 +45,8 @@ export class SchemaExtractor {
    * 保证命名风格转换坍缩的两个 schema 不会静默互相覆盖。
    */
   private readonly schemaNameMap?: Map<string, string>;
+  /** 类型声明名统一前缀（undefined = 不添加） */
+  private readonly typeNamePrefix?: string;
   /** 缓存的正则表达式 */
   private readonly descRegex = /^\*\s*@description\s+(.+)$/;
   private readonly exampleRegex = /^\*\s*@example\s*(.*)$/;
@@ -51,10 +59,12 @@ export class SchemaExtractor {
     genericBaseTypes: Map<string, string>,
     namingStyle: NamingStyle = 'PascalCase',
     schemaNameMap?: Map<string, string>,
+    typeNamePrefix?: string,
   ) {
     this.genericBaseTypes = genericBaseTypes;
     this.namingStyle = namingStyle;
     this.schemaNameMap = schemaNameMap;
+    this.typeNamePrefix = typeNamePrefix;
   }
 
   /**
@@ -85,12 +95,19 @@ export class SchemaExtractor {
           const schemaNameRaw = extractStringFromNode(schemaMember.name);
           if (!schemaNameRaw) continue;
 
-          const schemaName = decodeSchemaName(schemaNameRaw);
-
-          const originalName = schemaName;
-          const convertedName =
-            this.schemaNameMap?.get(originalName) ??
-            NamingUtils.convert(originalName, this.namingStyle);
+          // 组件 schema 名前缀的注入点：解码后、记录 originalName / 去重之前。
+          // operationId/哈希派生的声明名在各自生成点加前缀，不经过这里。
+          const decodedName = decodeSchemaName(schemaNameRaw);
+          const originalName = applyTypeNamePrefix(
+            decodedName,
+            this.typeNamePrefix,
+          );
+          const convertedName = resolveComponentTypeName(
+            decodedName,
+            this.typeNamePrefix,
+            this.namingStyle,
+            this.schemaNameMap,
+          );
 
           const schema = this.typeNodeToSchema(
             convertedName,
@@ -134,24 +151,43 @@ export class SchemaExtractor {
     }
 
     for (const [baseType, instances] of groups) {
-      if (schemas[baseType]) continue;
+      const prefixEnabled = !!this.typeNamePrefix;
+      // 未启用前缀时沿用历史键与匹配目标，保证既有输出不变；
+      // 启用前缀后，实例键与字段类型都已前缀化，需用同一解析结果对齐。
+      const baseSchemaName = prefixEnabled
+        ? resolveGenericBaseName(
+            baseType,
+            this.typeNamePrefix,
+            this.namingStyle,
+          )
+        : baseType;
+      if (schemas[baseSchemaName]) continue;
 
       const instanceName = instances[0];
       if (!instanceName) continue;
 
-      const instanceSchema = schemas[instanceName];
+      const instanceSchema = prefixEnabled
+        ? (schemas[this.toOutputName(instanceName)] ?? schemas[instanceName])
+        : schemas[instanceName];
       if (!instanceSchema) continue;
 
       // 使用 structuredClone 深拷贝（Node 20+）
       const baseSchema: SchemaDefinition = structuredClone(instanceSchema);
-      baseSchema.name = baseType;
+      baseSchema.name = baseSchemaName;
       baseSchema.isGeneric = true;
       baseSchema.genericParam = 'T';
 
       const rawArg = genericInfoMap.get(instanceName)?.generics[0];
       if (!rawArg) continue;
 
-      const targetType = normalizeGenericName(rawArg);
+      const targetType = prefixEnabled
+        ? resolveGenericArgumentName(
+            rawArg,
+            this.typeNamePrefix,
+            this.namingStyle,
+            this.schemaNameMap,
+          )
+        : normalizeGenericName(rawArg);
 
       // 查找并替换泛型字段
       let genericFieldFound = false;
@@ -171,9 +207,37 @@ export class SchemaExtractor {
       }
 
       if (genericFieldFound) {
-        schemas[baseType] = baseSchema;
+        schemas[baseSchemaName] = baseSchema;
       }
     }
+  }
+
+  /**
+   * 将 AST 中的组件 schema 引用名解析为最终输出名（含前缀与消歧映射）。
+   *
+   * `typeNodeToString` / `simplifyTypeReference` 只把
+   * `components["schemas"]["X"]` 中的 X 交给转换器，
+   * 因此这里不会误改 `Date`、`Record` 等外部类型名。
+   */
+  private toOutputName(name: string): string {
+    // 未启用前缀时保留历史行为（不对引用额外解码），确保既有输出不变
+    const effectiveName = this.typeNamePrefix ? decodeSchemaName(name) : name;
+    return resolveComponentTypeName(
+      effectiveName,
+      this.typeNamePrefix,
+      this.namingStyle,
+      this.schemaNameMap,
+    );
+  }
+
+  /**
+   * 引用名转换入口：启用前缀时走前缀 + 消歧映射；
+   * 未启用时保持历史行为（仅做命名风格转换）。
+   */
+  private resolveRefName(name: string): string {
+    return this.typeNamePrefix
+      ? this.toOutputName(name)
+      : NamingUtils.convert(name, this.namingStyle);
   }
 
   /**
@@ -380,7 +444,7 @@ export class SchemaExtractor {
       // 保留原始类型文本避免信息丢失
       schema.type = 'object';
       schema.rawType = typeNodeToString(typeNode, (n) =>
-        NamingUtils.convert(n, this.namingStyle),
+        this.resolveRefName(n),
       );
     }
   }
@@ -404,9 +468,7 @@ export class SchemaExtractor {
           schema.required = [...(schema.required || []), ...subSchema.required];
         }
       } else {
-        const refName = typeNodeToString(t, (n) =>
-          NamingUtils.convert(n, this.namingStyle),
-        );
+        const refName = typeNodeToString(t, (n) => this.resolveRefName(n));
         if (isValidExtendsRef(refName)) extendsList.add(refName);
         else hasDroppedMembers = true;
       }
@@ -418,7 +480,7 @@ export class SchemaExtractor {
     // 记录完整原始类型文本
     if (hasDroppedMembers) {
       schema.rawType = typeNodeToString(typeNode, (n) =>
-        NamingUtils.convert(n, this.namingStyle),
+        this.resolveRefName(n),
       );
     }
   }
@@ -449,7 +511,7 @@ export class SchemaExtractor {
   private tsTypeToSchemaType(typeNode: ts.TypeNode): string {
     if (ts.isTypeReferenceNode(typeNode)) {
       const typeText = typeNodeToString(typeNode, (n) =>
-        NamingUtils.convert(n, this.namingStyle),
+        this.resolveRefName(n),
       );
       if (typeText.includes('Record<string, never>')) return 'any';
       return typeText;
@@ -467,9 +529,7 @@ export class SchemaExtractor {
       case ts.SyntaxKind.ArrayType:
         return `${this.tsTypeToSchemaType((typeNode as ts.ArrayTypeNode).elementType)}[]`;
       default:
-        return typeNodeToString(typeNode, (n) =>
-          NamingUtils.convert(n, this.namingStyle),
-        );
+        return typeNodeToString(typeNode, (n) => this.resolveRefName(n));
     }
   }
 

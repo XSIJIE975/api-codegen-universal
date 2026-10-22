@@ -18,6 +18,7 @@ import type {
   HeaderDefinition,
 } from '@api-codegen-universal/core';
 import {
+  decodeSchemaName,
   extractStringFromNode,
   extractSchemaReference,
   getSyntheticLeadingCommentTexts,
@@ -25,6 +26,12 @@ import {
 } from './ast-utils';
 import { GenericDetector } from '../utils/generic-detector';
 import { NamingUtils } from '../utils/naming-utils';
+import {
+  applyTypeNamePrefix,
+  resolveComponentTypeName,
+  resolveGenericArgumentName,
+  resolveGenericBaseName,
+} from '../utils/type-name-prefix';
 import { normalizeGenericName } from '../utils/type-ref-utils';
 import type { ApifoxGenericMeta } from '../types';
 import type { SchemaExtractor } from './schema-extractor';
@@ -61,6 +68,8 @@ export class RequestResponseExtractor {
    * 响应引用组件 schema 时须走同一映射，保证与 schemas/interfaces 键一致。
    */
   private readonly schemaNameMap?: Map<string, string>;
+  /** 类型声明名统一前缀（undefined = 不添加） */
+  private readonly typeNamePrefix?: string;
 
   constructor(
     genericDetector: GenericDetector,
@@ -73,6 +82,7 @@ export class RequestResponseExtractor {
     interfaceGenerator: InterfaceGenerator,
     interfaces: Record<string, string>,
     schemaNameMap?: Map<string, string>,
+    typeNamePrefix?: string,
   ) {
     this.genericDetector = genericDetector;
     this.genericBaseTypes = genericBaseTypes;
@@ -84,6 +94,26 @@ export class RequestResponseExtractor {
     this.interfaceGenerator = interfaceGenerator;
     this.interfaces = interfaces;
     this.schemaNameMap = schemaNameMap;
+    this.typeNamePrefix = typeNamePrefix;
+  }
+
+  /**
+   * 解析组件 schema 引用名（含前缀与消歧映射）。
+   */
+  private resolveComponentName(name: string): string {
+    return resolveComponentTypeName(
+      decodeSchemaName(name),
+      this.typeNamePrefix,
+      this.namingStyle,
+      this.schemaNameMap,
+    );
+  }
+
+  /**
+   * 组件 schema 在前缀化后的原始名（用于命中 genericInfoMap 等以原始名为键的映射）。
+   */
+  private resolveComponentLookupKey(name: string): string {
+    return applyTypeNamePrefix(decodeSchemaName(name), this.typeNamePrefix);
   }
 
   /**
@@ -113,13 +143,11 @@ export class RequestResponseExtractor {
       const cached = this.typeNodeToSchemaNameCache.get(typeSignature);
       if (cached) return cached;
 
-      // 生成 schema 名称
-      let schemaName: string;
-      if (contextName) {
-        schemaName = contextName;
-      } else {
-        schemaName = this.generateSchemaNameFromHash(typeSignature);
-      }
+      // 生成 schema 名称。内联类型名由 operationId/内容签名派生，
+      // 与组件 schema 一样属于全局声明名，需要统一加项目前缀。
+      const baseSchemaName =
+        contextName ?? this.generateSchemaNameFromHash(typeSignature);
+      let schemaName = applyTypeNamePrefix(baseSchemaName, this.typeNamePrefix);
 
       // 检查名称冲突（理论上基于哈希不会冲突，但做双重保险）
       // 使用 typeSignature 的哈希作为确定性后缀，确保相同内容生成相同名称
@@ -142,13 +170,24 @@ export class RequestResponseExtractor {
       );
       this.schemas[schemaName] = schema;
 
-      // 同时生成接口代码
-      const interfaceCode = this.generateInterfaceFromTypeLiteral(
-        schemaName,
-        typeNode,
-      );
-      if (interfaceCode) {
-        this.interfaces[schemaName] = interfaceCode;
+      // 同时生成接口代码。
+      // 未启用前缀时保持历史输出（逐字节兼容）；启用前缀时改走
+      // InterfaceGenerator，使成员上的 $ref 也解析为带前缀的类型名。
+      if (this.typeNamePrefix) {
+        this.interfaces[schemaName] =
+          this.interfaceGenerator.generateInterfaceString(
+            schemaName,
+            typeNode,
+            false,
+          );
+      } else {
+        const interfaceCode = this.generateInterfaceFromTypeLiteral(
+          schemaName,
+          typeNode,
+        );
+        if (interfaceCode) {
+          this.interfaces[schemaName] = interfaceCode;
+        }
       }
 
       return schemaName;
@@ -183,19 +222,29 @@ export class RequestResponseExtractor {
 
     if (ref) {
       // 检查泛型信息，如果存在则还原为泛型语法
-      const info = this.genericInfoMap.get(ref);
+      const info = this.genericInfoMap.get(this.resolveComponentLookupKey(ref));
       if (info) {
-        const args = info.generics.map((arg) =>
-          NamingUtils.convert(normalizeGenericName(arg), this.namingStyle),
+        const args = this.typeNamePrefix
+          ? info.generics.map((arg) =>
+              resolveGenericArgumentName(
+                arg,
+                this.typeNamePrefix,
+                this.namingStyle,
+                this.schemaNameMap,
+              ),
+            )
+          : info.generics.map((arg) =>
+              NamingUtils.convert(normalizeGenericName(arg), this.namingStyle),
+            );
+        const baseType = resolveGenericBaseName(
+          info.baseType,
+          this.typeNamePrefix,
+          this.namingStyle,
         );
-        const baseType = NamingUtils.convert(info.baseType, this.namingStyle);
         return `${baseType}<${args.join(', ')}>`;
       }
       // 组件 schema 可能因命名冲突被消歧，引用须走同一映射
-      return (
-        this.schemaNameMap?.get(ref) ??
-        NamingUtils.convert(ref, this.namingStyle)
-      );
+      return this.resolveComponentName(ref);
     }
 
     // 处理联合类型 A | B
@@ -231,7 +280,7 @@ export class RequestResponseExtractor {
   }
 
   /**
-   * 从 TypeLiteral 节点生成接口代码
+   * 从 TypeLiteral 节点生成接口代码（未启用类型前缀时的历史输出路径）
    */
   private generateInterfaceFromTypeLiteral(
     name: string,
@@ -505,15 +554,29 @@ export class RequestResponseExtractor {
         genericResult.baseType,
         genericResult.genericField,
       );
+      // 启用前缀时额外记录前缀化后的键，供 SchemaExtractor/InterfaceGenerator 命中
+      if (this.typeNamePrefix) {
+        this.genericBaseTypes.set(
+          this.resolveComponentLookupKey(genericResult.baseType),
+          genericResult.genericField,
+        );
+      }
 
-      const baseType = NamingUtils.convert(
-        genericResult.baseType,
-        this.namingStyle,
-      );
-      const genericParam = NamingUtils.convert(
-        genericResult.genericParam,
-        this.namingStyle,
-      );
+      const baseType =
+        this.typeNamePrefix &&
+        this.schemaNameMap?.has(
+          this.resolveComponentLookupKey(genericResult.baseType),
+        )
+          ? this.resolveComponentName(genericResult.baseType)
+          : NamingUtils.convert(genericResult.baseType, this.namingStyle);
+      const genericParam = this.typeNamePrefix
+        ? resolveGenericArgumentName(
+            genericResult.genericParam,
+            this.typeNamePrefix,
+            this.namingStyle,
+            this.schemaNameMap,
+          )
+        : NamingUtils.convert(genericResult.genericParam, this.namingStyle);
 
       return { type: 'ref', ref: `${baseType}<${genericParam}>` };
     }
@@ -558,9 +621,12 @@ export class RequestResponseExtractor {
       const contentTypeSuffix = contentType
         ? `_${contentType.replace(/[^a-zA-Z0-9]/g, '_')}`
         : '';
-      const generatedName = NamingUtils.convert(
-        `${operationId}_Response${contentTypeSuffix}`,
-        this.namingStyle,
+      const generatedName = applyTypeNamePrefix(
+        NamingUtils.convert(
+          `${operationId}_Response${contentTypeSuffix}`,
+          this.namingStyle,
+        ),
+        this.typeNamePrefix,
       );
 
       const schema = this.schemaExtractor.typeNodeToSchema(

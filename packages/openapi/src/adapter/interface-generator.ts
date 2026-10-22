@@ -17,6 +17,12 @@ import {
   printNodeCached,
   simplifyTypeReference,
 } from './ast-utils';
+import {
+  applyTypeNamePrefix,
+  resolveComponentTypeName,
+  resolveGenericArgumentName,
+  resolveGenericBaseName,
+} from '../utils/type-name-prefix';
 import { NamingUtils } from '../utils/naming-utils';
 import {
   isTypeRefTo,
@@ -39,6 +45,8 @@ export class InterfaceGenerator {
    * 共享，保证 schemas/interfaces 键一致且不互相覆盖。
    */
   private readonly schemaNameMap?: Map<string, string>;
+  /** 类型声明名统一前缀（undefined = 不添加） */
+  private readonly typeNamePrefix?: string;
   /** 缓存的注释匹配正则 */
   private readonly commentRegex = /^(\s*\/\*\*[\s\S]*?\*\/)/;
 
@@ -48,6 +56,7 @@ export class InterfaceGenerator {
     genericInfoMap?: Map<string, ApifoxGenericMeta>,
     namingStyle: NamingStyle = 'PascalCase',
     schemaNameMap?: Map<string, string>,
+    typeNamePrefix?: string,
   ) {
     this.genericBaseTypes = genericBaseTypes;
     this.interfaceExportMode = interfaceExportMode;
@@ -55,6 +64,7 @@ export class InterfaceGenerator {
       genericInfoMap || new Map<string, ApifoxGenericMeta>();
     this.namingStyle = namingStyle;
     this.schemaNameMap = schemaNameMap;
+    this.typeNamePrefix = typeNamePrefix;
   }
 
   /**
@@ -88,11 +98,18 @@ export class InterfaceGenerator {
         const schemaName = extractStringFromNode(schemaMember.name);
         if (!schemaName) continue;
 
-        // 与 SchemaExtractor 使用同一解码 + 消歧逻辑，保证键一致
-        const originalName = decodeSchemaName(schemaName);
-        const convertedName =
-          this.schemaNameMap?.get(originalName) ??
-          NamingUtils.convert(originalName, this.namingStyle);
+        // 与 SchemaExtractor 使用同一解码 + 前缀 + 消歧逻辑，保证键一致
+        const decodedName = decodeSchemaName(schemaName);
+        const originalName = applyTypeNamePrefix(
+          decodedName,
+          this.typeNamePrefix,
+        );
+        const convertedName = resolveComponentTypeName(
+          decodedName,
+          this.typeNamePrefix,
+          this.namingStyle,
+          this.schemaNameMap,
+        );
 
         const info = this.genericInfoMap.get(originalName);
         if (info) {
@@ -127,8 +144,9 @@ export class InterfaceGenerator {
     interfaces: Record<string, string>,
     generatedBaseTypes: Set<string>,
   ): void {
-    const convertedBaseType = NamingUtils.convert(
+    const convertedBaseType = resolveGenericBaseName(
       info.baseType,
+      this.typeNamePrefix,
       this.namingStyle,
     );
 
@@ -136,10 +154,16 @@ export class InterfaceGenerator {
     if (!generatedBaseTypes.has(convertedBaseType)) {
       const genericArg = info.generics[0] || 'T';
       const normalizedGenericArg = normalizeGenericName(genericArg);
-      const convertedGenericArg = NamingUtils.convert(
-        normalizedGenericArg,
-        this.namingStyle,
-      );
+      // 启用前缀时，基类字段类型已是带前缀的引用，替换目标须使用同一输出名；
+      // 未启用时保持历史的命名风格转换结果。
+      const convertedGenericArg = this.typeNamePrefix
+        ? resolveGenericArgumentName(
+            genericArg,
+            this.typeNamePrefix,
+            this.namingStyle,
+            this.schemaNameMap,
+          )
+        : NamingUtils.convert(normalizedGenericArg, this.namingStyle);
 
       const genericField = this.findGenericField(
         typeNode,
@@ -157,9 +181,18 @@ export class InterfaceGenerator {
     }
 
     // 2. 生成具体类型的别名
-    const args = info.generics.map((g) =>
-      NamingUtils.convert(normalizeGenericName(g), this.namingStyle),
-    );
+    const args = this.typeNamePrefix
+      ? info.generics.map((g) =>
+          resolveGenericArgumentName(
+            g,
+            this.typeNamePrefix,
+            this.namingStyle,
+            this.schemaNameMap,
+          ),
+        )
+      : info.generics.map((g) =>
+          NamingUtils.convert(normalizeGenericName(g), this.namingStyle),
+        );
 
     const exportKeyword =
       this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
@@ -195,6 +228,30 @@ export class InterfaceGenerator {
   }
 
   /**
+   * 将 `components["schemas"]["X"]` 中的 X 解析为最终输出名。
+   */
+  private toOutputName(name: string): string {
+    // 未启用前缀时保留历史行为（不对引用额外解码），确保既有输出不变
+    const effectiveName = this.typeNamePrefix ? decodeSchemaName(name) : name;
+    return resolveComponentTypeName(
+      effectiveName,
+      this.typeNamePrefix,
+      this.namingStyle,
+      this.schemaNameMap,
+    );
+  }
+
+  /**
+   * 引用名转换入口：启用前缀时走前缀 + 消歧映射；
+   * 未启用时保持历史行为（仅做命名风格转换）。
+   */
+  private resolveRefName(name: string): string {
+    return this.typeNamePrefix
+      ? this.toOutputName(name)
+      : NamingUtils.convert(name, this.namingStyle);
+  }
+
+  /**
    * 生成单个接口的代码字符串
    */
   public generateInterfaceString(
@@ -219,7 +276,11 @@ export class InterfaceGenerator {
       this.interfaceExportMode === 'export' ? 'export ' : 'declare ';
     const genericPart = isGeneric ? '<T = any>' : '';
     const typeText = printNodeCached(typeNode);
-    return `${exportKeyword}type ${name}${genericPart} = ${simplifyTypeReference(typeText)};`;
+    // 未启用前缀时保持历史行为（不做引用简化/命名转换）
+    const simplifiedType = this.typeNamePrefix
+      ? simplifyTypeReference(typeText, (n) => this.toOutputName(n))
+      : simplifyTypeReference(typeText);
+    return `${exportKeyword}type ${name}${genericPart} = ${simplifiedType};`;
   }
 
   /**
@@ -244,7 +305,7 @@ export class InterfaceGenerator {
 
       let memberText = printNodeCached(member);
       memberText = simplifyTypeReference(memberText, (n) =>
-        NamingUtils.convert(n, this.namingStyle),
+        this.resolveRefName(n),
       );
 
       const propName = (member.name as ts.Identifier).text;
@@ -255,7 +316,7 @@ export class InterfaceGenerator {
 
         const typeText = printNodeCached(member.type);
         const simplifiedType = simplifyTypeReference(typeText, (n) =>
-          NamingUtils.convert(n, this.namingStyle),
+          this.resolveRefName(n),
         );
 
         const newType = this.replaceGenericTypeParam(

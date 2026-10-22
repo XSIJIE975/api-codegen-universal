@@ -17,6 +17,7 @@ import {
   buildOperationsMap,
 } from './ast-utils';
 import { NamingUtils } from '../utils/naming-utils';
+import { applyTypeNamePrefix } from '../utils/type-name-prefix';
 import type { SchemaExtractor } from './schema-extractor';
 import type { InterfaceGenerator } from './interface-generator';
 
@@ -29,6 +30,8 @@ export class ParameterExtractor {
   private readonly shouldGenerateInterfaces: boolean;
   private readonly schemaExtractor: SchemaExtractor;
   private readonly interfaceGenerator: InterfaceGenerator;
+  /** 类型声明名统一前缀（undefined = 不添加） */
+  private readonly typeNamePrefix?: string;
 
   constructor(
     namingStyle: NamingStyle,
@@ -36,12 +39,14 @@ export class ParameterExtractor {
     shouldGenerateInterfaces: boolean,
     schemaExtractor: SchemaExtractor,
     interfaceGenerator: InterfaceGenerator,
+    typeNamePrefix?: string,
   ) {
     this.namingStyle = namingStyle;
     this.shouldGenerateSchemas = shouldGenerateSchemas;
     this.shouldGenerateInterfaces = shouldGenerateInterfaces;
     this.schemaExtractor = schemaExtractor;
     this.interfaceGenerator = interfaceGenerator;
+    this.typeNamePrefix = typeNamePrefix;
   }
 
   /**
@@ -152,6 +157,7 @@ export class ParameterExtractor {
           operationId,
           location,
           this.namingStyle,
+          this.typeNamePrefix,
         );
 
         if (this.shouldGenerateSchemas) {
@@ -181,17 +187,22 @@ export class ParameterExtractor {
 
 /**
  * 生成参数接口名称
- * 格式：{OperationId}{Location}Params
+ * 格式：{prefix}{OperationId}{Location}Params
+ *
+ * 前缀在命名风格转换之后添加，保证前缀按原样保留，
+ * 且声明名与 API 参数引用使用同一名称。
  */
 function generateParameterInterfaceName(
   operationId: string,
   location: string,
   namingStyle: NamingStyle,
+  typeNamePrefix?: string,
 ): string {
   const locationCapitalized =
     location.charAt(0).toUpperCase() + location.slice(1);
-  return NamingUtils.convert(
+  const baseName = NamingUtils.convert(
     `${operationId}_${locationCapitalized}_Params`,
     namingStyle,
   );
+  return applyTypeNamePrefix(baseName, typeNamePrefix);
 }

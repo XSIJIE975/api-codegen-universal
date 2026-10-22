@@ -1,0 +1,85 @@
+// Rstest Snapshot v1
+
+exports[`typeNamePrefix: output without prefix stays byte-identical 1`] = `
+{
+  "apis": [
+    {
+      "category": {
+        "depth": 1,
+        "filePath": "api/things/index.ts",
+        "isUnclassified": false,
+        "segments": [
+          "things",
+        ],
+      },
+      "deprecated": undefined,
+      "description": undefined,
+      "method": "GET",
+      "operationId": "getThings",
+      "parameters": undefined,
+      "path": "/things",
+      "requestBody": undefined,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "ref": "A",
+                "type": "ref",
+              },
+            },
+          },
+          "description": "ok",
+          "headers": undefined,
+        },
+      },
+      "summary": undefined,
+      "tags": undefined,
+    },
+  ],
+  "interfaces": {
+    "A": "declare interface A {
+  b: B;
+  name?: string;
+}",
+    "B": "declare interface B {
+  id?: number;
+}",
+  },
+  "schemas": {
+    "A": {
+      "name": "A",
+      "properties": {
+        "b": {
+          "description": undefined,
+          "name": "b",
+          "required": true,
+          "type": "B",
+        },
+        "name": {
+          "description": undefined,
+          "name": "name",
+          "required": false,
+          "type": "string",
+        },
+      },
+      "required": [
+        "b",
+      ],
+      "type": "object",
+    },
+    "B": {
+      "name": "B",
+      "properties": {
+        "id": {
+          "description": undefined,
+          "name": "id",
+          "required": false,
+          "type": "number",
+        },
+      },
+      "type": "object",
+    },
+  },
+}
+`;

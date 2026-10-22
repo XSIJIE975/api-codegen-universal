@@ -80,6 +80,11 @@ await adapter.parse(source, {
     // Interface export mode: 'export' (default) | 'declare' (for .d.ts files)
     interfaceExportMode: 'export',
 
+    // Unified prefix for generated type declaration names (default: undefined)
+    // Use it when several projects emit global `declare` declarations side by side:
+    // 'Demo' => PageDTO becomes DemoPageDTO (refs and split type file names follow)
+    typeNamePrefix: 'Demo',
+
     // Output control: toggle specific parts of the output
     output: {
       schemas: true, // Generate structured schema definitions
@@ -99,6 +104,34 @@ await adapter.parse(source, {
   },
 });
 ```
+
+### Type name prefix (`typeNamePrefix`)
+
+When multiple projects generate API types into the same global scope with
+`interfaceExportMode: 'declare'`, schemas with the same name (for example
+`PageDTO` or `IdDTO`) are merged and can conflict. Set `codeGeneration.typeNamePrefix`
+to isolate each project's type declarations:
+
+```typescript
+await adapter.parse(source, {
+  codeGeneration: {
+    interfaceExportMode: 'declare',
+    typeNamePrefix: 'Demo',
+  },
+});
+```
+
+- The prefix is applied once when names enter the generator, so `interfaces` /
+  `schemas` keys, `$ref` references, generic composition names and downstream
+  `{TypeName}.d.ts` file names all use the prefixed name naturally.
+- All generated declaration names are covered: component schemas plus
+  operation-derived parameter interfaces, inline request/response schemas and
+  anonymous hash-named schemas.
+- Names that already start with the prefix are left unchanged and reported with
+  `console.warn`, preventing double prefixes such as `DemoDemoPageDTO`.
+- This is a type-level rename, not a text replacement: runtime value calls such as
+  `Number(x)` are untouched. A schema literally named `Number` is emitted as
+  `DemoNumber` together with all of its type references.
 
 ### Logging (logLevel / logger / logSampleLimit)
 
