@@ -1,5 +1,24 @@
 # api-codegen-universal
 
+## 0.9.0
+
+### Minor Changes
+
+- [#18](https://github.com/XSIJIE975/api-codegen-universal/pull/18) [`75e8c13`](https://github.com/XSIJIE975/api-codegen-universal/commit/75e8c132ea55b4e9bdd6d455ffaaa265423414b8) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - feat(openapi): add `codeGeneration.typeNamePrefix`
+
+  When multiple projects emit global `declare` types with
+  `interfaceExportMode: 'declare'`, schemas with the same name (for example
+  `PageDTO` or `IdDTO`) collide in the global scope. `typeNamePrefix` injects a
+  project prefix at generation time, so declaration names, interfaces/schemas
+  keys, `$ref` references, generic composition names and split `{TypeName}.d.ts`
+  file names remain isolated.
+
+  The prefix covers component schemas, operation-derived parameter interfaces,
+  inline request/response schemas, anonymous hash-named schemas and synthesized
+  generic bases. Input names that already start with the prefix are skipped with
+  a `console.warn` to avoid double prefixes. The option is opt-in: omitting it
+  keeps existing output unchanged.
+
 ## 0.8.0
 
 ### Minor Changes
