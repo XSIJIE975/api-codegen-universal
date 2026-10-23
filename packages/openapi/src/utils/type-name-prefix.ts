@@ -18,12 +18,29 @@ import { normalizeGenericName } from './type-ref-utils';
 /**
  * 为名称加上类型前缀。
  *
+ * 逐段规整：`PascalCase(prefix) + 首段大写(name)`，两段各自独立做大小写
+ * 规整后再拼接。若先拼成整串再由 `NamingUtils.convert` 统一转换，整串只有
+ * 首字母会被大写，小写单词名会产出畸形结果（`Demo` + `key` → `Demokey`）。
+ * 名称内部的大小写与分隔符保持原样（如 `Map_String_B` 不变），交给后续
+ * `NamingUtils.convert` 处理，保证既有输出逐字节不变。
+ *
  * - `prefix` 为空时原样返回（完全向后兼容）；
  * - 名称已以 `prefix` 开头时原样返回，避免双重前缀。
  */
 export function applyTypeNamePrefix(name: string, prefix?: string): string {
   if (!name || !prefix) return name;
-  return name.startsWith(prefix) ? name : `${prefix}${name}`;
+  if (name.startsWith(prefix)) return name;
+  return `${NamingUtils.convert(prefix, 'PascalCase')}${upperFirst(name)}`;
+}
+
+/**
+ * 将名称首字符规整为大写。
+ *
+ * 这是「逐段 PascalCase」在拼接边界的最小实现：对首字母已大写的名称幂等，
+ * 因此对既有 PascalCase 声明名（组件 schema、operationId 派生名等）零影响。
+ */
+function upperFirst(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 /**

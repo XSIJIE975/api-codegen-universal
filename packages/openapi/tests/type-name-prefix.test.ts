@@ -1,5 +1,6 @@
 import { test, expect, rstest } from '@rstest/core';
 import { OpenAPIAdapter } from '../src';
+import { applyTypeNamePrefix } from '../src/utils/type-name-prefix';
 
 /**
  * typeNamePrefix 行为测试。
@@ -334,4 +335,144 @@ test('typeNamePrefix: operation-derived parameter, inline response and anonymous
   for (const name of Object.keys(result.schemas)) {
     expect(name.startsWith('Demo')).toBe(true);
   }
+});
+
+/**
+ * 前缀与命名大小写规整的顺序缺陷回归：
+ * 前缀必须与原始名「逐段」做 PascalCase 规整后再拼接，
+ * 而不是先拼整串再统一转换（那样小写单词名只会首字母大写）。
+ */
+function createCaseDoc(): Record<string, unknown> {
+  return {
+    openapi: '3.0.0',
+    info: { title: 'Case API', version: '1.0.0' },
+    paths: {
+      '/keys': {
+        get: {
+          operationId: 'getKeys',
+          responses: {
+            '200': {
+              description: 'ok',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/key' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        // 空对象：产出 type alias（复现线上 Socialkey = Record<string, never>）
+        key: { type: 'object' },
+        key1: {
+          type: 'object',
+          properties: { id: { type: 'integer' } },
+        },
+        pageDTO: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/key' },
+            },
+            detail: { $ref: '#/components/schemas/key1' },
+          },
+        },
+        SomSensitivePublicOpinionSaveDTO: {
+          type: 'object',
+          properties: {
+            nested: { $ref: '#/components/schemas/key1' },
+          },
+        },
+      },
+    },
+  };
+}
+
+test('typeNamePrefix: applies per-segment PascalCase normalization', () => {
+  // 小写单词名：拼接后不得依赖整串首字母大写
+  expect(applyTypeNamePrefix('key', 'Social')).toBe('SocialKey');
+  expect(applyTypeNamePrefix('key1', 'Social')).toBe('SocialKey1');
+  // camelCase 名与 PascalCase 名幂等
+  expect(applyTypeNamePrefix('pageDTO', 'Social')).toBe('SocialPageDTO');
+  expect(
+    applyTypeNamePrefix('SomSensitivePublicOpinionSaveDTO', 'Social'),
+  ).toBe('SocialSomSensitivePublicOpinionSaveDTO');
+  // 已带前缀名不双加（防御行为保留）
+  expect(applyTypeNamePrefix('SocialUser', 'Social')).toBe('SocialUser');
+  // 前缀本身也规整为 PascalCase
+  expect(applyTypeNamePrefix('key', 'social')).toBe('SocialKey');
+  // 不配前缀原样返回
+  expect(applyTypeNamePrefix('key', undefined)).toBe('key');
+});
+
+test('typeNamePrefix: lowercase schema names get PascalCase segment after prefix', async () => {
+  const adapter = new OpenAPIAdapter();
+  const result = await adapter.parse(createCaseDoc(), {
+    codeGeneration: {
+      interfaceExportMode: 'declare',
+      typeNamePrefix: 'Social',
+    },
+  });
+
+  // 声明名：Socialkey / Socialkey1 畸形名不再出现
+  expect(result.interfaces['Socialkey']).toBeUndefined();
+  expect(result.interfaces['Socialkey1']).toBeUndefined();
+  expect(result.interfaces['SocialKey']).toBe(
+    'declare type SocialKey = Record<string, never>;',
+  );
+  expect(result.interfaces['SocialKey1']).toBe(
+    'declare interface SocialKey1 {\n  id?: number;\n}',
+  );
+  expect(result.interfaces['SocialPageDTO']).toContain('items?: SocialKey[];');
+  expect(result.interfaces['SocialPageDTO']).toContain('detail?: SocialKey1;');
+  expect(result.interfaces['SocialSomSensitivePublicOpinionSaveDTO']).toContain(
+    'nested?: SocialKey1;',
+  );
+
+  // separateTypes 文件名契约：{name}.d.ts 与声明名、$ref 互引一致
+  expect(Object.keys(result.interfaces).map((name) => `${name}.d.ts`)).toEqual(
+    expect.arrayContaining([
+      'SocialKey.d.ts',
+      'SocialKey1.d.ts',
+      'SocialPageDTO.d.ts',
+      'SocialSomSensitivePublicOpinionSaveDTO.d.ts',
+    ]),
+  );
+
+  // 结构化 schemas 与响应引用使用同一名字
+  expect(result.schemas['SocialPageDTO']?.properties?.items?.type).toBe(
+    'SocialKey[]',
+  );
+  expect(result.schemas['SocialPageDTO']?.properties?.detail?.type).toBe(
+    'SocialKey1',
+  );
+  expect(
+    result.apis[0]?.responses['200']?.content?.['application/json']?.schema,
+  ).toMatchObject({ type: 'ref', ref: 'SocialKey' });
+});
+
+test('typeNamePrefix: prefixed output equals prefix plus unprefixed output', async () => {
+  const adapter = new OpenAPIAdapter();
+  const withoutPrefix = await adapter.parse(createCaseDoc(), {
+    codeGeneration: { interfaceExportMode: 'declare' },
+  });
+  const withPrefix = await adapter.parse(createCaseDoc(), {
+    codeGeneration: {
+      interfaceExportMode: 'declare',
+      typeNamePrefix: 'Social',
+    },
+  });
+
+  // PascalCase 名的前缀化输出 = 前缀 + 未前缀化输出（2900+ 既有名的零变化不变式）
+  const unprefixedNames = Object.keys(withoutPrefix.interfaces).sort();
+  const prefixedNames = Object.keys(withPrefix.interfaces).sort();
+  expect(prefixedNames).toEqual(unprefixedNames.map((n) => `Social${n}`));
+  expect(unprefixedNames).toContain('Key');
+  expect(unprefixedNames).toContain('Key1');
+  expect(unprefixedNames).toContain('PageDTO');
+  expect(unprefixedNames).toContain('SomSensitivePublicOpinionSaveDTO');
 });
