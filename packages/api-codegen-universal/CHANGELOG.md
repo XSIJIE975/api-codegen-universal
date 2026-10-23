@@ -22,46 +22,37 @@
 
 ### Minor Changes
 
-- [#18](https://github.com/XSIJIE975/api-codegen-universal/pull/18) [`75e8c13`](https://github.com/XSIJIE975/api-codegen-universal/commit/75e8c132ea55b4e9bdd6d455ffaaa265423414b8) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - feat(openapi): add `codeGeneration.typeNamePrefix`
+- [#18](https://github.com/XSIJIE975/api-codegen-universal/pull/18) [`75e8c13`](https://github.com/XSIJIE975/api-codegen-universal/commit/75e8c132ea55b4e9bdd6d455ffaaa265423414b8) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 新增 `codeGeneration.typeNamePrefix` 类型声明名前缀
 
-  When multiple projects emit global `declare` types with
-  `interfaceExportMode: 'declare'`, schemas with the same name (for example
-  `PageDTO` or `IdDTO`) collide in the global scope. `typeNamePrefix` injects a
-  project prefix at generation time, so declaration names, interfaces/schemas
-  keys, `$ref` references, generic composition names and split `{TypeName}.d.ts`
-  file names remain isolated.
+  多个项目统一以 `interfaceExportMode: 'declare'` 输出全局 `.d.ts` 声明时，跨项目同名 schema（如 `PageDTO`、`IdDTO`）会在全局作用域合并/冲突。`typeNamePrefix` 在生成阶段为类型声明名注入项目前缀，使声明名、interfaces/schemas 注册表键、`$ref` 互引、泛型组合名与拆分后的 `{TypeName}.d.ts` 文件名自然隔离。
 
-  The prefix covers component schemas, operation-derived parameter interfaces,
-  inline request/response schemas, anonymous hash-named schemas and synthesized
-  generic bases. Input names that already start with the prefix are skipped with
-  a `console.warn` to avoid double prefixes. The option is opt-in: omitting it
-  keeps existing output unchanged.
+  前缀覆盖组件 schema、operationId 派生的参数接口、内联请求/响应 schema、匿名哈希 schema 与合成的泛型基类。已以前缀开头的输入名会跳过加前缀并输出 `console.warn` 告警，避免双重前缀。该选项按需启用：不配置时既有输出保持不变。
 
 ## 0.8.0
 
 ### Minor Changes
 
-- [`72bc582`](https://github.com/XSIJIE975/api-codegen-universal/commit/72bc582b174d9b96bb8832b3b78211ac7c03acba) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - Fix a batch of verified bugs, add the `emitStandardOutput` file emitter, and cache `printNode` output:
+- [`72bc582`](https://github.com/XSIJIE975/api-codegen-universal/commit/72bc582b174d9b96bb8832b3b78211ac7c03acba) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 修复一批已验证缺陷，新增 `emitStandardOutput` 文件输出器，并为 `printNode` 输出增加缓存：
 
-  **Bug fixes**
-  - **openapi**: schema names that collapse after naming-style conversion (e.g. `user_profile` vs `userProfile`) no longer silently overwrite each other; a collision-free name map is shared by schema extraction, interface generation and response refs, and renames are reported via a new `renamedCollidingSchemas` warnings counter.
-  - **openapi**: URL-encoded schema keys are now decoded consistently, so `schemas` and `interfaces` no longer disagree for pre-encoded documents (e.g. `User%20Dto`).
-  - **openapi**: `requestBody.required` is restored from the AST instead of being hardcoded to `true`; unspecified request bodies now correctly default to `false` per the OpenAPI spec.
-  - **openapi**: `commonPrefix` is only stripped at path segment boundaries, fixing `commonPrefix: '/api'` mangling `/apis/users` into `s/users`.
-  - **openapi**: `TRACE` is added to the `HttpMethod` union, matching OpenAPI 3.0 path-item fields.
-  - **openapi**: non-structural unions/intersections (e.g. `A[] & B[]`) now keep their original type text in a new `SchemaDefinition.rawType` field instead of degrading to an empty object.
-  - **openapi**: multi-line `@description` content is preserved for schema properties and response statuses (previously only the first line was kept).
-  - **openapi**: response headers are now extracted into `responses[status].headers`.
-  - **openapi**: operation `tags` are restored from the raw document (the AST path drops them).
-  - **openapi**: `validate()` applies `fetchTimeoutMs` for URL inputs instead of waiting indefinitely.
-  - **openapi**: the warnings collector and other runtime plumbing keys are excluded from `metadata.options`, and synthetic comments are read through the official `ts.getSyntheticLeadingComments` API.
-  - **core**: `sanitizeOptions` no longer reports shared (DAG) object references as `[circular]`; true cycles are still detected.
-  - **apifox**: explicitly-`undefined` `exportOptions` keys no longer override request defaults (e.g. `scope`).
+  **缺陷修复**
+  - **openapi**：命名风格转换后坍缩的 schema 名（如 `user_profile` 与 `userProfile`）不再互相静默覆盖；schema 提取、接口生成与响应引用三处共享同一份无冲突名映射，重命名通过新增的 `renamedCollidingSchemas` warnings 计数器上报。
+  - **openapi**：URL 编码的 schema 键现在会一致解码，预编码文档（如 `User%20Dto`）的 `schemas` 与 `interfaces` 不再不一致。
+  - **openapi**：`requestBody.required` 改从 AST 还原，不再硬编码为 `true`；未指定的请求体按 OpenAPI 规范正确默认为 `false`。
+  - **openapi**：`commonPrefix` 只在路径段边界剥离，修复 `commonPrefix: '/api'` 把 `/apis/users` 错切为 `s/users` 的问题。
+  - **openapi**：`HttpMethod` 联合类型新增 `TRACE`，与 OpenAPI 3.0 path-item 字段对齐。
+  - **openapi**：非结构性联合/交叉类型（如 `A[] & B[]`）现在把原始类型文本保留到新增的 `SchemaDefinition.rawType` 字段，不再退化为空对象。
+  - **openapi**：schema 属性与响应状态的多行 `@description` 内容现在完整保留（此前只保留首行）。
+  - **openapi**：响应头现在会提取到 `responses[status].headers`。
+  - **openapi**：operation 的 `tags` 从原始文档还原（AST 路径会丢失它们）。
+  - **openapi**：`validate()` 对 URL 输入同样应用 `fetchTimeoutMs`，不再无限等待。
+  - **openapi**：warnings 收集器等运行时管道键不再进入 `metadata.options`；合成注释改经官方 `ts.getSyntheticLeadingComments` API 读取。
+  - **core**：`sanitizeOptions` 不再把共享（DAG）对象引用误报为 `[circular]`；真正的循环引用仍会被检测。
+  - **apifox**：显式为 `undefined` 的 `exportOptions` 键不再覆盖请求默认值（如 `scope`）。
 
-  **New features**
-  - **emitter**: new `emitStandardOutput(output, { outDir, modelsDir?, barrel?, header? })` writes the standard output to disk — single-category interfaces land in their API category file, shared/orphan ones in `models/shared.ts`; cross-file type imports and an optional barrel `index.ts` are generated automatically. Emitted output passes `tsc --strict`.
-  - **perf**: `printNode` output is cached per AST node (WeakMap), removing repeated printing across schema extraction, interface generation and generic detection.
-  - docs: `CONTEXT.md` glossary and `docs/plans/ROADMAP.md` with the prioritized backlog (request-client generation, Swagger 2.0 adapter, Zod emission, CLI/config, watch mode).
+  **新功能**
+  - **emitter**：新增 `emitStandardOutput(output, { outDir, modelsDir?, barrel?, header? })` 将标准输出写入磁盘——单分类 interfaces 落入对应 API 分类文件，共享/孤儿类型落入 `models/shared.ts`；跨文件类型导入与可选的 barrel `index.ts` 自动生成，产物可通过 `tsc --strict` 检查。
+  - **perf**：`printNode` 输出按 AST 节点缓存（WeakMap），消除 schema 提取、接口生成与泛型检测之间的重复打印。
+  - 文档：新增 `CONTEXT.md` 术语表与带优先级路线图的 `docs/plans/ROADMAP.md`（请求客户端生成、Swagger 2.0 适配器、Zod 产物、CLI/配置、watch 模式）。
 
 ## 0.7.0
 
@@ -80,83 +71,83 @@
 
 ### Patch Changes
 
-- Improve type safety, performance and maintainability
-  - Add `sanitizeOptions` to strip sensitive fields (token, apiKey, etc.) from metadata before logging
-  - Rewrite OpenAPI adapter to stateless `ParseContext` pattern, eliminating shared mutable state
-  - Extract shared `type-ref-utils` and `ast-utils` across adapters
-  - Add configurable fetch timeout via `AbortSignal.timeout` (default 30s) with validation
-  - Replace `JSON.parse/stringify` with `structuredClone`; replace random collision suffix with deterministic SHA-256
-  - Replace `any` in Apifox parser with recursive `OpenAPIRaw` type; improve generic name collision resolution
-  - Validate `x-apifox-generic` shape and YAML parse results; improve non-Error exception handling
-  - Restore CJS output via `bundle: true`; clean up unused dependencies
-  - Add 100+ new tests covering sanitize, logging, adapter, parser internals, generic collision and real-API integration
+- 提升类型安全性、性能与可维护性
+  - 新增 `sanitizeOptions`，在写入日志前从 metadata 中剥离敏感字段（token、apiKey 等）
+  - OpenAPI 适配器重写为无状态的 `ParseContext` 模式，消除共享可变状态
+  - 跨适配器抽取共享的 `type-ref-utils` 与 `ast-utils`
+  - 新增可配置的 fetch 超时（基于 `AbortSignal.timeout`，默认 30s）并做校验
+  - 用 `structuredClone` 替代 `JSON.parse/stringify`；用确定性 SHA-256 替代随机冲突后缀
+  - Apifox 解析器中的 `any` 替换为递归的 `OpenAPIRaw` 类型；改进泛型名冲突消解
+  - 校验 `x-apifox-generic` 形状与 YAML 解析结果；改进非 Error 异常处理
+  - 通过 `bundle: true` 恢复 CJS 产物；清理无用依赖
+  - 新增 100+ 测试，覆盖 sanitize、日志、适配器、解析器内部、泛型冲突与真实 API 集成
 
 ## 0.6.4
 
 ### Patch Changes
 
-- [#13](https://github.com/XSIJIE975/api-codegen-universal/pull/13) [`1d58776`](https://github.com/XSIJIE975/api-codegen-universal/commit/1d5877698feeb11b7b8f810019ec9c9bfb885de3) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - Add unified logging and warnings summary feature with logLevel, logger injection, and logSampleLimit support
+- [#13](https://github.com/XSIJIE975/api-codegen-universal/pull/13) [`1d58776`](https://github.com/XSIJIE975/api-codegen-universal/commit/1d5877698feeb11b7b8f810019ec9c9bfb885de3) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 新增统一日志与 warnings 汇总能力，支持 `logLevel`、logger 注入与 `logSampleLimit` 配置
 
 ## 0.6.3
 
 ### Patch Changes
 
-- [#11](https://github.com/XSIJIE975/api-codegen-universal/pull/11) [`c4cf838`](https://github.com/XSIJIE975/api-codegen-universal/commit/c4cf83873115587920a693da2331ff4d81cc005d) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - Fix the Apifox adapter to handle `null` schemas and deduplicate `operationId` values to prevent conflicts in generated output.
+- [#11](https://github.com/XSIJIE975/api-codegen-universal/pull/11) [`c4cf838`](https://github.com/XSIJIE975/api-codegen-universal/commit/c4cf83873115587920a693da2331ff4d81cc005d) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 修复 Apifox 适配器对 `null` schema 的处理，并对 `operationId` 去重，避免生成产物中的冲突
 
 ## 0.6.2
 
 ### Patch Changes
 
-- [`74e7c98`](https://github.com/XSIJIE975/api-codegen-universal/commit/74e7c989a10cf6ee9c0ad821629c759b4d851f02) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - fix: ensure RequestResponseExtractor respects interfaceExportMode when generating inline interfaces
+- [`74e7c98`](https://github.com/XSIJIE975/api-codegen-universal/commit/74e7c989a10cf6ee9c0ad821629c759b4d851f02) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 修复 RequestResponseExtractor 生成内联接口时未遵循 `interfaceExportMode` 的问题
 
 ## 0.6.1
 
 ### Patch Changes
 
-- [`df4639e`](https://github.com/XSIJIE975/api-codegen-universal/commit/df4639e5df5f8fc5068afd3c018ed009ff52a2de) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - - feat: enhance OpenAPI document loading with support for Buffer and improved error handling
-  - feat: support extraction of inline schemas in request bodies
-  - fix: optimize type parsing and response content traversal logic
+- [`df4639e`](https://github.com/XSIJIE975/api-codegen-universal/commit/df4639e5df5f8fc5068afd3c018ed009ff52a2de) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 增强 OpenAPI 文档加载：支持 Buffer 输入并改进错误处理
+  - 支持提取请求体中的内联 schema
+  - 优化类型解析与响应 content 遍历逻辑
 
 ## 0.6.0
 
 ### Minor Changes
 
-- [#7](https://github.com/XSIJIE975/api-codegen-universal/pull/7) [`3bea986`](https://github.com/XSIJIE975/api-codegen-universal/commit/3bea9864dd4462599688342770a7210db673601b) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - - feat: schema definition 新增 extends 字段以支持继承关系
-  - feat: 新增 naming utils 工具类用于统一命名风格转换
-  - feat: 优化 schema 提取逻辑，支持交叉类型继承和 jsdoc 解析重构
-  - refactor: 应用 naming utils 实现全局命名风格统一，并修复 oneof 类型处理
+- [#7](https://github.com/XSIJIE975/api-codegen-universal/pull/7) [`3bea986`](https://github.com/XSIJIE975/api-codegen-universal/commit/3bea9864dd4462599688342770a7210db673601b) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - schema 定义新增 extends 字段以支持继承关系
+  - 新增 naming utils 工具类，用于统一命名风格转换
+  - 优化 schema 提取逻辑，支持交叉类型继承，并重构 jsdoc 解析
+  - 应用 naming utils 实现全局命名风格统一，并修复 oneof 类型处理
 
 ## 0.5.0
 
 ### Minor Changes
 
-- [#5](https://github.com/XSIJIE975/api-codegen-universal/pull/5) [`ee98cd0`](https://github.com/XSIJIE975/api-codegen-universal/commit/ee98cd0bad6701fdf44a1f47be51806d53a2590b) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - feat: Release v0.5.0
-  - **Features**:
-    - Support response object naming style configuration (`namingStyle`); generated response interface names will follow the configured style.
-    - Add reference repair and generic name processing to Apifox adapter, improving compatibility with complex Schemas.
-  - **Bug Fixes**:
-    - Fix URL-encoded Schema name parsing issue in Apifox adapter.
-    - Fix generic detection and interface generation logic in OpenAPI adapter.
-    - Enhance robustness of inline response processing and API extraction in OpenAPI adapter.
-  - **Performance**:
-    - Eliminate redundant object creation and cache expensive operations to improve performance.
-  - **Documentation & Tests**:
-    - Comprehensively improve source code comments and type definition explanations for core module, OpenAPI adapter, and Apifox adapter.
-    - Add unit tests for core modules to improve project stability.
+- [#5](https://github.com/XSIJIE975/api-codegen-universal/pull/5) [`ee98cd0`](https://github.com/XSIJIE975/api-codegen-universal/commit/ee98cd0bad6701fdf44a1f47be51806d53a2590b) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 发布 v0.5.0
+  - **功能**：
+    - 支持响应对象命名风格配置（`namingStyle`），生成的响应接口名将遵循所配置的风格。
+    - Apifox 适配器新增引用修复与泛型名处理，改善对复杂 Schema 的兼容性。
+  - **缺陷修复**：
+    - 修复 Apifox 适配器中 URL 编码 Schema 名的解析问题。
+    - 修复 OpenAPI 适配器中的泛型检测与接口生成逻辑。
+    - 增强 OpenAPI 适配器内联响应处理与 API 提取的健壮性。
+  - **性能**：
+    - 消除冗余对象创建并缓存高开销操作，提升性能。
+  - **文档与测试**：
+    - 全面完善 core 模块、OpenAPI 适配器与 Apifox 适配器的源码注释与类型定义说明。
+    - 为 core 模块新增单元测试，提升项目稳定性。
 
 ## 0.4.0
 
 ### Minor Changes
 
-- [`e5e84c8`](https://github.com/XSIJIE975/api-codegen-universal/commit/e5e84c80cf17389864e95c5b487f8d1927941f39) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - feat(openapi): 支持提取接口摘要、标签及文档元数据
+- [`e5e84c8`](https://github.com/XSIJIE975/api-codegen-universal/commit/e5e84c80cf17389864e95c5b487f8d1927941f39) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 支持提取接口摘要、标签及文档元数据
   - 更新 `Metadata` 类型定义，增加 `options` 字段。
-  - 支持从生成的 TypeScript 代码 JSDoc 中提取接口的 `summary` (摘要)、`description` (描述)、`tags` (标签) 和 `deprecated` (废弃) 状态。
+  - 支持从生成的 TypeScript 代码 JSDoc 中提取接口的 `summary`（摘要）、`description`（描述）、`tags`（标签）和 `deprecated`（废弃）状态。
   - 新增 `loadOpenAPIDocument` 方法，支持加载原始 OpenAPI JSON/YAML 文档。
-  - 支持提取 OpenAPI 文档的元数据，包括 `title` (标题)、`description` (描述) 和 `baseUrl` (基础路径)。
+  - 支持提取 OpenAPI 文档的元数据，包括 `title`（标题）、`description`（描述）和 `baseUrl`（基础路径）。
   - 修复了相关类型定义，增强了类型安全性。
 
 ## 0.3.0
 
 ### Minor Changes
 
-- [#1](https://github.com/XSIJIE975/api-codegen-universal/pull/1) [`32121e6`](https://github.com/XSIJIE975/api-codegen-universal/commit/32121e613a63f7ea0044a4d5ed4e09aaf7e4e24c) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - feat: 支持 Apifox 代码生成适配器
+- [#1](https://github.com/XSIJIE975/api-codegen-universal/pull/1) [`32121e6`](https://github.com/XSIJIE975/api-codegen-universal/commit/32121e613a63f7ea0044a4d5ed4e09aaf7e4e24c) Thanks [@XSIJIE975](https://github.com/XSIJIE975)! - 支持 Apifox 代码生成适配器
